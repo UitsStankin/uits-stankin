@@ -1,3 +1,22 @@
 spring:
   application:
-    name: backend
+    name: uits-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/uits_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    # не юзаем ddl-auto=update, схему Liquibase сгенерит
+    hibernate:
+      ddl-auto: validate
+    show-sql: true # для отладки
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
