@@ -1,0 +1,78 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users-table
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: users_user
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: password
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_login
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: is_superuser
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: first_name
+                  type: VARCHAR(150)
+              - column:
+                  name: last_name
+                  type: VARCHAR(150)
+              - column:
+                  name: email
+                  type: VARCHAR(254)
+              - column:
+                  name: is_staff
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: date_joined
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_moderator
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: avatar
+                  type: VARCHAR(100)
+              - column:
+                  name: telegram_code
+                  type: VARCHAR(12)
+              - column:
+                  name: is_teacher
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
