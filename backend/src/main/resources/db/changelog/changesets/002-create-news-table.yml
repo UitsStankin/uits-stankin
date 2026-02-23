@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-news-table
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: news_post
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: title
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: short_description
+                  type: TEXT
+              - column:
+                  name: post_type
+                  type: VARCHAR(12)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: preview_image
+                  type: VARCHAR(100)
+              - column:
+                  name: preview_image_description
+                  type: VARCHAR(256)
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_news_author
+                    references: users_user(id)
