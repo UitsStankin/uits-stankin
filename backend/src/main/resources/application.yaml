@@ -3,7 +3,7 @@ spring:
     name: uits-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/uits_db
+    url: jdbc:postgresql://localhost:5433/uits_db
     username: postgres
     password: password
     driver-class-name: org.postgresql.Driver
