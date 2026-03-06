@@ -23,7 +23,7 @@ public class AuthController {
     public record LoginRequest(String username, String password) {}
     public record LoginResponse(String access_token) {}
 
-    @PostMapping("/login/")
+    @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest request) {
 
         authenticationManager.authenticate(
