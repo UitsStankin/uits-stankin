@@ -41,6 +41,7 @@ public class NewsPost {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    @Builder.Default
     @Column(name = "display", nullable = false)
     private boolean display = true;
 
