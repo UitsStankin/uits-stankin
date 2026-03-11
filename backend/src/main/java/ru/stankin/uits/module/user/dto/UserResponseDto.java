@@ -17,7 +17,7 @@ public class UserResponseDto {
     private String email;
     private String avatar;
 
-    private boolean isTeacher;
-    private boolean isModerator;
-    private boolean isSuperuser;
+    private boolean teacher;
+    private boolean moderator;
+    private boolean superuser;
 }

@@ -40,20 +40,25 @@ public class User {
 
     // --- Ролевая модель из Django ---
 
+    @Builder.Default
     @Column(name = "is_superuser", nullable = false)
-    private boolean isSuperuser = false;
+    private boolean superuser = false;
 
+    @Builder.Default
     @Column(name = "is_staff", nullable = false)
-    private boolean isStaff = false; // Доступ в админку
+    private boolean staff = false; // Доступ в админку
 
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
-    private boolean isActive = true;
+    private boolean active = true;
 
+    @Builder.Default
     @Column(name = "is_moderator", nullable = false)
-    private boolean isModerator = false;
+    private boolean moderator = false;
 
+    @Builder.Default
     @Column(name = "is_teacher", nullable = false)
-    private boolean isTeacher = false;
+    private boolean teacher = false;
 
     // --- Временные метки ---
 
