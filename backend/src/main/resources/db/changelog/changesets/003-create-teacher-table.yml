@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-teacher-table
+      author: backend-tech-lead
+      changes:
+        - createTable:
+            tableName: employee_teacher
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              # связь с юзером
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+                    foreignKeyName: fk_teacher_user
+                    references: users_user(id)
+              - column:
+                  name: degree
+                  type: VARCHAR(100) # Ученая степень
+              - column:
+                  name: rank
+                  type: VARCHAR(100) # Звание
+              - column:
+                  name: position
+                  type: VARCHAR(100) # Должность
+              - column:
+                  name: bio
+                  type: TEXT
+              - column:
+                  name: phone_number
+                  type: VARCHAR(50)
+              - column:
+                  name: education
+                  type: TEXT
+              - column:
+                  name: qualification
+                  type: TEXT
+              - column:
+                  name: professional_experience
+                  type: INT
