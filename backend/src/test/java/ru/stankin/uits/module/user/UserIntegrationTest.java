@@ -31,7 +31,6 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
         User user = User.builder()
                 .username("prof_ivanov")
                 .password("super_password")

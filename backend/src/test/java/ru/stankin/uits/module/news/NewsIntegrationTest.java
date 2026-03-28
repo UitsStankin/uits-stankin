@@ -1,6 +1,5 @@
 package ru.stankin.uits.module.news;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -32,11 +31,6 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @BeforeEach
-    void setUp() {
-        newsRepository.deleteAll();
-        userRepository.deleteAll();
-    }
 
     @Test
     void createNews_WhenAdmin_SavesToDb() {
