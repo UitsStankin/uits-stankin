@@ -1,0 +1,81 @@
+name: CI/CD Deploy
+
+# Когда запускать пайплайн
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # ==================== JOB 1: Сборка и тесты ====================
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      - name: Установка JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Кэширование Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts') }}
+          restore-keys: gradle-
+
+      - name: Права на gradlew
+        run: chmod +x ./gradlew
+        working-directory: backend
+
+      - name: Сборка и тесты
+        run: ./gradlew build
+        working-directory: backend
+        # Тесты с Testcontainers работают в GitHub Actions из коробки,
+        # потому что Docker уже установлен на ubuntu-latest runners
+
+  # ==================== JOB 2: Деплой на VPS ====================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-test  # запускается только если тесты прошли
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      - name: Копируем файлы на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "backend/"
+          target: "/opt/uits/"
+
+      - name: Билд и запуск на сервере
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd /opt/uits/backend
+
+            # Собираем Docker-образ прямо на сервере
+            docker build -t uits-backend:latest .
+
+            # Останавливаем старые контейнеры и запускаем новые
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Чистим старые образы, чтобы не забивать диск
+            docker image prune -f
+
+            echo "=== Деплой завершён ==="
