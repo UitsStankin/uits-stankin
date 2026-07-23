@@ -56,7 +56,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturn403_WhenPasswordIsWrong() {
+    void shouldReturn401_WhenPasswordIsWrong() {
         userRepository.deleteAll();
         User user = new User();
         user.setUsername("hacker");
@@ -73,6 +73,6 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 Object.class
         );
 
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }
