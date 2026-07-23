@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.*;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
@@ -79,5 +80,27 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode().is4xxClientError()).isTrue();
+    }
+
+    @Test
+    void shouldReturn400WithFieldErrors_WhenNewPasswordIsBlank() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + validToken);
+
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setOldPassword("any_password");
+        body.setNewPassword("");
+
+        HttpEntity<ChangePasswordRequest> request = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/users/change-password",
+                HttpMethod.POST,
+                request,
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("newPassword");
     }
 }

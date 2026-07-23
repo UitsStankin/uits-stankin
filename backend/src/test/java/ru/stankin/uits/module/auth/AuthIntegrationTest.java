@@ -28,8 +28,6 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnToken_WhenLoginAndPasswordAreCorrect() {
-        userRepository.deleteAll();
-
         User user = new User();
         user.setUsername("student_ivan");
         user.setPassword(passwordEncoder.encode("super_password"));
@@ -56,8 +54,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturn403_WhenPasswordIsWrong() {
-        userRepository.deleteAll();
+    void shouldReturn401_WhenPasswordIsWrong() {
         User user = new User();
         user.setUsername("hacker");
         user.setPassword(passwordEncoder.encode("real_pass"));
@@ -73,6 +70,6 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 Object.class
         );
 
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }
