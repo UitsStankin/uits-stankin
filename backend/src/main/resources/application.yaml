@@ -3,9 +3,9 @@ spring:
     name: uits-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/uits_db
-    username: postgres
-    password: password
+    url: jdbc:postgresql://localhost:${POSTGRES_HOST_PORT}/${POSTGRES_DB:uits_db}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -20,6 +20,9 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  config:
+    import: optional:file:.env[.properties]
 
 #logging:
 #  level:
