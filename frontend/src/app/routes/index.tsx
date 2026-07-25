@@ -1,20 +1,25 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 
 // Layouts
 import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
-// Guards
-import ProtectedRoute from './protectedRoute';
-
 // Заглушка загрузки
 const Loader = () => <div className="loader">Загрузка...</div>;
 
-// Ленивая загрузка фич (аналог loadChildren)
-// const UitsRoutes = lazy(() => import('../features/uits/routes'));
-// const AuthRoutes = lazy(() => import('../features/auth/routes'));
-// const ErrorsRoutes = lazy(() => import('../features/errors/routes'));
+/**
+ * Временная заглушка вместо страницы.
+ * Удаляется по мере переноса страниц в слой pages/.
+ */
+const Placeholder = ({ title }: { title: string }) => (
+  <div className="p-4">{title}</div>
+);
+
+// Ленивая загрузка страниц (аналог loadChildren из Angular)
+// const UitsRoutes = lazy(() => import('@pages/uits'));
+// const AuthRoutes = lazy(() => import('@pages/auth'));
+// const ErrorsRoutes = lazy(() => import('@pages/errors'));
 
 // Базовые роуты
 export const routes: RouteObject[] = [
@@ -28,14 +33,8 @@ export const routes: RouteObject[] = [
     children: [
       // === APP_LAYOUT_ROUTES (UitsModule) ===
       {
-        path: '',
-        element: (
-          <Suspense fallback={<Loader />}>
-            {/* <ProtectedRoute>
-              <UitsRoutes />
-            </ProtectedRoute> */}
-          </Suspense>
-        ),
+        index: true,
+        element: <Placeholder title="Главная — страница ещё не перенесена" />,
       },
     ],
   },
@@ -49,19 +48,15 @@ export const routes: RouteObject[] = [
     children: [
       // === AUTH_LAYOUT_ROUTES (AuthModule) ===
       {
-        path: '',
-        // element: <AuthRoutes />,
+        index: true,
+        element: <Placeholder title="Вход — страница ещё не перенесена" />,
       },
     ],
   },
   // === ERRORS (Wildcard) ===
   {
     path: '*',
-    element: (
-      <Suspense fallback={<Loader />}>
-        {/* <ErrorsRoutes /> */}
-      </Suspense>
-    ),
+    element: <Placeholder title="404 — страница не найдена" />,
   },
 ];
 
