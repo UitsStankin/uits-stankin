@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../features/auth/lib/useAuth'; // Ваш хук проверки авторизации
+import { useAuth } from '@features/auth/lib/useAuth'; // Ваш хук проверки авторизации
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

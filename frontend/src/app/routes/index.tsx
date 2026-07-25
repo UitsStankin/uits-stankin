@@ -2,7 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 // Layouts
-import AppLayout from '../layouts/AppLAayout';
+import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
 // Guards

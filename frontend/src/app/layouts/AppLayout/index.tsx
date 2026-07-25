@@ -2,8 +2,8 @@ import { Outlet } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { useAppStore, selectLayout } from '@/shared/store/appStore';
 import { LAYOUT_WIDTHS, CONTENT_MARGINS } from '@/shared/store/appStore.constants';
-import Header from '../../widgets/Header';
-// import Sidebar from '../../widgets/Sidebar';
+import Header from '@widgets/Header';
+// import Sidebar from '@widgets/Sidebar';
 import type { AppLayoutProps, AppLayoutComputed } from './AppLayout.types';
 
 /**

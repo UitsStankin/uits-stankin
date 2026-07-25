@@ -1,2 +1,2 @@
-export { default as AppLayout } from './AppLAayout';
+export { default as AppLayout } from './AppLayout';
 export { default as AuthLayout } from './AuthLayout';
