@@ -69,7 +69,7 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturn403_WhenNoTokenProvided() {
+    void shouldReturn401_WhenNoTokenProvided() {
         HttpEntity<Void> emptyRequest = new HttpEntity<>(null, (HttpHeaders) null);
 
         ResponseEntity<Object> response = restTemplate.exchange(
@@ -79,7 +79,7 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
                 Object.class
         );
 
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test

@@ -18,6 +18,8 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    protected static final String JWT_SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+
     @BeforeEach
     void cleanDatabase() {
         jdbcTemplate.execute("TRUNCATE TABLE news_post, employee_teacher, users_user RESTART IDENTITY CASCADE");
@@ -35,7 +37,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
 
-        registry.add("application.security.jwt.secret-key", () -> "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970");
+        registry.add("application.security.jwt.secret-key", () -> JWT_SECRET);
         registry.add("application.security.jwt.expiration", () -> 86400000);
     }
 }
