@@ -50,7 +50,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().access_token()).isNotBlank();
+        assertThat(response.getBody().accessToken()).isNotBlank();
     }
 
     @Test

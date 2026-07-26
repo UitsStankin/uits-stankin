@@ -143,7 +143,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
-        return response.getBody().access_token();
+        return response.getBody().accessToken();
     }
 }
 

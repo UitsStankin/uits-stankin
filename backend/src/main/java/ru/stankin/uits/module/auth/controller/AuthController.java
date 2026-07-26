@@ -21,7 +21,7 @@ public class AuthController {
     private final JwtService jwtService;
 
     public record LoginRequest(String username, String password) {}
-    public record LoginResponse(String access_token) {}
+    public record LoginResponse(String accessToken) {}
 
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest request) {
