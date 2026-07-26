@@ -24,6 +24,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Обязательно: без прод-профиля сработает профиль по умолчанию dev,
+      # и DevDataSeeder зальёт тестовые учётки в боевую базу
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-uits_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
