@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changesets/002-create-news-table.yml
   - include:
       file: db/changelog/changesets/003-create-teacher-table.yml
+  - include:
+      file: db/changelog/changesets/004-widen-news-post-type.yml
