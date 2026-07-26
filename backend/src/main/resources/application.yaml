@@ -2,6 +2,12 @@ spring:
   application:
     name: uits-backend
 
+  # Профиль по умолчанию, если явно не задан другой (SPRING_PROFILES_ACTIVE).
+  # Локальный запуск получает dev (включает DevDataSeeder), тесты задают
+  # профиль test, прод обязан задавать prod — иначе в базу попадут тестовые данные.
+  profiles:
+    default: dev
+
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_HOST_PORT}/${POSTGRES_DB:uits_db}
     username: ${POSTGRES_USER}
