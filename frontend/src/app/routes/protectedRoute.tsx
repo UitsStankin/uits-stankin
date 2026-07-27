@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '@features/auth/lib/useAuth'; // Ваш хук проверки авторизации
 
 interface ProtectedRouteProps {
