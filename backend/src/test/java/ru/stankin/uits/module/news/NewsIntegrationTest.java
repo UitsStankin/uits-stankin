@@ -3,9 +3,11 @@ package ru.stankin.uits.module.news;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
@@ -42,7 +44,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .build();
         User savedAdmin = userRepository.save(admin);
 
-        String token = login("admin", "password");
+        String token = login("admin");
 
         NewsRequestDto request = NewsRequestDto.builder()
                 .title("Test News Title")
@@ -76,7 +78,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .build();
         userRepository.save(user);
 
-        String token = login("user", "password");
+        String token = login("user");
 
         NewsRequestDto request = NewsRequestDto.builder()
                 .title("Test News Title")
@@ -126,16 +128,22 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .build();
         newsRepository.save(hiddenPost);
 
-        ResponseEntity<NewsResponseDto[]> response = restTemplate.getForEntity("/api/public/news", NewsResponseDto[].class);
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+            "/api/public/news",
+            HttpMethod.GET,
+            null,
+            new ParameterizedTypeReference<>() {});
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody()).hasSize(1);
-        assertThat(response.getBody()[0].getTitle()).isEqualTo("Public News");
+        PageResponseDto<NewsResponseDto> body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.content()).hasSize(1);
+        assertThat(body.content().getFirst().getTitle()).isEqualTo("Public News");
+        assertThat(body.totalElements()).isEqualTo(1);
     }
 
-    private String login(String username, String password) {
-        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest(username, password);
+    private String login(String username) {
+        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest(username, "password");
         ResponseEntity<AuthController.LoginResponse> response = restTemplate.postForEntity(
                 "/api/users/auth/login",
                 loginRequest,
