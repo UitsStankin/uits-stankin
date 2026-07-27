@@ -1,0 +1,50 @@
+name: CI
+
+# Сборка и тесты бэкенда. Запускается:
+#  - на каждый pull request;
+#  - на push в dev (защита интеграционной ветки);
+#  - по вызову из другого workflow (deploy.yml переиспользует этот job,
+#    чтобы деплой шёл только после зелёных тестов и логика сборки не дублировалась).
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/**"
+  push:
+    branches: [ dev ]
+    paths:
+      - "backend/**"
+      - ".github/workflows/**"
+  workflow_call:
+
+# Новый push в PR отменяет ещё бегущий прогон по той же ветке —
+# экономит минуты Actions. Прогоны на dev не отменяются.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      - name: Установка JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          # Встроенное кэширование Gradle: заменяет ручной actions/cache
+          cache: gradle
+
+      - name: Права на gradlew
+        run: chmod +x ./gradlew
+        working-directory: backend
+
+      - name: Сборка и тесты
+        run: ./gradlew build
+        working-directory: backend
+        # Тесты с Testcontainers работают в GitHub Actions из коробки:
+        # Docker уже установлен на ubuntu-latest runners
