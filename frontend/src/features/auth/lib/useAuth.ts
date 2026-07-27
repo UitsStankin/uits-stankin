@@ -103,10 +103,11 @@ export function useAuth() {
 
       return { success: true };
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Auth: Login failed', err);
-      setError(err.message || 'Login failed');
-      return { success: false, error: err.message };
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setError(message);
+      return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }
