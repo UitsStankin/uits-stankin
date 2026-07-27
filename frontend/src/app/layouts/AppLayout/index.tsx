@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import { useAppStore, selectLayout } from '@/shared/store/appStore';
 import { LAYOUT_WIDTHS, CONTENT_MARGINS } from '@/shared/store/appStore.constants';

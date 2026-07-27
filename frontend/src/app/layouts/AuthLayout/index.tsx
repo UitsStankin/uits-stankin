@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import type { AuthLayoutProps, AuthLayoutInnerProps } from './AuthLayout.types';
 
