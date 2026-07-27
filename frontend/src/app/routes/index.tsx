@@ -5,16 +5,8 @@ import { Suspense } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
-// Заглушка загрузки
-const Loader = () => <div className="loader">Загрузка...</div>;
-
-/**
- * Временная заглушка вместо страницы.
- * Удаляется по мере переноса страниц в слой pages/.
- */
-const Placeholder = ({ title }: { title: string }) => (
-  <div className="p-4">{title}</div>
-);
+import Loader from '@shared/ui/Loader';
+import Placeholder from '@pages/Placeholder';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
