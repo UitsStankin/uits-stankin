@@ -44,7 +44,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .build();
         User savedAdmin = userRepository.save(admin);
 
-        String token = login("admin", "password");
+        String token = login("admin");
 
         NewsRequestDto request = NewsRequestDto.builder()
                 .title("Test News Title")
@@ -78,7 +78,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .build();
         userRepository.save(user);
 
-        String token = login("user", "password");
+        String token = login("user");
 
         NewsRequestDto request = NewsRequestDto.builder()
                 .title("Test News Title")
@@ -132,15 +132,18 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
             "/api/public/news",
             HttpMethod.GET,
             null,
-            new ParameterizedTypeReference<PageResponseDto<NewsResponseDto>>() {});
+            new ParameterizedTypeReference<>() {});
 
-        assertThat(response.getBody().content()).hasSize(1);
-        assertThat(response.getBody().content().getFirst().getTitle()).isEqualTo("Public News");
-        assertThat(response.getBody().totalElements()).isEqualTo(1);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        PageResponseDto<NewsResponseDto> body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.content()).hasSize(1);
+        assertThat(body.content().getFirst().getTitle()).isEqualTo("Public News");
+        assertThat(body.totalElements()).isEqualTo(1);
     }
 
-    private String login(String username, String password) {
-        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest(username, password);
+    private String login(String username) {
+        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest(username, "password");
         ResponseEntity<AuthController.LoginResponse> response = restTemplate.postForEntity(
                 "/api/users/auth/login",
                 loginRequest,

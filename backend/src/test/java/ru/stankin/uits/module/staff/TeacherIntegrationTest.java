@@ -54,13 +54,14 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
                 "/api/public/teachers",
                 HttpMethod.GET,
                 null,
-                new ParameterizedTypeReference<PageResponseDto<TeacherResponseDto>>() {});
+                new ParameterizedTypeReference<>() {});
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().totalElements()).isEqualTo(2);
-        assertThat(response.getBody().content().getFirst().getLastName()).isEqualTo("Абрамов");
-        assertThat(response.getBody().content().getLast().getLastName()).isEqualTo("Яковлев");
+        PageResponseDto<TeacherResponseDto> body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.totalElements()).isEqualTo(2);
+        assertThat(body.content().getFirst().getLastName()).isEqualTo("Абрамов");
+        assertThat(body.content().getLast().getLastName()).isEqualTo("Яковлев");
     }
 }
 
