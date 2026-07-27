@@ -405,8 +405,9 @@ schedule-service # только во внутренней сети
 
 ### 7.4 Секреты и бэкапы
 
-- Секреты: `.env` на VPS (chmod 600, вне git) + GitHub Actions Secrets для деплоя. **Немедленно ротировать**
-  засвеченные `POSTGRES_PASSWORD` и `JWT_SECRET_KEY` (см. MIGRATION.md §8).
+- Секреты: `.env` на VPS (chmod 600, вне git) + GitHub Actions Secrets для деплоя. Засвеченные
+  `POSTGRES_PASSWORD` и `JWT_SECRET_KEY` ротированы локально 2026-07-27; в git-историю они
+  не попадали (см. MIGRATION.md §8). Прод-значения хранить только в GitHub Actions Secrets.
 - **Бэкапы отсутствуют и у старого, и у нового сайта — это сейчас самый большой инфраструктурный риск.**
   Ночной cron: `pg_dump -Fc` + tar медиа → offsite (rclone в любое облако/второй хост), хранить 14–30 дней,
   раз в квартал проверять восстановление.
