@@ -3,6 +3,7 @@ package ru.stankin.uits.module.news.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -21,6 +22,7 @@ public class NewsService {
     private final NewsRepository newsRepository;
     private final NewsMapper newsMapper;
 
+    @Transactional
     public void createNews(NewsRequestDto request) {
         User currentUser = getCurrentUser();
         NewsPost newsPost = newsMapper.toEntity(request);
@@ -53,6 +55,7 @@ public class NewsService {
         return user;
     }
 
+    @Transactional(readOnly = true)
     public List<NewsResponseDto> getAllNews() {
         return newsRepository.findAllByDisplayTrueOrderByCreatedAtDesc()
                 .stream()
