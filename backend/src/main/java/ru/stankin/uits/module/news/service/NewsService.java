@@ -1,9 +1,11 @@
 package ru.stankin.uits.module.news.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -12,8 +14,6 @@ import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.security.SecurityUser;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -56,10 +56,8 @@ public class NewsService {
     }
 
     @Transactional(readOnly = true)
-    public List<NewsResponseDto> getAllNews() {
-        return newsRepository.findAllByDisplayTrueOrderByCreatedAtDesc()
-                .stream()
-                .map(newsMapper::toDto)
-                .toList();
+    public PageResponseDto<NewsResponseDto> getAllNews(Pageable pageable) {
+        return PageResponseDto.from(newsRepository.findAllByDisplayTrue(pageable)
+                .map(newsMapper::toDto));
     }
 }

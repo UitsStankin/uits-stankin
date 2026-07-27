@@ -3,9 +3,11 @@ package ru.stankin.uits.module.news;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
@@ -126,12 +128,15 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .build();
         newsRepository.save(hiddenPost);
 
-        ResponseEntity<NewsResponseDto[]> response = restTemplate.getForEntity("/api/public/news", NewsResponseDto[].class);
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+            "/api/public/news",
+            HttpMethod.GET,
+            null,
+            new ParameterizedTypeReference<PageResponseDto<NewsResponseDto>>() {});
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody()).hasSize(1);
-        assertThat(response.getBody()[0].getTitle()).isEqualTo("Public News");
+        assertThat(response.getBody().content()).hasSize(1);
+        assertThat(response.getBody().content().getFirst().getTitle()).isEqualTo("Public News");
+        assertThat(response.getBody().totalElements()).isEqualTo(1);
     }
 
     private String login(String username, String password) {
