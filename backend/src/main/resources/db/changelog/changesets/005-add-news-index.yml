@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-add-news-index
+      author: eeffeecct
+      changes:
+        # под запрос главной страницы: WHERE display = true ORDER BY created_at DESC
+        - createIndex:
+            tableName: news_post
+            indexName: idx_news_display_created_at
+            columns:
+              - column:
+                  name: display
+              - column:
+                  name: created_at
