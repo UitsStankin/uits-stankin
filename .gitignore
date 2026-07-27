@@ -1,5 +1,6 @@
 ﻿.idea/
 .vscode/
+.DS_Store
 /CLAUDE.md
 .postman/
 postman/
