@@ -129,6 +129,43 @@ $env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
 
 ---
 
+## Прод-контур локально
+
+`docker-compose.prod.yml` описывает боевой стек: база без проброшенного наружу порта
+и приложение из собранного образа. Все секреты в нём заданы через `${VAR:?...}` —
+без переменной compose не стартует и пишет, чего не хватает.
+
+Собрать образ и проверить, что рантайм работает не под root:
+
+```powershell
+docker build -t uits-backend:latest .
+docker run --rm --entrypoint id uits-backend:latest
+```
+
+Поднять стек целиком (у прод- и локального compose одинаковые имена контейнера
+и тома, поэтому локальную базу нужно сначала остановить):
+
+```powershell
+docker stop uits_postgres
+$env:CORS_ALLOWED_ORIGINS = "https://uits.example.test"
+docker compose --env-file .env -f docker-compose.prod.yml up -d
+```
+
+Приложение стартует только после того, как база пройдёт healthcheck
+(`depends_on.condition: service_healthy`), иначе Liquibase упрётся в неподнятый
+кластер. Проверка: `/actuator/health` отдаёт `UP`, `/swagger-ui/index.html` — `404`.
+
+Вернуть локальное окружение:
+
+```powershell
+docker compose -f docker-compose.prod.yml down
+docker compose up -d
+```
+
+Без `-v` том с данными сохраняется.
+
+---
+
 ## Переменные
 
 | Переменная | Что это | Обязательна | Пример |
@@ -139,6 +176,7 @@ $env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
 | `POSTGRES_HOST_PORT` | порт на хост-машине | да (в шаблоне `.env.example` уже стоит `5433`; | `5433` |
 | `JWT_SECRET_KEY` | ключ подписи токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
 | `JWT_EXPIRATION` | время жизни токена в миллисекундах | нет, по умолчанию сутки | `86400000` |
+| `CORS_ALLOWED_ORIGINS` | origin'ы фронтенда через запятую | локально нет, по умолчанию `http://localhost:5173`; в `docker-compose.prod.yml` да | `https://uits.example` |
 
 Внутри контейнера PostgreSQL всегда слушает порт 5432. `POSTGRES_HOST_PORT` — это порт снаружи, на хост-машине. Значение 5433 выбрано, чтобы не конфликтовать с PostgreSQL, установленным в систему напрямую.
 

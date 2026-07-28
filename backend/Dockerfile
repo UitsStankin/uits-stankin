@@ -7,8 +7,11 @@ WORKDIR /app
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle ./gradle
 
-# Скачиваем зависимости (кэшируется Docker-ом, если build.gradle не менялся)
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
+# Зависимости качаются отдельным слоем: пока build.gradle.kts не менялся,
+# Docker переиспользует кэш вместо повторной загрузки. Ошибка здесь валит
+# сборку намеренно — иначе она всплывёт позже, на шаге bootJar, и сообщение
+# будет уже про другое.
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
 
 # Копируем исходники и собираем
 COPY src ./src
@@ -20,6 +23,12 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 COPY --from=builder /app/build/libs/*.jar app.jar
+
+# Приложение только читает jar и слушает порт выше 1024 — root ему не нужен.
+# Пробой в приложении под root даёт root внутри контейнера, а дальше остаётся
+# только выбраться наружу.
+RUN groupadd --system uits && useradd --system --gid uits uits
+USER uits
 
 EXPOSE 8080
 
