@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:17-alpine
@@ -7,10 +5,20 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-uits_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Без дефолта: значение по умолчанию postgres — суперпользователь кластера,
+      # приложение обязано ходить в базу под своей учёткой
+      POSTGRES_USER: ${POSTGRES_USER:?не задан POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # -h 127.0.0.1 обязателен: по unix-сокету pg_isready отвечает OK уже во время
+    # инициализации кластера, когда снаружи база ещё не принимает подключения
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 30s
     # Порт наружу НЕ пробрасываем — доступ только изнутри Docker-сети
     networks:
       - uits_network
@@ -19,8 +27,11 @@ services:
     image: uits-backend:latest
     container_name: uits_backend
     restart: unless-stopped
+    # Ждём не запуска контейнера базы, а её готовности принимать подключения:
+    # иначе Liquibase стартует раньше и приложение падает на миграциях
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
@@ -28,10 +39,13 @@ services:
       # и DevDataSeeder зальёт тестовые учётки в боевую базу
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-uits_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?не задан POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?не задан JWT_SECRET_KEY}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      # Без этой переменной прод-фронт упрётся в дефолт http://localhost:5173
+      # и получит отказ на каждом запросе
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
     networks:
       - uits_network
 
