@@ -5,49 +5,70 @@ name: Deploy
 on:
   push:
     branches: [ main ]
+    # Правка документации не повод перезапускать боевой стенд
+    paths:
+      - "backend/**"
+      - ".github/workflows/**"
 
 jobs:
-  # Переиспользование workflow ci.yml: та же сборка и тесты, что на PR.
-  # Логика живёт в одном месте — правки CI автоматически касаются и деплоя.
+  # Переиспользование workflow ci.yml: та же сборка и тесты, что на PR,
+  # плюс публикация образа в GHCR тем же тегом github.sha, который тянет деплой.
+  # Права проброшены явно: вызванный workflow не может получить больше прав,
+  # чем есть у вызывающего, а публикация пакета требует packages: write.
   build-and-test:
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      packages: write
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-test  # запускается только если тесты прошли
+    needs: build-and-test  # запускается только если тесты прошли и образ опубликован
+    timeout-minutes: 15
 
     steps:
+      # На сервер уезжает только compose-файл: собирать там больше нечего,
+      # приложение приходит готовым образом из registry
       - name: Checkout кода
         uses: actions/checkout@v4
 
-      - name: Копируем файлы на сервер
+      - name: Копируем compose-файл на сервер
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "backend/"
+          source: "backend/docker-compose.prod.yml"
           target: "/opt/uits/"
 
-      - name: Билд и запуск на сервере
+      - name: Запуск на сервере
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          # Переменные окружения шага не попадают в ssh-сессию сами по себе —
+          # их нужно перечислить здесь
+          envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
           script: |
+            set -e
             cd /opt/uits/backend
 
-            # Собираем Docker-образ прямо на сервере
-            docker build -t uits-backend:latest .
+            # Пакет в GHCR приватный, без логина pull получит 403
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # Останавливаем старые контейнеры и запускаем новые
-            docker compose -f docker-compose.prod.yml down
+            # Тянем и поднимаем только приложение: compose пересоздаёт
+            # изменившийся сервис, база при этом не останавливается
+            docker compose -f docker-compose.prod.yml pull backend
             docker compose -f docker-compose.prod.yml up -d
 
             # Чистим старые образы, чтобы не забивать диск
             docker image prune -f
 
-            echo "=== Деплой завершён ==="
+            docker logout ghcr.io

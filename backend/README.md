@@ -132,14 +132,16 @@ $env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
 ## Прод-контур локально
 
 `docker-compose.prod.yml` описывает боевой стек: база без проброшенного наружу порта
-и приложение из собранного образа. Все секреты в нём заданы через `${VAR:?...}` —
-без переменной compose не стартует и пишет, чего не хватает.
+и приложение из образа `ghcr.io/uitsstankin/uits-backend`, который собирает CI.
+Все секреты и тег образа заданы через `${VAR:?...}` — без переменной compose
+не стартует и пишет, чего не хватает.
 
-Собрать образ и проверить, что рантайм работает не под root:
+Собрать образ локально и проверить, что рантайм работает не под root
+(имя с тем же префиксом, тег произвольный — на стенде он равен sha коммита):
 
 ```powershell
-docker build -t uits-backend:latest .
-docker run --rm --entrypoint id uits-backend:latest
+docker build -t ghcr.io/uitsstankin/uits-backend:local .
+docker run --rm --entrypoint id ghcr.io/uitsstankin/uits-backend:local
 ```
 
 Поднять стек целиком (у прод- и локального compose одинаковые имена контейнера
@@ -147,6 +149,7 @@ docker run --rm --entrypoint id uits-backend:latest
 
 ```powershell
 docker stop uits_postgres
+$env:IMAGE_TAG = "local"
 $env:CORS_ALLOWED_ORIGINS = "https://uits.example.test"
 docker compose --env-file .env -f docker-compose.prod.yml up -d
 ```
