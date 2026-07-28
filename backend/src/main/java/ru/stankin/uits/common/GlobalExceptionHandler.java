@@ -5,7 +5,9 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -46,18 +48,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setProperty("errors", errors);
 
         return ResponseEntity.of(problem).build();
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ProblemDetail handleBadCredentialException(BadCredentialsException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.UNAUTHORIZED,
-                "Неверный логин или пароль."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
     }
 
     @ExceptionHandler(InvalidOldPasswordException.class)
@@ -101,6 +91,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT,
                 "Конфликт данных."
+        );
+
+        problem.setProperty("timestamp", Instant.now());
+
+        return problem;
+    }
+
+    @ExceptionHandler({BadCredentialsException.class, AccountStatusException.class})
+    public ProblemDetail handleAuthenticationFailure(AuthenticationException ex) {
+        log.warn("Отказ в аутентификации: {}", ex.getClass().getSimpleName());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED,
+                "Неверный логин или пароль."
         );
 
         problem.setProperty("timestamp", Instant.now());

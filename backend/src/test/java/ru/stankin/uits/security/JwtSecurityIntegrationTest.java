@@ -8,10 +8,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.module.user.entity.User;
+import ru.stankin.uits.module.user.repository.UserRepository;
 
 import javax.crypto.SecretKey;
 
+import java.time.OffsetDateTime;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +23,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     private static final String OTHER_SECRET = "516F746865725365637265744B6579466F7254657374734F6E6C793132333435";
 
@@ -31,6 +41,7 @@ public class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getHeaders().getContentType().toString())
                 .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         assertThat(response.getBody()).contains("Требуется аутентификация");
+        assertThat(response.getBody()).contains("\"instance\":\"/api/users/profile\"");
     }
 
     @Test
@@ -74,6 +85,54 @@ public class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getHeaders().getContentType().toString())
                 .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(response.getBody()).contains("Требуется аутентификация");
+    }
+
+    @Test
+    @DisplayName("Должен вернуть 401, если юзер удалён из БД")
+    void shouldReturn401_WhenUserDoesNotExist() {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET));
+        String validToken = Jwts.builder()
+                .subject("ghost_user")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 86_400_000))
+                .signWith(key)
+                .compact();
+
+        ResponseEntity<String> response = getProfile(validToken);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeaders().getContentType().toString())
+        .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(response.getBody()).contains("Требуется аутентификация");
+    }
+
+    @Test
+    @DisplayName("Должен вернуть 401, если пользователь заблокирован")
+    void shouldReturn401_WhenUserIsBlocked() {
+        User user = new User();
+        user.setUsername("student_ivan");
+        user.setPassword(passwordEncoder.encode("super_password"));
+        user.setActive(false);
+        user.setSuperuser(false);
+        user.setStaff(false);
+        user.setModerator(false);
+        user.setTeacher(false);
+        user.setDateJoined(OffsetDateTime.now());
+
+        userRepository.save(user);
+
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET));
+        String validToken = Jwts.builder()
+                .subject("student_ivan")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 86_400_000))
+                .signWith(key)
+                .compact();
+
+        ResponseEntity<String> response = getProfile(validToken);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeaders().getContentType().toString())
+        .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         assertThat(response.getBody()).contains("Требуется аутентификация");
     }
 

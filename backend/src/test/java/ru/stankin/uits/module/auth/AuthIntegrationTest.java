@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
@@ -71,5 +72,27 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void shouldReturn401_WhenUserIsBlocked() {
+        User user = new User();
+        user.setUsername("hacker");
+        user.setPassword(passwordEncoder.encode("real_pass"));
+        user.setActive(false);
+        user.setDateJoined(OffsetDateTime.now());
+        userRepository.save(user);
+
+        var loginRequest = new AuthController.LoginRequest("hacker", "real_pass");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/users/auth/login",
+                loginRequest,
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Неверный логин или пароль.");
     }
 }

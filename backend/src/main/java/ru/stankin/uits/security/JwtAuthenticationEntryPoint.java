@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
@@ -31,6 +32,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED,
                 "Требуется аутентификация.");
 
+        problem.setInstance(URI.create(request.getRequestURI()));
         problem.setProperty("timestamp", Instant.now());
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
