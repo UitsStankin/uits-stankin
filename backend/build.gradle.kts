@@ -44,6 +44,7 @@ dependencies {
 	annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
 
 	// Тесты
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
