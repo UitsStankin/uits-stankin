@@ -77,6 +77,24 @@ public class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getBody()).contains("Требуется аутентификация");
     }
 
+    @Test
+    @DisplayName("Должен вернуть 401, если юзер удалён из БД")
+    void shouldReturn401_WhenUserDoesNotExist() {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET));
+        String validToken = Jwts.builder()
+                .subject("ghost_user")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 86_400_000))
+                .signWith(key)
+                .compact();
+
+        ResponseEntity<String> response = getProfile(validToken);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeaders().getContentType().toString())
+        .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(response.getBody()).contains("Требуется аутентификация");
+    }
+
     private ResponseEntity<String> getProfile(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + token);
