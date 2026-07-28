@@ -11,6 +11,6 @@ public class ChangePasswordRequest {
     private String oldPassword;
 
     @NotBlank(message = "Новый пароль обязателен")
-    @Size(min = 6, message = "Пароль должен быть минимум 6 символов")
+    @Size(min = 8, message = "Пароль должен быть минимум 8 символов")
     private String newPassword;
 }
