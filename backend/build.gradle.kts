@@ -20,6 +20,10 @@ configurations {
 	}
 }
 
+// WS-2026-0003 / GHSA-r7wm-3cxj-wff9 (DoS в async-парсере jackson-core):
+// убрать после обновления Spring Boot на версию с jackson >= 2.21.4
+extra["jackson-2-bom.version"] = "2.21.4"
+
 repositories {
 	mavenCentral()
 }
@@ -48,7 +52,6 @@ dependencies {
 	testImplementation("org.testcontainers:junit-jupiter:1.20.4")
 	testImplementation("org.testcontainers:postgresql:1.20.4")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testImplementation("org.springframework:spring-test:7.0.3")
 	testImplementation("org.springframework.boot:spring-boot-starter-restclient-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 

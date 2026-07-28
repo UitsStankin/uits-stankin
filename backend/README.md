@@ -108,7 +108,7 @@ Invoke-RestMethod http://localhost:8080/api/public/news
 | `POSTGRES_DB` | имя базы | нет, по умолчанию `uits_db` | `uits_db` |
 | `POSTGRES_USER` | пользователь базы | да | `uits_stankin_db` |
 | `POSTGRES_PASSWORD` | его пароль | да | `localdevpass123` |
-| `POSTGRES_HOST_PORT` | порт на хост-машине | да (в шаблоне `.env.example` уже стоит `5433`; дефолта в `application.yaml` пока нет — тикет T-12) | `5433` |
+| `POSTGRES_HOST_PORT` | порт на хост-машине | да (в шаблоне `.env.example` уже стоит `5433`; | `5433` |
 | `JWT_SECRET_KEY` | ключ подписи токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
 | `JWT_EXPIRATION` | время жизни токена в миллисекундах | нет, по умолчанию сутки | `86400000` |
 
