@@ -20,6 +20,10 @@ configurations {
 	}
 }
 
+// WS-2026-0003 / GHSA-r7wm-3cxj-wff9 (DoS в async-парсере jackson-core):
+// убрать после обновления Spring Boot на версию с jackson >= 2.21.4
+extra["jackson-2-bom.version"] = "2.21.4"
+
 repositories {
 	mavenCentral()
 }
