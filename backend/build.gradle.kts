@@ -48,7 +48,6 @@ dependencies {
 	testImplementation("org.testcontainers:junit-jupiter:1.20.4")
 	testImplementation("org.testcontainers:postgresql:1.20.4")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testImplementation("org.springframework:spring-test:7.0.3")
 	testImplementation("org.springframework.boot:spring-boot-starter-restclient-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 
