@@ -56,7 +56,7 @@ MapStruct, Liquibase + `ddl-auto: validate`, Django-совместимые им�
 2. ~~**CORS `*`** в `SecurityConfig`.~~ ✅ T-08 — белый список из конфигурации.
 3. ~~**Нет `@RestControllerAdvice`** — контракт ошибок случайный.~~ ✅ T-03 — `ProblemDetail` RFC 9457.
 4. ~~`springdoc 2.3.0` несовместим со Spring Boot 4.~~ ✅ T-10 — обновлён до 3.0.3, Swagger работает.
-5. ~~Нет пагинации на списках~~ ✅ T-06. N+1 в новостях остался (LAZY `author` без fetch join) — тикет T-16.
+5. ~~Нет пагинации на списках~~ ✅ T-06. ~~N+1 в новостях (LAZY `author` без fetch join)~~ ✅ T-16 — `@EntityGraph`.
 6. ~~Секреты в `backend/.env` скомпрометированы.~~ ✅ T-09 — локально ротированы; прод-значения — T-17.
 7. ~~CI гоняет тесты только на push в `main`.~~ ✅ T-11 — CI на каждый PR и push в `dev`.
 
