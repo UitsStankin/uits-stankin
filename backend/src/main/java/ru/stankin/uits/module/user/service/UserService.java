@@ -10,6 +10,8 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.mapper.UserMapper;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
+import java.time.OffsetDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -34,5 +36,10 @@ public class UserService {
         // update and save
         user.setPassword(encodedNewPassword);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateLastLogin(Long userId) {
+        userRepository.updateLastLogin(userId, OffsetDateTime.now());
     }
 }

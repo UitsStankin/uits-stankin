@@ -4,12 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ru.stankin.uits.module.user.service.UserService;
 import ru.stankin.uits.security.JwtService;
+import ru.stankin.uits.security.SecurityUser;
 
 @RestController
 @RequestMapping("/api/users/auth")
@@ -18,6 +19,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final UserService userService;
 
     public record LoginRequest(String username, String password) {}
     public record LoginResponse(String accessToken) {}
@@ -29,7 +31,9 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.username(), request.password())
         );
 
-        UserDetails user = (UserDetails) authentication.getPrincipal();
+        SecurityUser user = (SecurityUser) authentication.getPrincipal();
+
+        userService.updateLastLogin(user.getUser().getId());
 
         String jwtToken = jwtService.generateToken(user);
 
