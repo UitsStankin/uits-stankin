@@ -41,10 +41,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             errors.get(fieldError.getField()).add(fieldError.getDefaultMessage());
         }
 
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST,
-                "Ошибка валидации."
-        );
+        ProblemDetail problem = problemDetail(HttpStatus.BAD_REQUEST, "Ошибка валидации.");
         problem.setTitle("Ошибка валидации");
         problem.setProperty("errors", errors);
 
@@ -53,90 +50,47 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidOldPasswordException.class)
     public ProblemDetail handleInvalidOldPassword(InvalidOldPasswordException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST,
-                "Старый пароль введён неверно."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
+        return problemDetail(HttpStatus.BAD_REQUEST, "Старый пароль введён неверно.");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.FORBIDDEN,
-                "Недостаточно прав."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
+        return problemDetail(HttpStatus.FORBIDDEN, "Недостаточно прав.");
     }
 
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(NotFoundException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.NOT_FOUND,
-                "Ресурс не найден."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
+        return problemDetail(HttpStatus.NOT_FOUND, "Ресурс не найден.");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.CONFLICT,
-                "Конфликт данных."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
+        return problemDetail(HttpStatus.CONFLICT, "Конфликт данных.");
     }
 
     @ExceptionHandler({BadCredentialsException.class, AccountStatusException.class})
     public ProblemDetail handleAuthenticationFailure(AuthenticationException ex) {
         log.warn("Отказ в аутентификации: {}", ex.getClass().getSimpleName());
 
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.UNAUTHORIZED,
-                "Неверный логин или пароль."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
+        return problemDetail(HttpStatus.UNAUTHORIZED, "Неверный логин или пароль.");
     }
 
     @ExceptionHandler(PropertyReferenceException.class)
     public ProblemDetail handlePropertyReference(PropertyReferenceException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST,
-                "Неизвестное поле сортировки: " + ex.getPropertyName() + "."
-        );
-
-        problem.setProperty("timestamp", Instant.now());
-
-        return problem;
+        return problemDetail(HttpStatus.BAD_REQUEST,
+                "Неизвестное поле сортировки: " + ex.getPropertyName() + ".");
     }
-
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {
         log.error("Необработанное исключение", ex);
 
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Внутренняя ошибка сервера."
-        );
+        return problemDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Внутренняя ошибка сервера.");
+    }
 
+    private ProblemDetail problemDetail(HttpStatus status, String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setProperty("timestamp", Instant.now());
-
         return problem;
     }
 }
