@@ -26,6 +26,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # Прогон укладывается в две минуты. Без явного лимита дефолт GitHub — 6 часов:
+    # зависший runner молча съедает минуты Actions и держит жёлтый статус
+    timeout-minutes: 15
 
     steps:
       - name: Checkout кода
@@ -44,7 +47,9 @@ jobs:
         working-directory: backend
 
       - name: Сборка и тесты
-        run: ./gradlew build
+        # --no-daemon: в CI сборка одна, переиспользовать демон некому,
+        # а лишний живущий JVM-процесс мешает шагу завершиться
+        run: ./gradlew build --no-daemon
         working-directory: backend
         # Тесты с Testcontainers работают в GitHub Actions из коробки:
         # Docker уже установлен на ubuntu-latest runners
@@ -60,3 +65,44 @@ jobs:
             backend/build/reports/tests/
             backend/build/test-results/
           retention-days: 7
+
+  # Образ собирается здесь, а не на VPS: сборка на боевой машине ест её ресурсы,
+  # а результат нигде не хранится (ARCHITECTURE §8).
+  publish-image:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    # На pull request образ не публикуется — публикуется то, что уже влито.
+    # Условие покрывает и push в dev, и вызов из deploy.yml на push в main.
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # GITHUB_TOKEN по умолчанию не умеет публиковать пакеты — без этой строки push в GHCR даёт 403
+      packages: write
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      # Нужен для кэша сборки type=gha: он работает только на драйвере docker-container
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Логин в GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Сборка и публикация образа
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          # Имя образа только строчными буквами: GHCR не принимает UitsStankin.
+          # Тег по sha, не latest: версия на проде однозначно сходится с коммитом,
+          # а docker pull не может отдать закэшированный старый образ под тем же именем
+          tags: ghcr.io/uitsstankin/uits-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

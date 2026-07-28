@@ -24,7 +24,9 @@ services:
       - uits_network
 
   backend:
-    image: uits-backend:latest
+    # Образ собирается в CI и публикуется в GHCR; тег — sha коммита,
+    # чтобы версия на стенде однозначно сходилась с историей git
+    image: ghcr.io/uitsstankin/uits-backend:${IMAGE_TAG:?не задан IMAGE_TAG}
     container_name: uits_backend
     restart: unless-stopped
     # Ждём не запуска контейнера базы, а её готовности принимать подключения:
