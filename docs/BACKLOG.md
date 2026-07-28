@@ -33,38 +33,14 @@
 | T-12 (2026-07-28) | Мелкие дефекты пачкой: D-04 (один SELECT на логин), D-05 (`last_login` пишется через `@Modifying`-UPDATE), D-09 (null-защита `authorName` default-методом), `@Size` 225→255, `spring-test` без явной версии, дефолт `POSTGRES_HOST_PORT=5433`. Бонус: jackson 2.21.4 через `jackson-2-bom.version` — закрыт алерт WS-2026-0003 (DoS в async-парсере; на MVC-стеке не эксплуатируется, но патч дешевле подавления) |
 | T-14 (2026-07-28) | Заблокированный/удалённый пользователь → всегда 401 без раскрытия статуса учётки: `AccountStatusException` в advice (объединён с `BadCredentialsException`), в JWT-фильтре — catch `UsernameNotFoundException` и проверка `isEnabled()` после `isTokenValid`, `instance` в 401 из `entryPoint`. Интеграционный тест на каждый сценарий, оговорка про `instance` снята из API.md |
 | T-15 (2026-07-28) | Валидация входа: `LoginRequest` под `@Valid` (`@NotBlank`), минимум нового пароля 6 → 8, `postType` ограничен словарём через `@Pattern`, `display` → `Boolean` + `@NotNull` (тело без поля → 400 вместо молча скрытой новости), `@Size` превью-полей по ширине колонок; `PropertyReferenceException` → 400 в advice (`?sort=мусор` больше не 500). Интеграционный тест на каждый кейс, каждый проверен на способность падать; API.md синхронизирован; фронтендеру заведён issue #51 об изменениях контракта |
+| T-16 (2026-07-28) | Слой данных: N+1 на новостях закрыт `@EntityGraph(attributePaths = {"author"})` на `findAllByDisplayTrue` — выдача `/api/public/news` теперь одним SELECT с join; `open-in-view: false` — сессия JPA живёт только внутри транзакции, ленивые утечки будут падать в тестах, а не тормозить на проде; `changePassword` перечитывает пользователя через `findById` и полагается на dirty checking вместо `save()` detached-снимка из секьюрити-контекста; changeset 006 — индекс `idx_news_author_id` по FK `news_post.author_id` |
 
 ---
 
 ## Очередь
 
-Порядок не случайный: сначала слой данных (T-16), долг по тестам (T-18),
-архитектурные тесты (T-13).
+Порядок не случайный: сначала долг по тестам (T-18), затем архитектурные тесты (T-13).
 T-17 заблокирован до первого реального деплоя — стенд мёртв, торопиться некуда.
-
-### T-16 Слой данных: N+1 на новостях, OSIV, detached-сущность
-
-**Зачем** — страница новостей выполняет 1 + N запросов: `author` у `NewsPost` — LAZY,
-а маппер собирает `authorName`, поэтому на 20 новостей уходит 21 SELECT.
-`spring.jpa.open-in-view` по умолчанию `true` — держит соединение БД на всё время
-HTTP-запроса и маскирует такие ошибки. `changePassword` сохраняет detached-сущность,
-пришедшую из секьюрити-контекста, вместо перечитывания по id в транзакции.
-На FK `news_post.author_id` нет индекса (PostgreSQL не индексирует FK сам).
-
-**Готово когда** — выдача `/api/public/news` — ровно два SQL (данные + count),
-проверено по `show-sql`; `open-in-view: false` и приложение с тестами зелёные;
-`changePassword` перечитывает пользователя из репозитория; changeset 006 с индексом
-по `author_id`.
-**Файлы** — `NewsRepository` (`@EntityGraph` на `findAllByDisplayTrue`), `application.yaml`,
-`UserService`, новый changeset.
-**Изучить** — как `@EntityGraph` превращается в LEFT JOIN FETCH; предупреждение
-`HHH000104`: почему пагинация с to-one графом безопасна, а с коллекцией уходит в память;
-что такое OSIV и почему его дефолт считают ошибкой дизайна; managed vs detached
-и что на самом деле делает `save()` у Spring Data.
-**Грабли** — после `open-in-view: false` могут вылезти `LazyInitializationException` там,
-где сущность утекала за границу транзакции — это полезные падения, чинить выборкой,
-а не возвратом OSIV; рабочий пример `@EntityGraph` уже есть в `TeacherRepository`.
-**Оценка** — вечер.
 
 ### T-18 Тесты: дыры покрытия и слабые ассерты
 

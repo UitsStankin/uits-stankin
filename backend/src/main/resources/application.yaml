@@ -15,10 +15,10 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
-    # не юзаем ddl-auto=update, схему Liquibase сгенерит
     hibernate:
       ddl-auto: validate
-    show-sql: true # для отладки
+    show-sql: true
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true

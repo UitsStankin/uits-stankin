@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changesets/004-widen-news-post-type.yml
   - include:
       file: db/changelog/changesets/005-add-news-index.yml
+  - include:
+      file: db/changelog/changesets/006-add-news-author-fk-index.yml
