@@ -48,3 +48,15 @@ jobs:
         working-directory: backend
         # Тесты с Testcontainers работают в GitHub Actions из коробки:
         # Docker уже установлен на ubuntu-latest runners
+
+      # При падении сборки HTML-отчёт и XML-результаты тестов сохраняются
+      # артефактом — иначе причину падения видно только в сыром логе Gradle
+      - name: Отчёты тестов при падении
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            backend/build/reports/tests/
+            backend/build/test-results/
+          retention-days: 7

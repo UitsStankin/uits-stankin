@@ -66,13 +66,16 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
         var badRequest = new AuthController.LoginRequest("hacker", "wrong_pass");
 
-        ResponseEntity<Object> response = restTemplate.postForEntity(
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
                 "/api/users/auth/login",
                 badRequest,
-                Object.class
+                ProblemDetail.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        assertThat(response.getBody().getDetail()).isEqualTo("Неверный логин или пароль.");
     }
 
     @Test
@@ -86,11 +89,15 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getDetail()).isEqualTo("Ошибка валидации.");
+        ProblemDetail problem = response.getBody();
+        assertThat(problem).isNotNull();
+        assertThat(problem.getDetail()).isEqualTo("Ошибка валидации.");
+
+        Map<String, Object> properties = problem.getProperties();
+        assertThat(properties).isNotNull();
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> errors = (Map<String, Object>) response.getBody().getProperties().get("errors");
+        Map<String, Object> errors = (Map<String, Object>) properties.get("errors");
         assertThat(errors).containsKeys("username", "password");
     }
 
