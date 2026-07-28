@@ -132,12 +132,6 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: Phone,
       },
       {
-        key: 'about/partners',
-        title: 'Партнеры',
-        path: '/about/partners',
-        icon: Users,
-      },
-      {
         key: 'about/contributors',
         title: 'Благодарности',
         path: '/about/contributors',
