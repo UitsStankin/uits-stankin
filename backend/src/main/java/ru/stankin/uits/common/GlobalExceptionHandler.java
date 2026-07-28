@@ -3,6 +3,7 @@ package ru.stankin.uits.common;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AccountStatusException;
@@ -112,6 +113,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ProblemDetail handlePropertyReference(PropertyReferenceException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "Неизвестное поле сортировки: " + ex.getPropertyName() + "."
+        );
+
+        problem.setProperty("timestamp", Instant.now());
+
+        return problem;
+    }
+
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {
         log.error("Необработанное исключение", ex);
@@ -125,5 +139,4 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return problem;
     }
-
 }
