@@ -74,14 +74,20 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getUsername()).isEqualTo("prof_ivanov");
-        assertThat(response.getBody().isTeacher()).isTrue();
+        UserResponseDto profile = response.getBody();
+        assertThat(profile).isNotNull();
+        assertThat(profile.getUsername()).isEqualTo("prof_ivanov");
+        assertThat(profile.isTeacher()).isTrue();
     }
 
     @Test
     void shouldChangePassword_WhenOldPasswordIsCorrect() {
-        ResponseEntity<Void> response = changePassword(OLD_PASSWORD, NEW_PASSWORD);
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/users/change-password",
+                HttpMethod.POST,
+                withToken(changeRequest(OLD_PASSWORD, NEW_PASSWORD)),
+                Void.class
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -91,8 +97,9 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<AuthController.LoginResponse> loginWithNew = login(NEW_PASSWORD);
         assertThat(loginWithNew.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(loginWithNew.getBody()).isNotNull();
-        assertThat(loginWithNew.getBody().accessToken()).isNotBlank();
+        AuthController.LoginResponse loginBody = loginWithNew.getBody();
+        assertThat(loginBody).isNotNull();
+        assertThat(loginBody.accessToken()).isNotBlank();
     }
 
     @Test
@@ -105,8 +112,9 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getDetail()).isEqualTo("Старый пароль введён неверно.");
+        ProblemDetail problem = response.getBody();
+        assertThat(problem).isNotNull();
+        assertThat(problem.getDetail()).isEqualTo("Старый пароль введён неверно.");
 
         // Пароль не должен был измениться
         assertThat(login(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -136,15 +144,6 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("Пароль должен быть минимум 8 символов");
-    }
-
-    private ResponseEntity<Void> changePassword(String oldPassword, String newPassword) {
-        return restTemplate.exchange(
-                "/api/users/change-password",
-                HttpMethod.POST,
-                withToken(changeRequest(oldPassword, newPassword)),
-                Void.class
-        );
     }
 
     private ChangePasswordRequest changeRequest(String oldPassword, String newPassword) {

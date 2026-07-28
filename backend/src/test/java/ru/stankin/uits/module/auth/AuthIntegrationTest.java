@@ -89,11 +89,15 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getDetail()).isEqualTo("Ошибка валидации.");
+        ProblemDetail problem = response.getBody();
+        assertThat(problem).isNotNull();
+        assertThat(problem.getDetail()).isEqualTo("Ошибка валидации.");
+
+        Map<String, Object> properties = problem.getProperties();
+        assertThat(properties).isNotNull();
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> errors = (Map<String, Object>) response.getBody().getProperties().get("errors");
+        Map<String, Object> errors = (Map<String, Object>) properties.get("errors");
         assertThat(errors).containsKeys("username", "password");
     }
 
