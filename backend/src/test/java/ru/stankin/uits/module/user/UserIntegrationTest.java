@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.entity.User;
@@ -19,11 +21,18 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 
 public class UserIntegrationTest extends AbstractIntegrationTest {
+
+    private static final String OLD_PASSWORD = "super_password";
+    private static final String NEW_PASSWORD = "new_super_password";
+
     @Autowired
     private TestRestTemplate restTemplate;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtService jwtService; // Token for test
@@ -34,7 +43,9 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
     void setUp() {
         User user = User.builder()
                 .username("prof_ivanov")
-                .password("super_password")
+                // Пароль обязан лежать в базе BCrypt-хешем: сервис проверяет его
+                // через passwordEncoder.matches(), сырая строка там всегда даст false
+                .password(passwordEncoder.encode(OLD_PASSWORD))
                 .active(true)
                 .superuser(false)
                 .staff(false)
@@ -69,34 +80,44 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldReturn401_WhenNoTokenProvided() {
-        HttpEntity<Void> emptyRequest = new HttpEntity<>(null, (HttpHeaders) null);
+    void shouldChangePassword_WhenOldPasswordIsCorrect() {
+        ResponseEntity<Void> response = changePassword(OLD_PASSWORD, NEW_PASSWORD);
 
-        ResponseEntity<Object> response = restTemplate.exchange(
-                "/api/users/profile",
-                HttpMethod.GET,
-                emptyRequest,
-                Object.class
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // Смена проверяется через логин, а не через сравнение хешей в базе:
+        // так тест фиксирует поведение всего контура, а не деталь реализации
+        assertThat(login(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        ResponseEntity<AuthController.LoginResponse> loginWithNew = login(NEW_PASSWORD);
+        assertThat(loginWithNew.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(loginWithNew.getBody()).isNotNull();
+        assertThat(loginWithNew.getBody().accessToken()).isNotBlank();
+    }
+
+    @Test
+    void shouldReturn400_WhenOldPasswordIsWrong() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/change-password",
+                HttpMethod.POST,
+                withToken(changeRequest("wrong_old_password", NEW_PASSWORD)),
+                ProblemDetail.class
         );
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Старый пароль введён неверно.");
+
+        // Пароль не должен был измениться
+        assertThat(login(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
     void shouldReturn400WithFieldErrors_WhenNewPasswordIsBlank() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + validToken);
-
-        ChangePasswordRequest body = new ChangePasswordRequest();
-        body.setOldPassword("any_password");
-        body.setNewPassword("");
-
-        HttpEntity<ChangePasswordRequest> request = new HttpEntity<>(body, headers);
-
         ResponseEntity<String> response = restTemplate.exchange(
                 "/api/users/change-password",
                 HttpMethod.POST,
-                request,
+                withToken(changeRequest("any_password", "")),
                 String.class
         );
 
@@ -106,23 +127,44 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturn400_WhenNewPasswordIsTooShort() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + validToken);
-
-        ChangePasswordRequest body = new ChangePasswordRequest();
-        body.setOldPassword("any_password");
-        body.setNewPassword("1234567");
-
-        HttpEntity<ChangePasswordRequest> request = new HttpEntity<>(body, headers);
-
         ResponseEntity<String> response = restTemplate.exchange(
                 "/api/users/change-password",
                 HttpMethod.POST,
-                request,
+                withToken(changeRequest("any_password", "1234567")),
                 String.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("Пароль должен быть минимум 8 символов");
+    }
+
+    private ResponseEntity<Void> changePassword(String oldPassword, String newPassword) {
+        return restTemplate.exchange(
+                "/api/users/change-password",
+                HttpMethod.POST,
+                withToken(changeRequest(oldPassword, newPassword)),
+                Void.class
+        );
+    }
+
+    private ChangePasswordRequest changeRequest(String oldPassword, String newPassword) {
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setOldPassword(oldPassword);
+        body.setNewPassword(newPassword);
+        return body;
+    }
+
+    private <T> HttpEntity<T> withToken(T body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(validToken);
+        return new HttpEntity<>(body, headers);
+    }
+
+    private ResponseEntity<AuthController.LoginResponse> login(String password) {
+        return restTemplate.postForEntity(
+                "/api/users/auth/login",
+                new AuthController.LoginRequest("prof_ivanov", password),
+                AuthController.LoginResponse.class
+        );
     }
 }

@@ -66,13 +66,16 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
         var badRequest = new AuthController.LoginRequest("hacker", "wrong_pass");
 
-        ResponseEntity<Object> response = restTemplate.postForEntity(
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
                 "/api/users/auth/login",
                 badRequest,
-                Object.class
+                ProblemDetail.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        assertThat(response.getBody().getDetail()).isEqualTo("Неверный логин или пароль.");
     }
 
     @Test
