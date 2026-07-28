@@ -1,5 +1,7 @@
 package ru.stankin.uits.module.auth.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,11 +23,11 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserService userService;
 
-    public record LoginRequest(String username, String password) {}
+    public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
     public record LoginResponse(String accessToken) {}
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password())

@@ -103,4 +103,26 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("newPassword");
     }
+
+    @Test
+    void shouldReturn400_WhenNewPasswordIsTooShort() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + validToken);
+
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setOldPassword("any_password");
+        body.setNewPassword("1234567");
+
+        HttpEntity<ChangePasswordRequest> request = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/users/change-password",
+                HttpMethod.POST,
+                request,
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("Пароль должен быть минимум 8 символов");
+    }
 }

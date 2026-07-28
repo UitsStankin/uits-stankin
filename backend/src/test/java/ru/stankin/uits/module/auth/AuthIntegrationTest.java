@@ -13,6 +13,7 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,6 +73,25 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void shouldReturn400_WhenLoginFieldsAreBlank() {
+        var blankRequest = new AuthController.LoginRequest("", "");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/users/auth/login",
+                blankRequest,
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Ошибка валидации.");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> errors = (Map<String, Object>) response.getBody().getProperties().get("errors");
+        assertThat(errors).containsKeys("username", "password");
     }
 
     @Test

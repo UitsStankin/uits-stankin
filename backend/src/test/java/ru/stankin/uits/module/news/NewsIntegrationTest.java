@@ -17,6 +17,7 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -140,6 +141,110 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.content()).hasSize(1);
         assertThat(body.content().getFirst().getTitle()).isEqualTo("Public News");
         assertThat(body.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void createNews_WhenPostTypeIsUnknown_Returns400() {
+        String token = createAdminAndLogin();
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .postType("garbage")
+                .content("Test Content")
+                .display(true)
+                .build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<NewsRequestDto> entity = new HttpEntity<>(request, headers);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity("/api/news", entity, ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("postType");
+        assertThat(newsRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void createNews_WhenDisplayIsMissing_Returns400() {
+        String token = createAdminAndLogin();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String bodyWithoutDisplay = """
+                {"title": "Test News Title", "postType": "news", "content": "Test Content"}
+                """;
+        HttpEntity<String> entity = new HttpEntity<>(bodyWithoutDisplay, headers);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity("/api/news", entity, ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("display");
+        assertThat(newsRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void createNews_WhenPreviewImageIsTooLong_Returns400() {
+        String token = createAdminAndLogin();
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .postType("news")
+                .content("Test Content")
+                .previewImage("a".repeat(101))
+                .display(true)
+                .build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<NewsRequestDto> entity = new HttpEntity<>(request, headers);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity("/api/news", entity, ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("previewImage");
+        assertThat(newsRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void getNews_WhenSortFieldIsUnknown_Returns400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/news?sort=abc",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("abc");
+    }
+
+    @Test
+    void getNews_WhenSortFieldIsValid_Returns200() {
+        ResponseEntity<String> response = restTemplate.getForEntity(
+                "/api/public/news?sort=title,asc",
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    private String createAdminAndLogin() {
+        User admin = User.builder()
+                .username("admin")
+                .password(passwordEncoder.encode("password"))
+                .superuser(true)
+                .active(true)
+                .build();
+        userRepository.save(admin);
+        return login("admin");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fieldErrors(ResponseEntity<ProblemDetail> response) {
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties()).isNotNull();
+        return (Map<String, Object>) response.getBody().getProperties().get("errors");
     }
 
     private String login(String username) {

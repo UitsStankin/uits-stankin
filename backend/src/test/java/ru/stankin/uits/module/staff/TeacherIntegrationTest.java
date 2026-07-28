@@ -6,6 +6,7 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.common.PageResponseDto;
@@ -62,6 +63,18 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.totalElements()).isEqualTo(2);
         assertThat(body.content().getFirst().getLastName()).isEqualTo("Абрамов");
         assertThat(body.content().getLast().getLastName()).isEqualTo("Яковлев");
+    }
+
+    @Test
+    void getTeachers_WhenSortFieldIsUnknown_Returns400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/teachers?sort=abc",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("abc");
     }
 }
 
