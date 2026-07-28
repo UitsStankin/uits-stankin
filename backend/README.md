@@ -101,6 +101,34 @@ Invoke-RestMethod http://localhost:8080/api/public/news
 
 ---
 
+## Что зависит от профиля
+
+Общие настройки лежат в `application.yaml`, различия — в `application-dev.yaml`
+и `application-prod.yaml`. Профильный файл содержит только отличия; всё, что
+одинаково везде, не дублируется.
+
+| | dev | prod |
+|---|---|---|
+| SQL-запросы в логах (`show-sql`) | да | нет |
+| Swagger UI и `/v3/api-docs` | доступны | отключены, дают `404` |
+| `DevDataSeeder` | наполняет пустую базу | не запускается |
+| `/actuator/health` и `/health/readiness` | доступны без токена | доступны без токена |
+
+Swagger в проде отключён свойствами springdoc, а не правилом в `SecurityConfig`:
+при выключенной библиотеке этих обработчиков в приложении просто нет, поэтому
+наружу не уходит ни схема API, ни сам факт её наличия.
+
+Проверить прод-конфигурацию локально:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
+```
+
+После проверки переменную нужно сбросить (`Remove-Item Env:\SPRING_PROFILES_ACTIVE`),
+иначе следующий запуск молча уйдёт в прод-профиль без тестовых данных.
+
+---
+
 ## Переменные
 
 | Переменная | Что это | Обязательна | Пример |
@@ -191,7 +219,9 @@ docker inspect --format "{{json .State.Health}}" uits_postgres
 | `http://localhost:8080` | приложение |
 | `http://localhost:8080/api/public/news` | публичный эндпоинт, годится для проверки живости |
 | `http://localhost:8080/api/users/auth/login` | вход, `POST` |
-| `http://localhost:8080/swagger-ui/index.html` | Swagger UI — интерактивная документация API. Кнопка **Authorize** принимает токен из `/api/users/auth/login` |
+| `http://localhost:8080/swagger-ui/index.html` | Swagger UI — интерактивная документация API. Кнопка **Authorize** принимает токен из `/api/users/auth/login`. Только вне профиля `prod`, см. «Что зависит от профиля» |
+| `http://localhost:8080/actuator/health` | статус приложения, `{"status":"UP"}`, без токена |
+| `http://localhost:8080/actuator/health/readiness` | готовность обслуживать запросы — этот адрес проверяет деплой |
 
 ---
 

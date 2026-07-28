@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         // all other requests need to be auth
                         .anyRequest().authenticated()
                 ).exceptionHandling(

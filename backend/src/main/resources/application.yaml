@@ -17,11 +17,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
     open-in-view: false
-    properties:
-      hibernate:
-        format_sql: true
 
   liquibase:
     enabled: true
@@ -30,9 +26,16 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
-#logging:
-#  level:
-#    org.springframework.security: DEBUG
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
 
 application:
   security:
