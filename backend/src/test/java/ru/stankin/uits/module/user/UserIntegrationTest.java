@@ -131,6 +131,8 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("newPassword");
+        assertThat(response.getBody()).contains("\"timestamp\"");
+        assertThat(response.getBody()).contains("\"instance\":\"/api/users/change-password\"");
     }
 
     @Test
