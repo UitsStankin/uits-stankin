@@ -16,7 +16,7 @@ public class NewsRequestDto {
     @Size(min = 5, max = 100, message = "Title must be from 5 to 100 symbols")
     String title;
 
-    @Size(max = 225, message = "Short description is too long")
+    @Size(max = 255, message = "Short description is too long")
     String shortDescription;
 
     @NotBlank(message = "Post type required")
