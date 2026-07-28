@@ -41,6 +41,7 @@ public class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getHeaders().getContentType().toString())
                 .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         assertThat(response.getBody()).contains("Требуется аутентификация");
+        assertThat(response.getBody()).contains("\"instance\":\"/api/users/profile\"");
     }
 
     @Test
