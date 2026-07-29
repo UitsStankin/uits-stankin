@@ -19,5 +19,6 @@ public class NewsResponseDto {
     String previewImage;
     String content;
     OffsetDateTime createdAt;
+    Boolean display;
     String authorName;
 }
