@@ -124,13 +124,13 @@ export function NavDropdown({
           className={cn(
             // Панель из SCSS оригинала: белая, min-width 11rem, padding 5px 0,
             // тень 0 2px 12px rgba(0,0,0,.1), радиус $border-radius.
-            'absolute z-dropdown min-w-44 rounded bg-white py-[5px] shadow-[0_2px_12px_0_rgba(0,0,0,0.1)]',
+            'absolute z-dropdown min-w-44 rounded bg-white py-1.25 shadow-[0_2px_12px_0_rgba(0,0,0,0.1)]',
             // w-max — ширина по содержимому, как в оригинале. Ограничение
             // сверху нужно из-за «Профессорско-преподавательского состава»:
             // без него вылет растянулся бы на пол-экрана.
             'w-max max-w-sm',
             isTopLevel
-              ? 'top-[3.25rem] left-0'
+              ? 'top-13 left-0'
               : // Вложенная панель вылетает вправо: left: 100%, top: 0
                 'top-0 left-full'
           )}
