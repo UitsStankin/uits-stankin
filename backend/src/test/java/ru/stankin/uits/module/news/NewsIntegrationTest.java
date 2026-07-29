@@ -16,6 +16,8 @@ import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
+import java.net.URI;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +36,8 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    private static final long MISSING_ID = 999_999L;
+
 
     @Test
     void createNews_WhenAdmin_SavesToDb() {
@@ -43,7 +47,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<Void> response = restTemplate.postForEntity(
                 "/api/news", withToken(validRequest(), token), Void.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         List<NewsPost> news = newsRepository.findAll();
         assertThat(news).hasSize(1);
         assertThat(news.getFirst().getTitle()).isEqualTo("Test News Title");
@@ -52,35 +56,47 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void createNews_WhenModerator_SavesToDb() {
-        User moderator = User.builder()
-                .username("moderator")
-                .password(passwordEncoder.encode("password"))
-                .superuser(false)
-                .moderator(true)
-                .active(true)
-                .build();
-        userRepository.save(moderator);
-
+        createModerator();
         String token = login("moderator");
 
         ResponseEntity<Void> response = restTemplate.postForEntity(
                 "/api/news", withToken(validRequest(), token), Void.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(newsRepository.findAll()).hasSize(1);
     }
 
     @Test
-    void createNews_WhenUser_ReturnsForbidden() {
-        User user = User.builder()
-                .username("user")
-                .password(passwordEncoder.encode("password"))
-                .superuser(false)
-                .moderator(false)
-                .active(true)
-                .build();
-        userRepository.save(user);
+    void createNews_ReturnsLocationPointingToCreatedNews() {
+        createAdmin();
+        String token = login("admin");
 
+        ResponseEntity<NewsResponseDto> response = restTemplate.postForEntity(
+                "/api/news", withToken(validRequest(), token), NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        NewsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getId()).isNotNull();
+        assertThat(body.getTitle()).isEqualTo("Test News Title");
+        assertThat(body.getDisplay()).isTrue();
+
+        URI location = response.getHeaders().getLocation();
+        assertThat(location).isNotNull();
+        assertThat(location.getPath()).isEqualTo("/api/news/" + body.getId());
+
+        // Location обязан вести на живой ресурс, а не просто выглядеть правдоподобно
+        ResponseEntity<NewsResponseDto> byLocation = restTemplate.exchange(
+                location.getPath(), HttpMethod.GET, withToken(token), NewsResponseDto.class);
+
+        assertThat(byLocation.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(byLocation.getBody()).isNotNull();
+        assertThat(byLocation.getBody().getId()).isEqualTo(body.getId());
+    }
+
+    @Test
+    void createNews_WhenUser_ReturnsForbidden() {
+        createPlainUser();
         String token = login("user");
 
         ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
@@ -254,6 +270,277 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .containsExactly("Beta", "Alpha");
     }
 
+    @Test
+    void getPublishedNewsById_WhenDisplayed_ReturnsNews() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Public News", true);
+
+        ResponseEntity<NewsResponseDto> response = restTemplate.getForEntity(
+                "/api/public/news/" + saved.getId(), NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(saved.getId());
+        assertThat(response.getBody().getTitle()).isEqualTo("Public News");
+        assertThat(response.getBody().getDisplay()).isTrue();
+    }
+
+    @Test
+    void getPublishedNewsById_WhenHidden_Returns404() {
+        // Скрытая новость и несуществующая для анонима неотличимы:
+        // 403 выдал бы факт существования черновика
+        User admin = createAdmin();
+        NewsPost hidden = saveNews(admin, "Hidden News", false);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/news/" + hidden.getId(), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Ресурс не найден.");
+    }
+
+    @Test
+    void getPublishedNewsById_WhenMissing_Returns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/news/" + MISSING_ID, ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Ресурс не найден.");
+    }
+
+    @Test
+    void getAllNews_WhenModerator_IncludesHidden() {
+        User admin = createAdmin();
+        saveNews(admin, "Public News", true);
+        saveNews(admin, "Hidden News", false);
+        createModerator();
+        String token = login("moderator");
+
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                "/api/news?sort=title,asc",
+                HttpMethod.GET,
+                withToken(token),
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        PageResponseDto<NewsResponseDto> body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.totalElements()).isEqualTo(2);
+        assertThat(body.content())
+                .extracting(NewsResponseDto::getTitle)
+                .containsExactly("Hidden News", "Public News");
+        assertThat(body.content())
+                .extracting(NewsResponseDto::getDisplay)
+                .containsExactly(false, true);
+    }
+
+    @Test
+    void getAllNews_WhenUser_ReturnsForbidden() {
+        createPlainUser();
+        String token = login("user");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news", HttpMethod.GET, withToken(token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Недостаточно прав.");
+    }
+
+    @Test
+    void getAllNews_WhenAnonymous_Returns401() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity("/api/news", ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Требуется аутентификация.");
+    }
+
+    @Test
+    void getNewsById_WhenModerator_ReturnsHidden() {
+        User admin = createAdmin();
+        NewsPost hidden = saveNews(admin, "Hidden News", false);
+        createModerator();
+        String token = login("moderator");
+
+        ResponseEntity<NewsResponseDto> response = restTemplate.exchange(
+                "/api/news/" + hidden.getId(), HttpMethod.GET, withToken(token), NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getTitle()).isEqualTo("Hidden News");
+        assertThat(response.getBody().getDisplay()).isFalse();
+    }
+
+    @Test
+    void getNewsById_WhenMissing_Returns404() {
+        String token = createAdminAndLogin();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + MISSING_ID, HttpMethod.GET, withToken(token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Ресурс не найден.");
+    }
+
+    @Test
+    void updateNews_WhenModerator_UpdatesFieldsAndKeepsAuthorAndCreatedAt() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Old Title", true);
+        OffsetDateTime createdAtBefore = newsRepository.findById(saved.getId()).orElseThrow().getCreatedAt();
+        createModerator();
+        String token = login("moderator");
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("New Title")
+                .shortDescription("New Description")
+                .postType("announcements")
+                .content("New Content")
+                .display(false)
+                .build();
+
+        ResponseEntity<NewsResponseDto> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.PUT, withToken(request, token), NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getTitle()).isEqualTo("New Title");
+        assertThat(response.getBody().getDisplay()).isFalse();
+
+        NewsPost updated = newsRepository.findById(saved.getId()).orElseThrow();
+        assertThat(updated.getTitle()).isEqualTo("New Title");
+        assertThat(updated.getPostType()).isEqualTo("announcements");
+        assertThat(updated.isDisplay()).isFalse();
+        // Редактор не становится автором, дата создания не съезжает
+        assertThat(updated.getAuthor().getId()).isEqualTo(admin.getId());
+        assertThat(updated.getCreatedAt()).isEqualTo(createdAtBefore);
+    }
+
+    @Test
+    void updateNews_WhenFieldIsOmitted_ClearsIt() {
+        // PUT — полная замена состояния: не присланное поле обнуляется, а не сохраняется
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Old Title", true);
+        String token = login("admin");
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("New Title")
+                .postType("news")
+                .content("New Content")
+                .display(true)
+                .build();
+
+        ResponseEntity<NewsResponseDto> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.PUT, withToken(request, token), NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(newsRepository.findById(saved.getId()).orElseThrow().getShortDescription()).isNull();
+    }
+
+    @Test
+    void updateNews_WhenMissing_Returns404() {
+        String token = createAdminAndLogin();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + MISSING_ID, HttpMethod.PUT, withToken(validRequest(), token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Ресурс не найден.");
+    }
+
+    @Test
+    void updateNews_WhenTitleIsTooShort_Returns400() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Old Title", true);
+        String token = login("admin");
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("aa")
+                .postType("news")
+                .content("New Content")
+                .display(true)
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.PUT, withToken(request, token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("title");
+        assertThat(newsRepository.findById(saved.getId()).orElseThrow().getTitle()).isEqualTo("Old Title");
+    }
+
+    @Test
+    void updateNews_WhenUser_ReturnsForbidden() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Old Title", true);
+        createPlainUser();
+        String token = login("user");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.PUT, withToken(validRequest(), token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(newsRepository.findById(saved.getId()).orElseThrow().getTitle()).isEqualTo("Old Title");
+    }
+
+    @Test
+    void deleteNews_WhenModerator_RemovesFromDb() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Doomed News", true);
+        createModerator();
+        String token = login("moderator");
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.DELETE, withToken(token), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(newsRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void deleteNews_WhenMissing_Returns404() {
+        // deleteById молча ничего не делает на несуществующем id —
+        // без явной проверки админка получила бы «удалено» на пустом месте
+        String token = createAdminAndLogin();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + MISSING_ID, HttpMethod.DELETE, withToken(token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Ресурс не найден.");
+    }
+
+    @Test
+    void deleteNews_WhenUser_ReturnsForbidden() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Doomed News", true);
+        createPlainUser();
+        String token = login("user");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.DELETE, withToken(token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(newsRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void deleteNews_WhenAnonymous_Returns401() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Doomed News", true);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.DELETE, null, ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(newsRepository.findAll()).hasSize(1);
+    }
+
     private NewsRequestDto validRequest() {
         return NewsRequestDto.builder()
                 .title("Test News Title")
@@ -270,6 +557,12 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         return new HttpEntity<>(body, headers);
     }
 
+    private HttpEntity<Void> withToken(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(headers);
+    }
+
     private User createAdmin() {
         User admin = User.builder()
                 .username("admin")
@@ -280,12 +573,34 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         return userRepository.save(admin);
     }
 
+    private User createModerator() {
+        User moderator = User.builder()
+                .username("moderator")
+                .password(passwordEncoder.encode("password"))
+                .superuser(false)
+                .moderator(true)
+                .active(true)
+                .build();
+        return userRepository.save(moderator);
+    }
+
+    private User createPlainUser() {
+        User user = User.builder()
+                .username("user")
+                .password(passwordEncoder.encode("password"))
+                .superuser(false)
+                .moderator(false)
+                .active(true)
+                .build();
+        return userRepository.save(user);
+    }
+
     private String createAdminAndLogin() {
         createAdmin();
         return login("admin");
     }
 
-    private void saveNews(User author, String title, boolean display) {
+    private NewsPost saveNews(User author, String title, boolean display) {
         NewsPost post = NewsPost.builder()
                 .title(title)
                 .shortDescription("Desc")
@@ -294,7 +609,7 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
                 .display(display)
                 .author(author)
                 .build();
-        newsRepository.save(post);
+        return newsRepository.save(post);
     }
 
     @SuppressWarnings("unchecked")

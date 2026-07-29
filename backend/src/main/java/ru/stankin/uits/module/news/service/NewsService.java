@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.NotFoundException;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
@@ -23,11 +24,13 @@ public class NewsService {
     private final NewsMapper newsMapper;
 
     @Transactional
-    public void createNews(NewsRequestDto request) {
+    public NewsResponseDto createNews(NewsRequestDto request) {
         User currentUser = getCurrentUser();
         NewsPost newsPost = newsMapper.toEntity(request);
         newsPost.setAuthor(currentUser);
-        newsRepository.save(newsPost);
+        NewsPost saved = newsRepository.save(newsPost);
+
+        return newsMapper.toDto(saved);
     }
 
     private User getCurrentUser() {
@@ -56,8 +59,46 @@ public class NewsService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDto<NewsResponseDto> getAllNews(Pageable pageable) {
+    public PageResponseDto<NewsResponseDto> getPublishedNews(Pageable pageable) {
         return PageResponseDto.from(newsRepository.findAllByDisplayTrue(pageable)
                 .map(newsMapper::toDto));
+    }
+
+    @Transactional(readOnly = true)
+    public NewsResponseDto getPublishedById(Long id) {
+        return newsRepository.findByIdAndDisplayTrue(id)
+                .map(newsMapper::toDto)
+                .orElseThrow(() -> new NotFoundException("Опубликованная новость id=" + id + " не найдена"));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<NewsResponseDto> getAllNews(Pageable pageable) {
+        return PageResponseDto.from(newsRepository.findAll(pageable)
+                .map(newsMapper::toDto));
+    }
+
+    @Transactional(readOnly = true)
+    public NewsResponseDto getNewsById(Long id) {
+        return newsRepository.findById(id)
+                .map(newsMapper::toDto)
+                .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+    }
+
+    @Transactional
+    public NewsResponseDto updateNews(Long id, NewsRequestDto request) {
+        NewsPost newsPost = newsRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+        newsMapper.updateEntity(newsPost, request);
+
+        return newsMapper.toDto(newsPost);
+    }
+
+    @Transactional
+    public void deleteNews(Long id) {
+        if (!newsRepository.existsById(id)) {
+            throw new NotFoundException("Новость id=" + id + " не найдена");
+        }
+
+        newsRepository.deleteById(id);
     }
 }

@@ -2,6 +2,7 @@ package ru.stankin.uits.module.news.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
@@ -21,6 +22,11 @@ public interface NewsMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "author", ignore = true)
     NewsPost toEntity(NewsRequestDto dto);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "author", ignore = true)
+    void updateEntity(@MappingTarget NewsPost entity, NewsRequestDto dto);
 
     @Named("authorName")
     default String authorName(User author) {
