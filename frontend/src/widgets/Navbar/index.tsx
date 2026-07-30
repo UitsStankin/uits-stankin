@@ -5,8 +5,13 @@ import { NAVIGATION } from '@shared/config/navigation';
 import type { NavItem } from '@shared/types';
 import { NavDropdown } from './ui/NavDropdown';
 import { NavbarLink } from './ui/NavbarLink';
+import { NavAccordion } from './ui/NavAccordion';
+import { MobileNavPanel } from './ui/MobileNavPanel';
 import { useNavMenu } from './model/useNavMenu';
 import { useHoverIntent } from './model/useHoverIntent';
+import { useNavAccordion } from './model/useNavAccordion';
+import { useDrawer } from './model/useDrawer';
+import { useIsDesktop } from './model/useIsDesktop';
 import { containsActivePath, isPathActive } from './lib/navTree';
 
 interface NavbarProps {
@@ -19,31 +24,36 @@ interface NavbarProps {
 }
 
 /**
- * Горизонтальное меню под шапкой — как в действующем портале
- * (`layoutType: 'horizontal'` в его app.config.ts).
+ * Навигация портала. Две раскладки одной структуры:
  *
- * Сборка: соединяет состояние (useNavMenu), тайминги (useHoverIntent) и
- * чистое представление (ui/). Рекурсия по дереву живёт здесь, а не в
- * компонентах, — иначе они не были бы чистыми.
+ *   от 992px  горизонтальная строка с выпадающими (как header-navbar)
+ *   до 992px  бургер и выезжающая слева панель с аккордеоном (как mobile-nav)
  *
- * Ниже 992px не показывается: там в оригинале включается бургер.
+ * Сборка: соединяет хуки и чистые компоненты из ui/, рекурсия по дереву
+ * живёт здесь — иначе компоненты не были бы чистыми.
  */
 export default function Navbar({ items = NAVIGATION, className }: NavbarProps) {
   const { pathname } = useLocation();
+  const isDesktop = useIsDesktop();
+
+  // Десктоп: цепочка раскрытых разделов + задержки наведения.
   const { openPath, isOpen, setOpenAt, closeAll, containerRef } = useNavMenu();
   const { schedule, cancel } = useHoverIntent();
 
-  // Переход по ссылке закрывает меню через onNavigate, но кнопками «назад» и
-  // «вперёд» оно осталось бы висеть. Приём «правка состояния во время
-  // рендера» из документации React — дешевле эффекта, потому что React
-  // перезапускает рендер сразу, не показывая промежуточный кадр.
+  // Мобильное: множество раскрытых групп + сама выдвижная панель.
+  const accordion = useNavAccordion(items, pathname);
+  const drawer = useDrawer(pathname);
+
+  // Переход по ссылке закрывает меню через onNavigate, но кнопками «назад»
+  // и «вперёд» оно осталось бы висеть. Приём «правка состояния во время
+  // рендера» из документации React.
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
     if (openPath.length > 0) closeAll();
   }
 
-  const renderNode = (node: NavItem, depth: number): ReactNode => {
+  const renderDesktopNode = (node: NavItem, depth: number): ReactNode => {
     if (node.children === undefined) {
       return (
         <NavbarLink
@@ -78,10 +88,53 @@ export default function Navbar({ items = NAVIGATION, className }: NavbarProps) {
           setOpenAt(depth, null);
         }}
       >
-        {node.children.map((child) => renderNode(child, depth + 1))}
+        {node.children.map((child) => renderDesktopNode(child, depth + 1))}
       </NavDropdown>
     );
   };
+
+  const renderMobileNode = (node: NavItem, depth: number): ReactNode => {
+    if (node.children === undefined) {
+      return (
+        <NavbarLink
+          key={node.key}
+          item={node}
+          isActive={node.path !== undefined && isPathActive(node.path, pathname)}
+          // depth+1: в мобильной панели даже верхний уровень — это список,
+          // а не строка навбара, поэтому стиль всегда «внутри панели».
+          depth={depth + 1}
+          onNavigate={drawer.close}
+        />
+      );
+    }
+
+    return (
+      <NavAccordion
+        key={node.key}
+        item={node}
+        depth={depth}
+        isOpen={accordion.isOpen(node.key)}
+        isActive={containsActivePath(node.children, pathname)}
+        onToggle={() => accordion.toggle(node.key)}
+      >
+        {node.children.map((child) => renderMobileNode(child, depth + 1))}
+      </NavAccordion>
+    );
+  };
+
+  if (!isDesktop) {
+    return (
+      <div className={cn('flex h-12 items-center bg-white px-gutter-sm', className)}>
+        <MobileNavPanel
+          isOpen={drawer.isOpen}
+          onOpen={drawer.open}
+          onClose={drawer.close}
+        >
+          {items.map((item) => renderMobileNode(item, 0))}
+        </MobileNavPanel>
+      </div>
+    );
+  }
 
   return (
     <nav
@@ -89,12 +142,12 @@ export default function Navbar({ items = NAVIGATION, className }: NavbarProps) {
       aria-label="Основная навигация"
       className={cn(
         // $header-navbar-height: 4.375rem — те же 70px, что и у шапки
-        'hidden h-header bg-white lg:block',
+        'h-header bg-white',
         className
       )}
     >
       <ul className="mx-auto flex h-full max-w-screen-xxl items-center px-gutter">
-        {items.map((item) => renderNode(item, 0))}
+        {items.map((item) => renderDesktopNode(item, 0))}
       </ul>
     </nav>
   );

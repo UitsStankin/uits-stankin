@@ -30,3 +30,32 @@ export function containsActivePath(
       (item.children !== undefined && containsActivePath(item.children, pathname))
   );
 }
+
+/**
+ * Ключи групп, которые должны быть раскрыты для текущего адреса.
+ *
+ * Раскрывается вся цепочка предков активного пункта: на
+ * `/educational-activities/bachelor/edu-plans` откроются и «Учебная
+ * деятельность», и «Бакалавриат».
+ *
+ * Нужно мобильному меню: там аккордеон, и открыв его на вложенной странице,
+ * пользователь должен сразу видеть, где находится, а не искать вручную.
+ * Десктопным выпадающим это не нужно — они закрыты, пока не наведёшь.
+ */
+export function collectOpenKeys(
+  items: readonly NavItem[],
+  pathname: string
+): Set<string> {
+  const open = new Set<string>();
+
+  const walk = (nodes: readonly NavItem[]): void => {
+    for (const node of nodes) {
+      if (node.children === undefined) continue;
+      if (containsActivePath(node.children, pathname)) open.add(node.key);
+      walk(node.children);
+    }
+  };
+
+  walk(items);
+  return open;
+}
