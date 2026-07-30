@@ -1,12 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router';
 import { cn } from '@shared/lib/cn';
 import { NAVIGATION } from '@shared/config/navigation';
-import { NavDropdown } from './NavDropdown';
-import { NavbarLink } from './NavbarLink';
-import { isPathActive } from './lib/navTree';
+import type { NavItem } from '@shared/types';
+import { NavDropdown } from './ui/NavDropdown';
+import { NavbarLink } from './ui/NavbarLink';
+import { useNavMenu } from './model/useNavMenu';
+import { useHoverIntent } from './model/useHoverIntent';
+import { containsActivePath, isPathActive } from './lib/navTree';
 
 interface NavbarProps {
+  /**
+   * Пункты меню. По умолчанию — структура портала, но компонент от неё
+   * не зависит: его можно отрендерить с любым деревом.
+   */
+  items?: readonly NavItem[];
   className?: string;
 }
 
@@ -14,44 +22,70 @@ interface NavbarProps {
  * Горизонтальное меню под шапкой — как в действующем портале
  * (`layoutType: 'horizontal'` в его app.config.ts).
  *
- * Ниже 992px не показывается: там в оригинале вместо навбара включается
- * бургер. Брейкпоинт lg в tailwind.config.ts уже равен 992px — он перенесён
- * из Bootstrap вместе с остальной темой, подгонять не пришлось.
+ * Сборка: соединяет состояние (useNavMenu), тайминги (useHoverIntent) и
+ * чистое представление (ui/). Рекурсия по дереву живёт здесь, а не в
+ * компонентах, — иначе они не были бы чистыми.
+ *
+ * Ниже 992px не показывается: там в оригинале включается бургер.
  */
-export default function Navbar({ className }: NavbarProps) {
+export default function Navbar({ items = NAVIGATION, className }: NavbarProps) {
   const { pathname } = useLocation();
-
-  // Открытый раздел верхнего уровня. Строка, а не множество: в горизонтальном
-  // меню одновременно раскрыт максимум один.
-  const [openKey, setOpenKey] = useState<string | null>(null);
-  const navRef = useRef<HTMLElement | null>(null);
-
-  const closeAll = useCallback(() => setOpenKey(null), []);
+  const { openPath, isOpen, setOpenAt, closeAll, containerRef } = useNavMenu();
+  const { schedule, cancel } = useHoverIntent();
 
   // Переход по ссылке закрывает меню через onNavigate, но кнопками «назад» и
-  // «вперёд» в браузере оно осталось бы висеть. Приём «правка состояния во
-  // время рендера» из документации React — дешевле эффекта, потому что React
+  // «вперёд» оно осталось бы висеть. Приём «правка состояния во время
+  // рендера» из документации React — дешевле эффекта, потому что React
   // перезапускает рендер сразу, не показывая промежуточный кадр.
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
-    if (openKey !== null) setOpenKey(null);
+    if (openPath.length > 0) closeAll();
   }
 
-  // Клик мимо меню закрывает его. Слушатель вешаем только когда есть что
-  // закрывать — постоянно висящий обработчик на документе не нужен.
-  useEffect(() => {
-    if (openKey === null) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!navRef.current?.contains(event.target as Node)) setOpenKey(null);
-    };
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [openKey]);
+  const renderNode = (node: NavItem, depth: number): ReactNode => {
+    if (node.children === undefined) {
+      return (
+        <NavbarLink
+          key={node.key}
+          item={node}
+          // Активность считаем здесь, чтобы NavbarLink получал булево
+          // и мог отсекаться мемоизацией.
+          isActive={node.path !== undefined && isPathActive(node.path, pathname)}
+          depth={depth}
+          onNavigate={closeAll}
+        />
+      );
+    }
+
+    const opened = isOpen(node.key, depth);
+
+    return (
+      <NavDropdown
+        key={node.key}
+        item={node}
+        depth={depth}
+        isOpen={opened}
+        isActive={containsActivePath(node.children, pathname)}
+        onToggle={() => {
+          cancel();
+          setOpenAt(depth, opened ? null : node.key);
+        }}
+        onPointerEnter={() => schedule(() => setOpenAt(depth, node.key))}
+        onPointerLeave={() => schedule(() => setOpenAt(depth, null))}
+        onEscape={() => {
+          cancel();
+          setOpenAt(depth, null);
+        }}
+      >
+        {node.children.map((child) => renderNode(child, depth + 1))}
+      </NavDropdown>
+    );
+  };
 
   return (
     <nav
-      ref={navRef}
+      ref={containerRef}
       aria-label="Основная навигация"
       className={cn(
         // $header-navbar-height: 4.375rem — те же 70px, что и у шапки
@@ -60,27 +94,7 @@ export default function Navbar({ className }: NavbarProps) {
       )}
     >
       <ul className="mx-auto flex h-full max-w-screen-xxl items-center px-gutter">
-        {NAVIGATION.map((item) =>
-          item.children ? (
-            <NavDropdown
-              key={item.key}
-              item={item}
-              depth={0}
-              isOpen={openKey === item.key}
-              onOpenChange={(open) => setOpenKey(open ? item.key : null)}
-              pathname={pathname}
-              onNavigate={closeAll}
-            />
-          ) : (
-            <NavbarLink
-              key={item.key}
-              item={item}
-              isActive={item.path !== undefined && isPathActive(item.path, pathname)}
-              depth={0}
-              onNavigate={closeAll}
-            />
-          )
-        )}
+        {items.map((item) => renderNode(item, 0))}
       </ul>
     </nav>
   );
