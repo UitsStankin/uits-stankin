@@ -14,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.Instant;
@@ -86,6 +87,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("Необработанное исключение", ex);
 
         return problemDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Внутренняя ошибка сервера.");
+    }
+
+    @ExceptionHandler(InvalidFileException.class)
+    public ProblemDetail handleInvalidFile(InvalidFileException ex) {
+        return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /** Переопределение, а не свой @ExceptionHandler: этот тип уже обслуживает базовый класс. */
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+                                                                                    HttpHeaders headers,
+                                                                                    HttpStatusCode status,
+                                                                                    WebRequest request) {
+        ProblemDetail problem = problemDetail(HttpStatus.CONTENT_TOO_LARGE, "Файл превышает допустимый размер.");
+        problem.setTitle("Файл слишком большой");
+
+        return ResponseEntity.of(problem).build();
     }
 
     private ProblemDetail problemDetail(HttpStatus status, String detail) {
