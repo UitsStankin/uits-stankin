@@ -1,0 +1,30 @@
+package ru.stankin.uits.common.storage;
+
+import java.io.InputStream;
+
+/**
+ * Хранилище загруженных файлов: превью новостей, аватары, PDF.
+ *
+ * <p>Реализация одна ({@link LocalFileStorage}, диск), абстракция введена сразу:
+ * ARCHITECTURE §8 откладывает S3/MinIO, но не закрывает переезд.
+ *
+ * <p>Ключ — относительный путь внутри хранилища ({@code news/2026/08/a3f9.jpg}),
+ * в БД хранится он: полный путь и публичный URL зависят от машины и домена.
+ */
+public interface FileStorage {
+
+    /**
+     * Сохраняет поток и возвращает ключ. Имя генерирует реализация: имя из запроса —
+     * недоверенные данные. Поток закрывает вызывающая сторона.
+     *
+     * @param extension расширение без точки ({@code jpg})
+     * @param category  раздел хранилища ({@code news}, {@code avatars})
+     */
+    String store(InputStream data, String extension, String category);
+
+    /** Удаляет файл. Отсутствие файла ошибкой не считается — цель вызова достигнута. */
+    void delete(String key);
+
+    /** Адрес файла для браузера; правила сборки адреса — забота реализации. */
+    String url(String key);
+}
