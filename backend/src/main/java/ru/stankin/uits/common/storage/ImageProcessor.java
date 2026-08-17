@@ -2,7 +2,7 @@ package ru.stankin.uits.common.storage;
 
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Component;
-import ru.stankin.uits.common.InvalidFileException;
+import ru.stankin.uits.common.exception.InvalidFileException;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
