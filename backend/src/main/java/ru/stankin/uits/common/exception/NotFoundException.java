@@ -1,4 +1,4 @@
-package ru.stankin.uits.common;
+package ru.stankin.uits.common.exception;
 
 public class NotFoundException extends RuntimeException {
     public NotFoundException (String message) {

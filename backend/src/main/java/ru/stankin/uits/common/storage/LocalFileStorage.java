@@ -1,0 +1,81 @@
+package ru.stankin.uits.common.storage;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
+
+/**
+ * Файлы на диске приложения. Корень — {@code application.storage.root}: локально папка
+ * в проекте, в контейнере — смонтированный том.
+ *
+ * <p>Каталог создаётся при старте, и неудача роняет приложение: иначе сервис поднялся бы
+ * здоровым и падал на каждой загрузке. Ключи проверяются на выход за пределы корня.
+ */
+@Component
+public class LocalFileStorage implements FileStorage {
+    private final Path root;
+    private final String publicBaseUrl;
+
+    public LocalFileStorage(@Value("${application.storage.root}") String root,
+                            @Value("${application.storage.public-base-url}") String publicBaseUrl) {
+        this.root = Path.of(root).toAbsolutePath().normalize();
+        this.publicBaseUrl = publicBaseUrl;
+
+        try {
+            Files.createDirectories(this.root);
+        } catch (IOException e) {
+            throw new IllegalStateException("Не удалось создать каталог хранилища: " + this.root, e);
+        }
+    }
+
+    @Override
+    public String store(InputStream data, String extension, String category) {
+        String fileName = UUID.randomUUID() + "." + extension;
+        String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
+        String key = category + "/" + datePath + "/" + fileName;
+
+        Path target = resolveAndVerify(key);
+
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(data, target);
+        } catch (IOException e) {
+            throw new IllegalStateException("Не удалось сохранить файл: " + key, e);
+        }
+
+        return key;
+    }
+
+    @Override
+    public void delete(String key) {
+        Path target = resolveAndVerify(key);
+
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException e) {
+            throw new IllegalStateException("Не удалось удалить файл: " + key, e);
+        }
+    }
+
+    @Override
+    public String url(String key) {
+        return publicBaseUrl + "/" + key;
+    }
+
+    private Path resolveAndVerify(String key) {
+        Path target = root.resolve(key).normalize();
+
+        if (!target.startsWith(root)) {
+            throw new IllegalArgumentException("Ключ выходит за пределы хранилища: " + key);
+        }
+
+        return target;
+    }
+}

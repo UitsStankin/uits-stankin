@@ -48,12 +48,17 @@ services:
       # Без этой переменной прод-фронт упрётся в дефолт http://localhost:5173
       # и получит отказ на каждом запросе
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
+      STORAGE_ROOT: /app/media
+    volumes:
+      - media_data:/app/media
     networks:
       - uits_network
 
 volumes:
   postgres_data:
     name: uits_postgres_data
+  media_data:
+    name: uits_media_data
 
 networks:
   uits_network:
