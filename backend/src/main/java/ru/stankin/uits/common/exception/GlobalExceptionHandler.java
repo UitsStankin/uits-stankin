@@ -94,7 +94,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    /** Переопределение, а не свой @ExceptionHandler: этот тип уже обслуживает базовый класс. */
     @Override
     protected @Nullable ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
                                                                                     HttpHeaders headers,

@@ -142,6 +142,21 @@ class ArchitectureTest {
                             + "наружу отдаются только DTO");
 
     /**
+     * Правило 6. Файловая система — только внутри common.storage.
+     *
+     * <p>Смысл интерфейса {@code FileStorage} в том, что смена хранилища (диск → S3)
+     * стоит одного нового класса. Сервис, который сам дёрнет {@code Files.copy} или
+     * соберёт путь через {@code Path}, эту гарантию отменяет: при переезде его придётся
+     * искать и переписывать. Правило превращает договорённость в красный тест.
+     */
+    @ArchTest
+    static final ArchRule fileSystemAccessStaysInStorage =
+            noClasses().that().resideOutsideOfPackage("..common.storage..")
+                    .should().dependOnClassesThat().resideInAPackage("java.nio.file..")
+                    .because("работа с диском спрятана за FileStorage — иначе переезд "
+                            + "на объектное хранилище потребует правок в бизнес-коде");
+
+    /**
      * Правило 5. Модули не лезут во внутренности друг друга.
      *
      * <p>Каждый пакет module.* — срез (slice); по умолчанию срезам запрещено
