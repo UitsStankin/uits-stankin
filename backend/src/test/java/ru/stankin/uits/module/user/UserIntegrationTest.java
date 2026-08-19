@@ -3,15 +3,12 @@ package ru.stankin.uits.module.user;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.entity.User;
-import ru.stankin.uits.module.user.repository.UserRepository;
 import ru.stankin.uits.security.JwtService;
 import ru.stankin.uits.security.SecurityUser;
 
@@ -24,15 +21,6 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
     private static final String OLD_PASSWORD = "super_password";
     private static final String NEW_PASSWORD = "new_super_password";
-
-    @Autowired
-    private TestRestTemplate restTemplate;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtService jwtService; // Token for test
@@ -93,9 +81,9 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
         // Смена проверяется через логин, а не через сравнение хешей в базе:
         // так тест фиксирует поведение всего контура, а не деталь реализации
-        assertThat(login(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(loginWithPassword(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        ResponseEntity<AuthController.LoginResponse> loginWithNew = login(NEW_PASSWORD);
+        ResponseEntity<AuthController.LoginResponse> loginWithNew = loginWithPassword(NEW_PASSWORD);
         assertThat(loginWithNew.getStatusCode()).isEqualTo(HttpStatus.OK);
         AuthController.LoginResponse loginBody = loginWithNew.getBody();
         assertThat(loginBody).isNotNull();
@@ -117,7 +105,7 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
         assertThat(problem.getDetail()).isEqualTo("Старый пароль введён неверно.");
 
         // Пароль не должен был измениться
-        assertThat(login(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(loginWithPassword(OLD_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
@@ -161,7 +149,7 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
         return new HttpEntity<>(body, headers);
     }
 
-    private ResponseEntity<AuthController.LoginResponse> login(String password) {
+    private ResponseEntity<AuthController.LoginResponse> loginWithPassword(String password) {
         return restTemplate.postForEntity(
                 "/api/users/auth/login",
                 new AuthController.LoginRequest("prof_ivanov", password),

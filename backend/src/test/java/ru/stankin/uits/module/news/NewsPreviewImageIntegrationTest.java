@@ -2,26 +2,20 @@ package ru.stankin.uits.module.news;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
-import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.news.service.NewsService;
 import ru.stankin.uits.module.user.entity.User;
-import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -39,32 +33,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
 
-    private static final Path STORAGE_ROOT;
-
-    static {
-        try {
-            STORAGE_ROOT = Files.createTempDirectory("uits-news-preview-test");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    @DynamicPropertySource
-    static void storageProperties(DynamicPropertyRegistry registry) {
-        registry.add("application.storage.root", STORAGE_ROOT::toString);
-    }
-
-    @Autowired
-    private TestRestTemplate restTemplate;
-
     @Autowired
     private NewsRepository newsRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private NewsService newsService;
@@ -325,14 +295,7 @@ public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
     }
 
     private User createAdmin() {
-        User admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("password"))
-                .superuser(true)
-                .active(true)
-                .build();
-
-        return userRepository.save(admin);
+        return createUser("admin", TestRole.ADMIN);
     }
 
     private String createAdminAndLogin() {
@@ -341,14 +304,4 @@ public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
         return login("admin");
     }
 
-    private String login(String username) {
-        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest(username, "password");
-        ResponseEntity<AuthController.LoginResponse> response = restTemplate.postForEntity(
-                "/api/users/auth/login", loginRequest, AuthController.LoginResponse.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-
-        return response.getBody().accessToken();
-    }
 }
