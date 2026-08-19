@@ -7,8 +7,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -24,11 +28,13 @@ public class NewsService {
 
     private final NewsRepository newsRepository;
     private final NewsMapper newsMapper;
+    private final FileStorage fileStorage;
 
     @Transactional
     public NewsResponseDto createNews(NewsRequestDto request) {
         User currentUser = getCurrentUser();
         request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
+        validatePreviewImage(request);
         NewsPost newsPost = newsMapper.toEntity(request);
         newsPost.setAuthor(currentUser);
         NewsPost saved = newsRepository.save(newsPost);
@@ -92,17 +98,45 @@ public class NewsService {
         NewsPost newsPost = newsRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
         request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
+        validatePreviewImage(request);
+
+        String oldKey = newsPost.getPreviewImage();
         newsMapper.updateEntity(newsPost, request);
+
+        if (oldKey != null && !oldKey.equals(newsPost.getPreviewImage())) {
+            deleteFileAfterCommit(oldKey);
+        }
 
         return newsMapper.toDto(newsPost);
     }
 
     @Transactional
     public void deleteNews(Long id) {
-        if (!newsRepository.existsById(id)) {
-            throw new NotFoundException("Новость id=" + id + " не найдена");
-        }
+        NewsPost newsPost = newsRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+        String key = newsPost.getPreviewImage();
 
-        newsRepository.deleteById(id);
+        newsRepository.delete(newsPost);
+
+        if (key != null) {
+            deleteFileAfterCommit(key);
+        }
+    }
+
+    /** Откладывает удаление файла до успешного коммита: диск транзакцию не откатывает. */
+    private void deleteFileAfterCommit(String key) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileStorage.delete(key);
+            }
+        });
+    }
+
+    private void validatePreviewImage(NewsRequestDto request) {
+        String key = request.getPreviewImage();
+        if (key != null && !fileStorage.exists(key)) {
+            throw new InvalidFileException("Файл обложки не найден: " + key);
+        }
     }
 }

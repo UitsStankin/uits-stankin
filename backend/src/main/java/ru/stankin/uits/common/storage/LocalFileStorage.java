@@ -65,17 +65,29 @@ public class LocalFileStorage implements FileStorage {
     }
 
     @Override
+    public boolean exists(String key) {
+        Path target = resolve(key);
+        return isInsideRoot(target) && Files.isRegularFile(target);
+    }
+
+    @Override
     public String url(String key) {
         return publicBaseUrl + "/" + key;
     }
 
-    private Path resolveAndVerify(String key) {
-        Path target = root.resolve(key).normalize();
+    private Path resolve(String key) {
+        return root.resolve(key).normalize();
+    }
 
-        if (!target.startsWith(root)) {
+    private boolean isInsideRoot(Path target) {
+        return target.startsWith(root);
+    }
+
+    private Path resolveAndVerify(String key) {
+        Path target = resolve(key);
+        if (!isInsideRoot(target)) {
             throw new IllegalArgumentException("Ключ выходит за пределы хранилища: " + key);
         }
-
         return target;
     }
 }
