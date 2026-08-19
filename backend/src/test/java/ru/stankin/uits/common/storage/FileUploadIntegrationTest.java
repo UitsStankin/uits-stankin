@@ -2,24 +2,17 @@ package ru.stankin.uits.common.storage;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import ru.stankin.uits.AbstractIntegrationTest;
-import ru.stankin.uits.module.auth.controller.AuthController;
-import ru.stankin.uits.module.user.entity.User;
-import ru.stankin.uits.module.user.repository.UserRepository;
+import ru.stankin.uits.TestRole;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,33 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class FileUploadIntegrationTest extends AbstractIntegrationTest {
 
-    private static final Path STORAGE_ROOT;
-
-    static {
-        try {
-            STORAGE_ROOT = Files.createTempDirectory("uits-media-test");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    @DynamicPropertySource
-    static void storageProperties(DynamicPropertyRegistry registry) {
-        registry.add("application.storage.root", STORAGE_ROOT::toString);
-    }
-
-    @Autowired
-    private TestRestTemplate restTemplate;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
     @Test
     void upload_WhenAdmin_Returns201AndWritesFile() throws IOException {
-        createUser("admin", true, false);
+        createUser("admin", TestRole.ADMIN);
         String token = login("admin");
 
         ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
@@ -77,7 +46,7 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void upload_WhenModerator_Returns201() throws IOException {
-        createUser("moderator", false, true);
+        createUser("moderator", TestRole.MODERATOR);
         String token = login("moderator");
 
         ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
@@ -90,7 +59,7 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
     /** Загрузка файлов — право редактора: обычный пользователь не должен занимать диск. */
     @Test
     void upload_WhenPlainUser_Returns403() throws IOException {
-        createUser("user", false, false);
+        createUser("user", TestRole.USER);
         String token = login("user");
 
         ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
@@ -112,7 +81,7 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
     /** Расширение .jpg ничего не доказывает: формат определяется по содержимому. */
     @Test
     void upload_WhenExecutableRenamedToJpg_Returns400() {
-        createUser("admin", true, false);
+        createUser("admin", TestRole.ADMIN);
         String token = login("admin");
         byte[] executable = "MZ это не картинка".getBytes(StandardCharsets.UTF_8);
 
@@ -128,7 +97,7 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
     /** Раздел приходит от клиента и попадает в путь на диске — принимаем только известные. */
     @Test
     void upload_WhenUnknownCategory_Returns400() throws IOException {
-        createUser("admin", true, false);
+        createUser("admin", TestRole.ADMIN);
         String token = login("admin");
 
         ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
@@ -141,7 +110,7 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
     /** Адрес из ответа должен работать без токена: картинки открывают посетители сайта. */
     @Test
     void uploadedFile_IsServedByReturnedUrlWithoutToken() throws IOException {
-        createUser("admin", true, false);
+        createUser("admin", TestRole.ADMIN);
         String token = login("admin");
         ResponseEntity<FileUploadResponseDto> upload = restTemplate.postForEntity(
                 "/api/files", multipart(image(800, 600), "photo.jpg", "news", token),
@@ -186,22 +155,4 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
         return out.toByteArray();
     }
 
-    private void createUser(String username, boolean superuser, boolean moderator) {
-        userRepository.save(User.builder()
-                .username(username)
-                .password(passwordEncoder.encode("password"))
-                .superuser(superuser)
-                .moderator(moderator)
-                .active(true)
-                .build());
-    }
-
-    private String login(String username) {
-        AuthController.LoginRequest request = new AuthController.LoginRequest(username, "password");
-        ResponseEntity<AuthController.LoginResponse> response = restTemplate.postForEntity(
-                "/api/users/auth/login", request, AuthController.LoginResponse.class);
-
-        assertThat(response.getBody()).isNotNull();
-        return response.getBody().accessToken();
-    }
 }

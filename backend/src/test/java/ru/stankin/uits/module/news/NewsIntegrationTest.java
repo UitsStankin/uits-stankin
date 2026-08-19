@@ -2,19 +2,16 @@ package ru.stankin.uits.module.news;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
-import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.user.entity.User;
-import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
@@ -25,16 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class NewsIntegrationTest extends AbstractIntegrationTest {
     @Autowired
-    private TestRestTemplate restTemplate;
-
-    @Autowired
     private NewsRepository newsRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     private static final long MISSING_ID = 999_999L;
 
@@ -665,35 +653,15 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     private User createAdmin() {
-        User admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("password"))
-                .superuser(true)
-                .active(true)
-                .build();
-        return userRepository.save(admin);
+        return createUser("admin", TestRole.ADMIN);
     }
 
     private User createModerator() {
-        User moderator = User.builder()
-                .username("moderator")
-                .password(passwordEncoder.encode("password"))
-                .superuser(false)
-                .moderator(true)
-                .active(true)
-                .build();
-        return userRepository.save(moderator);
+        return createUser("moderator", TestRole.MODERATOR);
     }
 
     private User createPlainUser() {
-        User user = User.builder()
-                .username("user")
-                .password(passwordEncoder.encode("password"))
-                .superuser(false)
-                .moderator(false)
-                .active(true)
-                .build();
-        return userRepository.save(user);
+        return createUser("user", TestRole.USER);
     }
 
     private String createAdminAndLogin() {
@@ -720,15 +688,4 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         return (Map<String, Object>) response.getBody().getProperties().get("errors");
     }
 
-    private String login(String username) {
-        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest(username, "password");
-        ResponseEntity<AuthController.LoginResponse> response = restTemplate.postForEntity(
-                "/api/users/auth/login",
-                loginRequest,
-                AuthController.LoginResponse.class
-        );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        return response.getBody().accessToken();
-    }
 }
