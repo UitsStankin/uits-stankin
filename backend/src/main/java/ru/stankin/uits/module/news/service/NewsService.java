@@ -7,8 +7,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -24,11 +26,13 @@ public class NewsService {
 
     private final NewsRepository newsRepository;
     private final NewsMapper newsMapper;
+    private final FileStorage fileStorage;
 
     @Transactional
     public NewsResponseDto createNews(NewsRequestDto request) {
         User currentUser = getCurrentUser();
         request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
+        validatePreviewImage(request);
         NewsPost newsPost = newsMapper.toEntity(request);
         newsPost.setAuthor(currentUser);
         NewsPost saved = newsRepository.save(newsPost);
@@ -92,6 +96,7 @@ public class NewsService {
         NewsPost newsPost = newsRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
         request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
+        validatePreviewImage(request);
         newsMapper.updateEntity(newsPost, request);
 
         return newsMapper.toDto(newsPost);
@@ -104,5 +109,12 @@ public class NewsService {
         }
 
         newsRepository.deleteById(id);
+    }
+
+    private void validatePreviewImage(NewsRequestDto request) {
+        String key = request.getPreviewImage();
+        if (key != null && !fileStorage.exists(key)) {
+            throw new InvalidFileException("Файл обложки не найден: " + key);
+        }
     }
 }

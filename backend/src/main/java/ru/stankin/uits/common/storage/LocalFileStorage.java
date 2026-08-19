@@ -65,6 +65,13 @@ public class LocalFileStorage implements FileStorage {
     }
 
     @Override
+    public boolean exists(String key) {
+        Path target = resolveAndVerify(key);
+
+        return Files.isRegularFile(target);
+    }
+
+    @Override
     public String url(String key) {
         return publicBaseUrl + "/" + key;
     }
