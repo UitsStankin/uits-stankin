@@ -1,36 +1,30 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Menu } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '@shared/lib/cn';
+import { Logo } from '@shared/ui/Logo';
 
 interface MobileNavPanelProps {
   isOpen: boolean;
-  onOpen: () => void;
   onClose: () => void;
   /** Пункты меню. Дерево собирает index.tsx. */
   children: ReactNode;
 }
 
 /**
- * Бургер и выезжающая слева панель с меню — то же, что mobile-nav в оригинале.
+ * Выезжающая слева панель с меню — то же, что mobile-nav в оригинале.
  *
  * Размеры оттуда же: $mobile-nav-width 17.5rem, выезд из left: -17.5rem
  * в left: 0 за 0.3s ease, затемнение фона rgba(black, .5).
  *
+ * Кнопка-бургер здесь не рендерится: в оригинале nav-toggle стоит в шапке
+ * слева, а логотип на узком экране скрывается. Открывается панель из Header
+ * через общий стор.
+ *
  * Чистый: состоянием панели управляет вызывающий.
  */
-export function MobileNavPanel({ isOpen, onOpen, onClose, children }: MobileNavPanelProps) {
+export function MobileNavPanel({ isOpen, onClose, children }: MobileNavPanelProps) {
   return (
     <>
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label="Открыть меню"
-        aria-expanded={isOpen}
-        className="rounded p-2 text-gray-900 transition-colors hover:bg-gray-200"
-      >
-        <Menu size={24} aria-hidden />
-      </button>
-
       {/* Затемнение под панелью. Рендерится только когда открыто, иначе
           перехватывало бы клики по странице. */}
       {isOpen && (
@@ -53,7 +47,7 @@ export function MobileNavPanel({ isOpen, onOpen, onClose, children }: MobileNavP
         inert={!isOpen}
       >
         <div className="flex h-header items-center justify-between px-5">
-          <span className="font-bold text-text-heading">MyApp</span>
+          <Logo />
           <button
             type="button"
             onClick={onClose}

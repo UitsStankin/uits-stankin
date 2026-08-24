@@ -1,16 +1,31 @@
 import { cn } from '@shared/lib/cn';
-import { Logo } from './ui/Logo';
+import { Logo } from '@shared/ui/Logo';
+import { useAppStore } from '@shared/store';
+import { useAuth } from '@features/auth/lib/useAuth';
+import { BurgerButton } from './ui/BurgerButton';
+import { LoginLink } from './ui/LoginLink';
 import { UserMenu } from './ui/UserMenu';
+import { useDropdownState } from './model/useDropdownState';
+import { buildProfileMenu } from './lib/profileMenu';
 import type { HeaderProps } from './Header.types';
 
 /**
- * Верхняя полоса — логотип слева, профиль справа.
+ * Верхняя полоса — логотип слева, вход или профиль справа.
  * Соответствует header-nav из горизонтального лейаута портала.
- *
- * Сборка: собственной логики пока нет, поэтому нет и model/. Он появится
- * вместе с меню профиля, когда useAuth переедет на TanStack Query.
  */
-export default function Header({ className, showUserMenu = true }: HeaderProps) {
+export default function Header({ className }: HeaderProps) {
+  const { profile, isAuthenticated, canEdit } = useAuth();
+  const menu = useDropdownState();
+  const isMobileNavOpen = useAppStore((s) => s.isMobileNavOpen);
+  const openMobileNav = useAppStore((s) => s.openMobileNav);
+
+  const items = buildProfileMenu({ canManage: canEdit });
+
+  // В оригинале: «Имя Фамилия», а если имени нет — логин.
+  const displayName = profile.firstName
+    ? `${profile.firstName} ${profile.lastName}`.trim()
+    : profile.username;
+
   return (
     <header
       className={cn(
@@ -22,11 +37,25 @@ export default function Header({ className, showUserMenu = true }: HeaderProps) 
         className
       )}
     >
-      <div className="flex items-center gap-4">
-        <Logo />
-      </div>
+      {/* Как в оригинале: на узком экране слева бургер, а логотип скрыт —
+          он показывается внутри выехавшей панели. */}
+      <BurgerButton isNavOpen={isMobileNavOpen} onClick={openMobileNav} />
+      <Logo className="hidden lg:block" />
 
-      <div className="flex items-center gap-3">{showUserMenu && <UserMenu />}</div>
+      {isAuthenticated ? (
+        <UserMenu
+          displayName={displayName}
+          email={profile.email}
+          avatarUrl={profile.avatar}
+          items={items}
+          isOpen={menu.isOpen}
+          onToggle={menu.toggle}
+          onNavigate={menu.close}
+          containerRef={menu.containerRef}
+        />
+      ) : (
+        <LoginLink />
+      )}
     </header>
   );
 }
