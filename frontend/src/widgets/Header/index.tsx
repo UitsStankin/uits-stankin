@@ -1,6 +1,8 @@
 import { cn } from '@shared/lib/cn';
+import { Logo } from '@shared/ui/Logo';
+import { useAppStore } from '@shared/store';
 import { useAuth } from '@features/auth/lib/useAuth';
-import { Logo } from './ui/Logo';
+import { BurgerButton } from './ui/BurgerButton';
 import { LoginLink } from './ui/LoginLink';
 import { UserMenu } from './ui/UserMenu';
 import { useDropdownState } from './model/useDropdownState';
@@ -14,6 +16,8 @@ import type { HeaderProps } from './Header.types';
 export default function Header({ className }: HeaderProps) {
   const { profile, isAuthenticated, canEdit } = useAuth();
   const menu = useDropdownState();
+  const isMobileNavOpen = useAppStore((s) => s.isMobileNavOpen);
+  const openMobileNav = useAppStore((s) => s.openMobileNav);
 
   const items = buildProfileMenu({ canManage: canEdit });
 
@@ -33,7 +37,10 @@ export default function Header({ className }: HeaderProps) {
         className
       )}
     >
-      <Logo />
+      {/* Как в оригинале: на узком экране слева бургер, а логотип скрыт —
+          он показывается внутри выехавшей панели. */}
+      <BurgerButton isNavOpen={isMobileNavOpen} onClick={openMobileNav} />
+      <Logo className="hidden lg:block" />
 
       {isAuthenticated ? (
         <UserMenu

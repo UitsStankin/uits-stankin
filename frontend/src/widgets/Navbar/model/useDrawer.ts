@@ -1,35 +1,36 @@
 import { useEffect, useState } from 'react';
+import { useAppStore } from '@shared/store';
 
 /**
- * Выдвижная панель: открыта или нет.
+ * Выдвижная панель мобильного меню.
  *
- * Закрывается сама при смене адреса — иначе после перехода по ссылке панель
- * осталась бы поверх страницы, на которую пользователь только что ушёл.
- * Отдельно обрабатывается Escape: панель перекрывает контент, и выход
- * с клавиатуры обязателен.
+ * Само «открыта или нет» лежит в общем сторе, потому что кнопка-бургер
+ * живёт в другом виджете — в шапке. Здесь только поведение вокруг этого
+ * флага: закрытие при смене адреса и по Escape, блокировка прокрутки фона.
  */
 export function useDrawer(pathname: string) {
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = useAppStore((s) => s.isMobileNavOpen);
+  const close = useAppStore((s) => s.closeMobileNav);
 
-  const open = () => setIsOpen(true);
-  const close = () => setIsOpen(false);
-
-  // Приём «правка состояния во время рендера» из документации React —
-  // дешевле эффекта, промежуточный кадр не показывается.
+  // Закрываем при переходе — иначе панель осталась бы поверх страницы,
+  // на которую пользователь только что ушёл. Приём «правка состояния во
+  // время рендера» из документации React: дешевле эффекта, промежуточный
+  // кадр не показывается.
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
-    if (isOpen) setIsOpen(false);
+    if (isOpen) close();
   }
 
+  // Панель перекрывает контент, выход с клавиатуры обязателен.
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') close();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   // Пока панель поверх страницы, фон не должен прокручиваться под ней.
   useEffect(() => {
@@ -41,5 +42,5 @@ export function useDrawer(pathname: string) {
     };
   }, [isOpen]);
 
-  return { isOpen, open, close };
+  return { isOpen, close };
 }

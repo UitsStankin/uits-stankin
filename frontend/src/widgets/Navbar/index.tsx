@@ -122,17 +122,14 @@ export default function Navbar({ items = NAVIGATION, className }: NavbarProps) {
     );
   };
 
+  // Ниже 992px навбара нет вовсе — только выдвижная панель, а открывает её
+  // бургер из шапки. Своей полосы под шапкой мобильная навигация не занимает,
+  // как и в оригинале.
   if (!isDesktop) {
     return (
-      <div className={cn('flex h-12 items-center bg-white px-gutter-sm', className)}>
-        <MobileNavPanel
-          isOpen={drawer.isOpen}
-          onOpen={drawer.open}
-          onClose={drawer.close}
-        >
-          {items.map((item) => renderMobileNode(item, 0))}
-        </MobileNavPanel>
-      </div>
+      <MobileNavPanel isOpen={drawer.isOpen} onClose={drawer.close}>
+        {items.map((item) => renderMobileNode(item, 0))}
+      </MobileNavPanel>
     );
   }
 
