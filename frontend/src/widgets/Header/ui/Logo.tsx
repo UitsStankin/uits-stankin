@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { cn } from '@shared/lib/cn';
 
 interface LogoProps {
@@ -5,16 +6,24 @@ interface LogoProps {
 }
 
 /**
- * Логотип в шапке.
+ * Логотип в шапке — текстовое «УИТС», как на действующем сайте.
  *
- * ЗАГЛУШКА: у портала здесь «УИТС». Меняется в части каркаса про шапку.
- *
- * Единственный настоящий логотип кафедры — public/assets/images/UITS.png,
- * но в шапку высотой 70px он не годится: 3177x2160 и подпись
- * «Управление и информатика в технических системах» в две строки капслоком.
- * На действующем сайте по той же причине стоит текстовое «УИТС», эмблема
- * пойдёт в favicon.
+ * Эмблема кафедры (public/assets/images/UITS.png) сюда не годится:
+ * 3177x2160, а высота шапки 70px — подпись «Управление и информатика
+ * в технических системах» в две строки капслоком там нечитаема.
+ * На портале по той же причине стоит текст. Эмблема пойдёт в favicon.
  */
 export function Logo({ className }: LogoProps) {
-  return <div className={cn('font-bold text-text-heading', className)}>MyApp</div>;
+  return (
+    <Link
+      to="/"
+      aria-label="УИТС — на главную"
+      className={cn(
+        'text-2xl font-bold tracking-tight text-primary transition-colors hover:text-indigo',
+        className
+      )}
+    >
+      УИТС
+    </Link>
+  );
 }
