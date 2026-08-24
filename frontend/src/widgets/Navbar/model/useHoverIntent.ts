@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 /** Задержка из оригинала: 150 мс и на открытие, и на закрытие. */
 const DEFAULT_DELAY_MS = 150;
@@ -18,17 +18,14 @@ const DEFAULT_DELAY_MS = 150;
 export function useHoverIntent(delayMs: number = DEFAULT_DELAY_MS) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const cancel = useCallback(() => {
+  const cancel = () => {
     if (timerRef.current !== undefined) clearTimeout(timerRef.current);
-  }, []);
+  };
 
-  const schedule = useCallback(
-    (action: () => void) => {
-      cancel();
-      timerRef.current = setTimeout(action, delayMs);
-    },
-    [cancel, delayMs]
-  );
+  const schedule = (action: () => void) => {
+    cancel();
+    timerRef.current = setTimeout(action, delayMs);
+  };
 
   // Таймер, доживший до размонтирования, дёрнул бы setState у мёртвого
   // компонента. Заодно снимает подвисший таймер при быстром уходе мышью.

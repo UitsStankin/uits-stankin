@@ -21,5 +21,24 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // exhaustive-deps написано до React Compiler и про него не знает.
+      // Оно требует оборачивать функции в useCallback, чтобы массив
+      // зависимостей эффекта не менялся, — но компилятор делает это сам.
+      // В его выводе видно, что и функция, и сам массив берутся из кэша:
+      //
+      //   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
+      //     t4 = [cancel];
+      //   }
+      //   useEffect(t3, t4);
+      //
+      // То есть предупреждения правила — ложные, а вечные ложные
+      // предупреждения приучают не читать вывод линтера.
+      'react-hooks/exhaustive-deps': 'off',
+
+      // Вместо него компиляторное правило: проверяет, что зависимости
+      // эффекта действительно мемоизированы.
+      'react-hooks/memoized-effect-dependencies': 'error',
+    },
   },
 ])

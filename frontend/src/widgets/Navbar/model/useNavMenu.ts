@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Какая цепочка разделов меню раскрыта.
@@ -18,22 +18,19 @@ export function useNavMenu() {
   const containerRef = useRef<HTMLElement | null>(null);
 
   /** Открыт ли `key` на глубине `depth`. */
-  const isOpen = useCallback(
-    (key: string, depth: number) => openPath[depth] === key,
-    [openPath]
-  );
+  const isOpen = (key: string, depth: number) => openPath[depth] === key;
 
   /**
    * Открыть `key` на глубине `depth`, отбросив всё, что было глубже.
    * `null` — закрыть этот уровень и всё под ним.
    */
-  const setOpenAt = useCallback((depth: number, key: string | null) => {
+  const setOpenAt = (depth: number, key: string | null) => {
     setOpenPath((prev) =>
       key === null ? prev.slice(0, depth) : [...prev.slice(0, depth), key]
     );
-  }, []);
+  };
 
-  const closeAll = useCallback(() => setOpenPath([]), []);
+  const closeAll = () => setOpenPath([]);
 
   // Клик мимо меню закрывает его. Слушатель вешается только когда есть что
   // закрывать — постоянно висящий обработчик на документе не нужен.
