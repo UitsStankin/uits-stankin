@@ -12,13 +12,14 @@ import {
   Home,
   Info,
   Landmark,
+  Library,
   List,
   Megaphone,
-  MessageSquare,
+  Microscope,
   Mic,
   Newspaper,
   Phone,
-  School,
+  ScrollText,
   Star,
   Superscript,
   User,
@@ -40,7 +41,22 @@ import type { NavItem } from '@shared/types/nav.types';
  *
  * 2. Иконки — компоненты lucide-react вместо строк с классами двух иконочных
  *    шрифтов (Feather и Line Awesome, 3.5 МБ). lucide — прямое развитие
- *    Feather, поэтому `icon-home` → `Home` соответствие один в один.
+ *    Feather, поэтому пятнадцать пунктов с `icon-*` переносятся один в один.
+ *    Девять пунктов с `la-*` — подбор по смыслу: Line Awesome происходит от
+ *    Font Awesome, там другая геометрия, точного соответствия не существует.
+ *
+ *    Четыре иконки намеренно отличаются от оригинала:
+ *      История кафедры     la-comment (речевое облачко) → ScrollText
+ *                          облачко означает комментарий, к истории отношения
+ *                          не имело — похоже, взяли первую попавшуюся
+ *      Бакалавриат         la-school (здание) → BookOpen
+ *                          рядом Магистратура с Landmark, два здания подряд
+ *                          сливались на 18px
+ *      Аспирантура         la-user-graduate (человек в мантии) → Microscope
+ *                          в lucide человека в мантии нет, а GraduationCap
+ *                          дублировал бы «Защиту ВКР»
+ *      Научные публикации  la-book (закрытая книга) → Library
+ *                          освобождает BookOpen для Бакалавриата
  *
  * 3. У групп нет `path`. В оригинале он был (`/about`, `/educational-activities`),
  *    но страниц по этим адресам не существует — группы только раскрываются.
@@ -67,7 +83,7 @@ export const NAVIGATION: readonly NavItem[] = [
         key: 'about/history',
         title: 'История кафедры',
         path: '/about/history-of-department',
-        icon: MessageSquare,
+        icon: ScrollText,
       },
       {
         key: 'about/news',
@@ -149,7 +165,7 @@ export const NAVIGATION: readonly NavItem[] = [
       {
         key: 'educational-activities/bachelor',
         title: '09.03.03 Бакалавриат',
-        icon: School,
+        icon: BookOpen,
         children: [
           {
             key: 'educational-activities/bachelor/edu-plans',
@@ -228,13 +244,13 @@ export const NAVIGATION: readonly NavItem[] = [
         key: 'scientific-activities/postgraduate',
         title: 'Аспирантура',
         path: '/scientific-activities/postgraduate',
-        icon: GraduationCap,
+        icon: Microscope,
       },
       {
         key: 'scientific-activities/publications',
         title: 'Научные публикации',
         path: '/scientific-activities/publications/main-science-page',
-        icon: BookOpen,
+        icon: Library,
       },
       {
         key: 'scientific-activities/achievements',
