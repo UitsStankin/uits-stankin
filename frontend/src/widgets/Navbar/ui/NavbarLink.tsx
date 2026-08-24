@@ -1,18 +1,23 @@
-import { memo } from 'react';
 import { Link } from 'react-router';
 import { cn } from '@shared/lib/cn';
 import type { NavItem } from '@shared/types';
 
 interface NavbarLinkProps {
   item: NavItem;
-  /** Считается родителем, а не через NavLink — иначе мемоизация бесполезна. */
+  /**
+   * Считается родителем, а не берётся из NavLink.
+   *
+   * NavLink подписался бы на контекст роутера сам, и каждая из 23 ссылок
+   * перерисовывалась бы на любой навигации. С булевым пропсом компилятор
+   * отсекает те, у которых активность не менялась.
+   */
   isActive: boolean;
   /** 0 — верхняя строка навбара, больше — внутри выпадающей панели. */
   depth: number;
   onNavigate?: () => void;
 }
 
-function NavbarLinkBase({ item, isActive, depth, onNavigate }: NavbarLinkProps) {
+export function NavbarLink({ item, isActive, depth, onNavigate }: NavbarLinkProps) {
   const Icon = item.icon;
   const isTopLevel = depth === 0;
 
@@ -43,17 +48,3 @@ function NavbarLinkBase({ item, isActive, depth, onNavigate }: NavbarLinkProps) 
     </li>
   );
 }
-
-/**
- * Ссылок в меню 23, разделов 3. Мемоизируем ссылки — тех, кого много.
- *
- * Пропсы примитивные: `item` — стабильная ссылка на объект из модуля-константы,
- * `isActive` булев, `onNavigate` приходит из useCallback с пустыми зависимостями.
- * При переходе между страницами активность меняется максимум у двух пунктов,
- * остальные сравнение пропсов отсеивает.
- *
- * Если бы вместо этого стоял NavLink из react-router, он подписался бы на
- * контекст роутера сам, и memo не спас бы: контекст меняется при каждой
- * навигации, перерисовывались бы все.
- */
-export const NavbarLink = memo(NavbarLinkBase);

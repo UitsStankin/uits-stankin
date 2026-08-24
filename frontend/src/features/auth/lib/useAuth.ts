@@ -1,6 +1,6 @@
 import { createAnonymousProfile } from '../model/profile';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 // Импорт типов и утилит из вашей существующей архитектуры
 import { 
   type Profile, 
@@ -71,7 +71,7 @@ export function useAuth() {
   }, []);
 
   // === LOGIN ===
-  const login = useCallback(async (credentials: LoginForm) => {
+  const login = async (credentials: LoginForm) => {
     setIsLoading(true);
     setError(null);
 
@@ -111,10 +111,10 @@ export function useAuth() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   // === LOGOUT ===
-  const logout = useCallback(async () => {
+  const logout = async () => {
     try {
       // === ЗДЕСЬ БУДЕТ РЕАЛЬНЫЙ ЗАПРОС К API ===
       // await api.post('/api/users/auth/logout/');
@@ -129,7 +129,7 @@ export function useAuth() {
       // Редирект на страницу входа
       window.location.href = '/auth/login';
     }
-  }, []);
+  };
 
   // === ВЫЧИСЛЯЕМЫЕ ПРАВА (Business Logic) ===
   // Эти значения пересчитываются автоматически при изменении `profile`

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Выдвижная панель: открыта или нет.
@@ -11,8 +11,8 @@ import { useCallback, useEffect, useState } from 'react';
 export function useDrawer(pathname: string) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
+  const open = () => setIsOpen(true);
+  const close = () => setIsOpen(false);
 
   // Приём «правка состояния во время рендера» из документации React —
   // дешевле эффекта, промежуточный кадр не показывается.
