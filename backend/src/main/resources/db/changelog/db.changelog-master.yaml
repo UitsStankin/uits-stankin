@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/changesets/009-teacher-card-columns.yml
   - include:
       file: db/changelog/changesets/010-teacher-card-backfill.yml
+  - include:
+      file: db/changelog/changesets/011-create-subject-tables.yml
