@@ -1,5 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 
+import { isApiError } from '@shared/api';
+
 /**
  * Единственный экземпляр клиента на всё приложение.
  *
@@ -17,6 +19,20 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5, // Данные считаются свежими 5 минут
       refetchOnWindowFocus: false, // Не обновлять при фокусе на окне
+
+      /**
+       * Повторять только то, что имеет шанс получиться со второй попытки.
+       *
+       * Ответ 4xx — это «так нельзя»: невалидная форма, протухший токен,
+       * нехватка прав, отсутствующая страница. Повтор вернёт ровно то же
+       * самое, только втрое медленнее, а на 401 ещё и растроит редирект
+       * на логин. Обрыв сети и 5xx, наоборот, повторить стоит — там
+       * `status` равен нулю или пятистам, и они уходят в общую ветку.
+       */
+      retry: (failureCount, error) => {
+        if (isApiError(error) && error.status >= 400 && error.status < 500) return false;
+        return failureCount < 2;
+      },
     },
   },
 });
