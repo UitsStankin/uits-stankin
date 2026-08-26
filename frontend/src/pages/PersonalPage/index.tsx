@@ -1,4 +1,5 @@
 import { useAuth } from '@features/auth';
+import { ChangePasswordForm, useChangePasswordForm } from '@features/change-password';
 
 import { ProfileCard } from './ui/ProfileCard';
 import { describeRoles, formatFullName } from './lib/profileFields';
@@ -14,6 +15,7 @@ import { describeRoles, formatFullName } from './lib/profileFields';
  */
 export default function PersonalPage() {
   const { profile } = useAuth();
+  const passwordForm = useChangePasswordForm();
 
   // Страница стоит за ProtectedRoute, и без профиля сюда не попасть —
   // тот сам показывает загрузку и уводит на форму входа. Но тип этого
@@ -30,6 +32,17 @@ export default function PersonalPage() {
         email={profile.email}
         avatarUrl={profile.avatar}
         roles={describeRoles(profile)}
+      />
+
+      <ChangePasswordForm
+        register={passwordForm.register}
+        onSubmit={passwordForm.onSubmit}
+        fieldErrors={passwordForm.fieldErrors}
+        formError={passwordForm.formError}
+        isSuccess={passwordForm.isSuccess}
+        isPending={passwordForm.isPending}
+        visibleFields={passwordForm.visibleFields}
+        onToggleVisibility={passwordForm.onToggleVisibility}
       />
     </div>
   );
