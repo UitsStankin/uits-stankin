@@ -6,6 +6,7 @@ import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
 import Loader from '@shared/ui/Loader';
+import { LOGIN_ROUTE } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
@@ -49,6 +50,13 @@ export const routes: RouteObject[] = [
       // === AUTH_LAYOUT_ROUTES (AuthModule) ===
       {
         index: true,
+        element: <Placeholder title="Вход — страница ещё не перенесена" />,
+      },
+      // Заглушка до F-12, но роут нужен уже сейчас: на этот путь уводит
+      // интерцептор при 401, и без него протухшая сессия приводила бы
+      // пользователя на ошибку роутера вместо формы входа.
+      {
+        path: LOGIN_ROUTE,
         element: <Placeholder title="Вход — страница ещё не перенесена" />,
       },
     ],
