@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-teacher-card-backfill
+      author: eeffeecct
+      changes:
+        - sql:
+            sql: |
+              UPDATE employee_teacher t
+              SET last_name = u.last_name,
+                  first_name = u.first_name,
+                  avatar = u.avatar
+              FROM users_user u
+              WHERE t.user_id = u.id;
+        - sql:
+            sql: |
+              UPDATE employee_teacher SET degree = NULL
+              WHERE degree IS NOT NULL AND degree NOT IN
+                ('DOCTOR_TECH', 'CANDIDATE_TECH', 'CANDIDATE_PED',
+                 'DOCTOR_PHYS_MATH', 'CANDIDATE_PHYS_MATH',
+                 'DOCTOR_ECONOM', 'CANDIDATE_ECONOM');
+              UPDATE employee_teacher SET rank = NULL
+              WHERE rank IS NOT NULL AND rank NOT IN ('READER', 'PROFESSOR');
+        - addNotNullConstraint:
+            tableName: employee_teacher
+            columnName: last_name
+            columnDataType: VARCHAR(150)
+        - addNotNullConstraint:
+            tableName: employee_teacher
+            columnName: first_name
+            columnDataType: VARCHAR(150)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: employee_teacher
+            columnName: first_name
+            columnDataType: VARCHAR(150)
+        - dropNotNullConstraint:
+            tableName: employee_teacher
+            columnName: last_name
+            columnDataType: VARCHAR(150)
+        - sql:
+            sql: |
+              UPDATE employee_teacher SET last_name = NULL,
+                first_name = NULL, avatar = NULL;

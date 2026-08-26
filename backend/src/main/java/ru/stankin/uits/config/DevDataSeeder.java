@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.staff.enums.TeacherDegree;
+import ru.stankin.uits.module.staff.enums.TeacherRank;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
@@ -87,26 +89,46 @@ public class DevDataSeeder implements CommandLineRunner {
 
         teacherRepository.save(Teacher.builder()
                 .user(teacherUser1)
-                .degree("кандидат технических наук")
-                .rank("доцент")
+                .lastName("Иванова")
+                .firstName("Мария")
+                .patronymic("Петровна")
+                .degree(TeacherDegree.CANDIDATE_TECH)
+                .rank(TeacherRank.READER)
                 .position("доцент кафедры информационных технологий")
                 .bio("Читает курсы по базам данных и проектированию информационных систем.")
                 .phoneNumber("+7 (499) 000-00-01")
+                .email("m.ivanova@stankin.local")
                 .education("МГТУ «СТАНКИН», факультет информационных технологий")
                 .qualification("инженер-программист")
+                .experience(15)
                 .professionalExperience(12)
                 .build());
 
         teacherRepository.save(Teacher.builder()
                 .user(teacherUser2)
-                .degree("доктор технических наук")
-                .rank("профессор")
+                .lastName("Петров")
+                .firstName("Сергей")
+                .patronymic("Николаевич")
+                .degree(TeacherDegree.DOCTOR_TECH)
+                .rank(TeacherRank.PROFESSOR)
                 .position("заведующий кафедрой информационных технологий")
                 .bio("Область научных интересов — автоматизация технологических процессов.")
                 .phoneNumber("+7 (499) 000-00-02")
+                .email("s.petrov@stankin.local")
                 .education("МГТУ им. Н. Э. Баумана")
                 .qualification("инженер")
+                .experience(30)
                 .professionalExperience(25)
+                .build());
+
+        teacherRepository.save(Teacher.builder()
+                .lastName("Сидоров")
+                .firstName("Олег")
+                .patronymic("Иванович")
+                .rank(TeacherRank.READER)
+                .position("приглашённый преподаватель")
+                .bio("Ведёт практикум по промышленной разработке.")
+                .professionalExperience(8)
                 .build());
 
         // createdAt задаётся явно, чтобы порядок в списке был предсказуемым

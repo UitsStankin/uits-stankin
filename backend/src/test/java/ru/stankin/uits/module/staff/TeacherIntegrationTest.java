@@ -41,6 +41,8 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
 
         Teacher teacher = Teacher.builder()
                 .user(user)
+                .lastName(lastName)
+                .firstName(firstName)
                 .position("доцент")
                 .build();
         teacherRepository.save(teacher);
