@@ -11,3 +11,7 @@ databaseChangeLog:
       file: db/changelog/changesets/005-add-news-index.yml
   - include:
       file: db/changelog/changesets/006-add-news-author-fk-index.yml
+  - include:
+      file: db/changelog/changesets/007-create-editable-page.yml
+  - include:
+      file: db/changelog/changesets/008-seed-editable-pages.yml

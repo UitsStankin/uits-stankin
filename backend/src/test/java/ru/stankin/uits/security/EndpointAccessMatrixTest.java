@@ -24,6 +24,7 @@ import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
+import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.entity.User;
 
@@ -133,6 +134,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/news", ANYONE),
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
+            controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
@@ -142,6 +144,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/news", EDITORS),
             controller(HttpMethod.PUT, "/api/news/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/news/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/pages", EDITORS),
+            controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
 
             infrastructure(HttpMethod.GET, "/media/{key}", ANYONE),
@@ -157,6 +161,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private static final List<String> NOT_OUR_ENDPOINTS = List.of("/error", "/v3/api-docs", "/swagger-ui");
 
     private static final String MEDIA_KEY = "matrix/probe.txt";
+    private static final String PAGE_SLUG = "home-before";
+    private static final String PAGE_TITLE = "Главная: блок над новостями";
 
     static Stream<Arguments> cells() {
         return MATRIX.stream()
@@ -266,7 +272,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private ResponseEntity<String> call(Endpoint endpoint, Fixture fixture, String token) {
         String path = endpoint.path()
                 .replace("{id}", String.valueOf(fixture.newsId()))
-                .replace("{key}", MEDIA_KEY);
+                .replace("{key}", MEDIA_KEY)
+                .replace("{slug}", PAGE_SLUG);
 
         HttpHeaders headers = new HttpHeaders();
 
@@ -291,6 +298,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                     json(headers, new AuthController.LoginRequest(fixture.user().getUsername(), TEST_PASSWORD));
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
+            case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
             case "POST /api/files" -> multipart(headers);
             default -> new HttpEntity<>(headers);
         };
@@ -332,6 +340,13 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .postType("news")
                 .content("Содержимое")
                 .display(true)
+                .build();
+    }
+
+    private EditablePageRequestDto pageRequest() {
+        return EditablePageRequestDto.builder()
+                .title(PAGE_TITLE)
+                .text("")
                 .build();
     }
 
