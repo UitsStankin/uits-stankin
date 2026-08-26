@@ -1,0 +1,57 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-create-subject-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: subject_subject
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_subject_name
+              - column:
+                  name: description
+                  type: TEXT
+        - createTable:
+            tableName: employee_teacher_subjects
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: teacher_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_teacher_subjects_teacher
+                    references: employee_teacher(id)
+              - column:
+                  name: subject_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_teacher_subjects_subject
+                    references: subject_subject(id)
+        - addUniqueConstraint:
+            tableName: employee_teacher_subjects
+            columnNames: teacher_id, subject_id
+            constraintName: uq_teacher_subject
+        - createIndex:
+            tableName: employee_teacher_subjects
+            indexName: idx_teacher_subjects_subject
+            columns:
+              - column:
+                  name: subject_id

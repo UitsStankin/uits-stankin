@@ -5,9 +5,9 @@
 >
 > ⚠️ Разбор §5–§6 — снимок кода **до Фазы 0**: обработки JWT-ошибок в фильтре и CORS
 > по белому списку в нём нет.
-> §7 сверен с кодом 2026-08-26 и покрывает 41 файл из 50, включая модули Фазы 1 —
-> `common/storage` (T-22) и `module/pages` (T-25); что осталось за рамками,
-> перечислено в его шапке. §9 переписан 2026-08-26: прежняя редакция описывала
+> §7 сверен с кодом 2026-08-27 и покрывает 52 файла из 62, включая модули Фазы 1 —
+> `common/storage` (T-22), `module/pages` (T-25) и расширенный `module/staff` (T-26);
+> что осталось за рамками, перечислено в его шапке. §9 переписан 2026-08-26: прежняя редакция описывала
 > фронт до Фазы 0. Актуальные статусы дефектов — в таблице §10.
 >
 > Связанные документы: [ARCHITECTURE.md](ARCHITECTURE.md) — принятые решения и почему;
@@ -445,9 +445,9 @@ BCrypt — намеренно медленный хеш с солью внутр
 
 ## 7. Разбор файлов бэкенда по модулям
 
-> Разобран 41 файл из 50 в `src/main/java` и 4 тестовых класса из 16. Число в заголовке
+> Разобрано 52 файла из 62 в `src/main/java` и 4 тестовых класса из 17. Число в заголовке
 > раздела — сколько файлов в нём описано; где описано не всё, стоит «X из Y».
-> Вне разбора остались: `common/PageResponseDto`, четыре класса `common/exception`,
+> Вне разбора остались: `common/PageResponseDto`, пять классов `common/exception`,
 > `config/DevDataSeeder`, `config/OpenApiConfig`, `security/JwtAuthenticationEntryPoint`,
 > `security/RestAccessDeniedHandler` и все тесты, кроме четырёх ниже.
 
@@ -516,16 +516,31 @@ snake_case `access_token` из старого Angular-контракта бол�
 | `dto/NewsRequestDto.java` | `@Pattern(regexp = "news\|announcements")` на `postType` — единственная защита от произвольной строки в этом поле, enum'а по-прежнему нет. `display` объявлен `Boolean` с `@NotNull`, а не `boolean`: примитив молча получил бы `false` при отсутствии поля в запросе, а так клиент обязан решить явно. `@Size(max = 100)` на `previewImage` совпадает с длиной колонки под ключ. |
 | `dto/NewsResponseDto.java` | Наружу отдаётся `authorName` строкой, а не вложенный объект юзера. Превью приезжает двумя полями: `previewImage` — ключ для последующего `PUT`, `previewImageUrl` — готовый адрес для `<img>`, собранный маппером. |
 
-### module/staff (6 файлов)
+### module/staff (17 файлов)
+
+Модули 7 и 9 паритета, T-26. Ключевое решение: **карточка живёт отдельно
+от учётной записи** — ФИО, отчество и аватар хранятся в `employee_teacher`,
+`user_id` необязателен, карточка заводится без логина (как в Django-оригинале).
+Роль `teacher` впервые получила собственные ручки — `GET`/`PUT /api/teachers/me`.
+Контракт — [API.md](API.md), раздел «Преподаватели».
 
 | Файл | Что делает |
 |---|---|
-| `entity/Teacher.java` | Таблица `employee_teacher`, `@OneToOne` на `User`. Модель **беднее оригинала**: нет отчества, предметов, enum-званий, расписания экзаменов (см. MIGRATION). |
-| `repository/TeacherRepository.java` | **Самое интересное место в проекте с точки зрения производительности.** `findAll(Pageable)` переопределён с `@EntityGraph(attributePaths = {"user"})`. Без него: 1 запрос за преподавателями + по одному за каждым юзером = **проблема N+1**. С `@EntityGraph` Hibernate делает один JOIN. Приём стоит изучить — он повторён в `NewsRepository` и понадобится в каждом списочном эндпоинте. |
-| `service/TeacherService.java` | `findAll(Pageable)` → маппер → общая обёртка `PageResponseDto`. Своей логики нет. |
-| `controller/TeacherController.java` | Только `GET /api/public/teachers`, постранично. Сортировка по умолчанию — `user.lastName`, `user.firstName`, `id`: список людей без явного порядка выглядел бы случайным, а `id` в конце делает его однозначным при полных тёзках. CRUD нет — модуль частичный. |
-| `mapper/TeacherMapper.java` | Разворачивает поля вложенного `user` в плоский DTO через `@Mapping(source = "user.firstName", ...)`. |
-| `dto/TeacherResponseDto.java` | Плоская структура: поля юзера + поля преподавателя. |
+| `entity/Teacher.java` | Таблица `employee_teacher`. ФИО и аватар — собственные колонки, `@OneToOne` на `User` стал необязательным. `degree`/`rank` — enum'ы с `@Enumerated(EnumType.STRING)`: без `STRING` Hibernate писал бы порядковый номер, и вставка константы в середину списка молча перенумеровала бы всю таблицу. `subjects` — однонаправленная `@ManyToMany` через `employee_teacher_subjects`, **без каскадов**: удаление преподавателя чистит связку, но не сами дисциплины. `@OrderBy("name")` сортирует коллекцию при загрузке. |
+| `entity/Subject.java` | Таблица `subject_subject`: `name` (уникален, `uq_subject_name` в БД) и `description`. Обратной ссылки на преподавателей нет — вопрос «кто ведёт дисциплину» пока никому не нужен. |
+| `enums/TeacherDegree.java`, `enums/TeacherRank.java` | Коды степеней и званий **буква в букву со старым порталом** (включая неудачный `READER` вместо `DOCENT`): совпадение кодов делает перенос данных копированием колонки. Подписей нет — их рисует фронт. Пакет `enums`, а не `entity`: enum'ы нужны и в DTO, а `ArchitectureTest` запрещает DTO зависеть от `..entity..`. |
+| `repository/TeacherRepository.java` | `@EntityGraph` на `findAll` больше нет: карточка списка не читает `user`, N+1 исчезла by design, JOIN стал лишним. `findByUserUsername` — поиск своей карточки по username из токена. |
+| `repository/SubjectRepository.java` | Пустой интерфейс — хватает наследников `JpaRepository`. |
+| `service/TeacherService.java` | Список, детальная, CRUD и `/me`. Аватар — по схеме обложки новости (T-23): ключ проверяется через `fileStorage.exists`, старый файл удаляется **после коммита** через `TransactionSynchronization`. Неизвестные `subjectIds` → `InvalidRequestException` → 400. Текущий пользователь определяется по `authentication.getName()` (username строкой), а не через объект `User` — иначе пришлось бы расширять закрытый список допущенных к `User` в `ArchitectureTest` (правило 4а). В `updateMyCard` состав дисциплин не трогается — по контракту преподаватель их не правит. |
+| `service/SubjectService.java` | Список и создание. Обработки дубля в коде нет намеренно: `uq_subject_name` кидает `DataIntegrityViolationException`, а её маппинг на 409 уже есть в `GlobalExceptionHandler`. |
+| `controller/TeacherController.java` | Семь ручек: две публичные (список — сортировка `lastName`, `firstName`, `id`; детальная с дисциплинами), CRUD под `ADMIN`/`MODERATOR` (`POST` — `201` + `Location`), `GET`/`PUT /api/teachers/me` под `hasRole('TEACHER')`. Литерал `me` в пути выигрывает у шаблона `{id}` — это штатное поведение Spring MVC. |
+| `controller/SubjectController.java` | `GET`/`POST /api/subjects` под `ADMIN`/`MODERATOR` — словарь для формы карточки. |
+| `mapper/TeacherMapper.java` | Абстрактный класс, как `NewsMapper`: `FileStorage` собирает `avatarUrl` из ключа. Дисциплины в детальный DTO сортируются `@Named`-методом по имени — на `@OrderBy` сущности полагаться нельзя: после `PUT` в той же транзакции коллекция в памяти ещё не отсортирована базой. `toEntity`/`updateEntity` игнорируют `id`, `user`, `subjects`. |
+| `mapper/SubjectMapper.java` | Один метод `toDto`. |
+| `dto/TeacherResponseDto.java` | Короткая карточка списка: ФИО, должность, коды `degree`/`rank`, `avatarUrl`. Полей учётной записи больше нет. |
+| `dto/TeacherDetailsResponseDto.java` | Полная карточка: контакты, стажи, тексты, ссылки на расписания экзаменов, `subjects`. |
+| `dto/TeacherRequestDto.java` | Общее тело `POST`/`PUT`/`PUT me`. `degree`/`rank` типизированы enum'ами — неизвестный код валит разбор JSON в 400 до контроллера. `subjectIds` — только для модераторских ручек, в `/me` игнорируется сервисом. |
+| `dto/SubjectDto.java`, `dto/SubjectRequestDto.java` | `{id, name}` наружу и `{name}` на создание. |
 
 ### module/pages (7 файлов)
 

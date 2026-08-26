@@ -25,6 +25,8 @@ import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
+import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
+import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.entity.User;
 
@@ -124,6 +126,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private static final Set<Actor> AUTHENTICATED =
             EnumSet.of(Actor.USER, Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> EDITORS = EnumSet.of(Actor.MODERATOR, Actor.ADMIN);
+    private static final Set<Actor> TEACHERS = EnumSet.of(Actor.TEACHER);
 
     /**
      * Кто и куда имеет право. Третья колонка — те, кого ручка обязана пропустить
@@ -134,10 +137,14 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/news", ANYONE),
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
+            controller(HttpMethod.GET, "/api/public/teachers/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
+
+            controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
+            controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
 
             controller(HttpMethod.GET, "/api/news", EDITORS),
             controller(HttpMethod.GET, "/api/news/{id}", EDITORS),
@@ -147,6 +154,11 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers", EDITORS),
+            controller(HttpMethod.PUT, "/api/teachers/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/teachers/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/subjects", EDITORS),
+            controller(HttpMethod.POST, "/api/subjects", EDITORS),
 
             infrastructure(HttpMethod.GET, "/media/{key}", ANYONE),
             infrastructure(HttpMethod.GET, "/actuator/health", ANYONE)
@@ -299,6 +311,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
+            case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
+                    json(headers, teacherRequest());
+            case "POST /api/subjects" -> json(headers, subjectRequest());
             case "POST /api/files" -> multipart(headers);
             default -> new HttpEntity<>(headers);
         };
@@ -347,6 +362,20 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         return EditablePageRequestDto.builder()
                 .title(PAGE_TITLE)
                 .text("")
+                .build();
+    }
+
+    private TeacherRequestDto teacherRequest() {
+        return TeacherRequestDto.builder()
+                .lastName("Матрицын")
+                .firstName("Тест")
+                .position("доцент")
+                .build();
+    }
+
+    private SubjectRequestDto subjectRequest() {
+        return SubjectRequestDto.builder()
+                .name("Матричная дисциплина")
                 .build();
     }
 

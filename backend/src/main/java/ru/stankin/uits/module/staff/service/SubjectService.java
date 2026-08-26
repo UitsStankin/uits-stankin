@@ -1,0 +1,35 @@
+package ru.stankin.uits.module.staff.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.staff.dto.SubjectDto;
+import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
+import ru.stankin.uits.module.staff.entity.Subject;
+import ru.stankin.uits.module.staff.mapper.SubjectMapper;
+import ru.stankin.uits.module.staff.repository.SubjectRepository;
+
+@Service
+@RequiredArgsConstructor
+public class SubjectService {
+
+    private final SubjectRepository subjectRepository;
+    private final SubjectMapper subjectMapper;
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<SubjectDto> getAllSubjects(Pageable pageable) {
+        return PageResponseDto.from(subjectRepository.findAll(pageable)
+                .map(subjectMapper::toDto));
+    }
+
+    @Transactional
+    public SubjectDto createSubject(SubjectRequestDto request) {
+        Subject subject = Subject.builder()
+                .name(request.getName())
+                .build();
+
+        return subjectMapper.toDto(subjectRepository.save(subject));
+    }
+}
