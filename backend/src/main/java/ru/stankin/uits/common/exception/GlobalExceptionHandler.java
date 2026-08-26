@@ -94,6 +94,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
+        return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @Override
     protected @Nullable ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
                                                                                     HttpHeaders headers,
