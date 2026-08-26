@@ -1,5 +1,7 @@
 import { Command, LogOut, User, type LucideIcon } from 'lucide-react';
 
+import { PERSONAL_ROUTE } from '@shared/config/routes';
+
 interface ProfileMenuItemBase {
   key: string;
   title: string;
@@ -48,7 +50,7 @@ export function buildProfileMenu({
       key: 'profile',
       kind: 'link',
       title: 'Личный кабинет',
-      path: '/corp/personal',
+      path: PERSONAL_ROUTE,
       icon: User,
     },
   ];
