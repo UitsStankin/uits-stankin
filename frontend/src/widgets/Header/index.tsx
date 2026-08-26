@@ -14,17 +14,19 @@ import type { HeaderProps } from './Header.types';
  * Соответствует header-nav из горизонтального лейаута портала.
  */
 export default function Header({ className }: HeaderProps) {
-  const { profile, isAuthenticated, canEdit } = useAuth();
+  const { profile, canEdit } = useAuth();
   const menu = useDropdownState();
   const isMobileNavOpen = useAppStore((s) => s.isMobileNavOpen);
   const openMobileNav = useAppStore((s) => s.openMobileNav);
 
   const items = buildProfileMenu({ canManage: canEdit });
 
-  // В оригинале: «Имя Фамилия», а если имени нет — логин.
-  const displayName = profile.firstName
-    ? `${profile.firstName} ${profile.lastName}`.trim()
-    : profile.username;
+  // В оригинале: «Имя Фамилия», а если имени нет — логин. Склейка через
+  // filter: в контракте имя и фамилия по отдельности могут быть `null`,
+  // и шаблонная строка написала бы в шапке «Demo null».
+  const displayName = profile
+    ? [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.username
+    : '';
 
   return (
     <header
@@ -42,7 +44,7 @@ export default function Header({ className }: HeaderProps) {
       <BurgerButton isNavOpen={isMobileNavOpen} onClick={openMobileNav} />
       <Logo className="hidden lg:block" />
 
-      {isAuthenticated ? (
+      {profile ? (
         <UserMenu
           displayName={displayName}
           email={profile.email}

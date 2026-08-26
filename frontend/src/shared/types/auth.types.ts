@@ -1,42 +1,90 @@
-export interface TelegramUser {
-  id: number,
-  userId: number,
-  username: string,
-  chatId: number,
-  assignedUser: number
-}
+/**
+ * Профиль пользователя и тела ручек аутентификации.
+ *
+ * Формы здесь описывают **контракт Spring** (`UserResponseDto`,
+ * `AuthController.LoginRequest/LoginResponse`, `ChangePasswordRequest`),
+ * а не то, что отдавал dj-rest-auth. Прежняя версия файла была скопирована
+ * из Angular-оригинала вместе с джанговскими `pk`, `isSuperuser`,
+ * `isModerator`, `isStaff` и `isAnonymous` — контракт разошёлся бы
+ * с реальностью на первом же запросе к `/api/users/profile`.
+ */
 
-export interface Profile {
-  pk: number;
-  avatar: string;
+/**
+ * Текущий пользователь — ответ `GET /api/users/profile`.
+ *
+ * Роли приходят тремя булевыми полями **без префикса `is`** (docs/API.md,
+ * «Нюансы, которые из Swagger не видны»): в базе колонки остались
+ * джанговскими (`is_superuser`), но наружу Spring отдаёт `superuser`.
+ *
+ * Чего в контракте нет и не надо ждать:
+ *
+ * - `isStaff` — «доступ в админку Django». Колонка `is_staff` в таблице
+ *   ещё есть, но в DTO её нет: собственная админка (F-4x) правами
+ *   не пользуется, у неё свои — админ или модератор.
+ * - `isAnonymous` — джанговский `AnonymousUser`. В новом контракте
+ *   неавторизованный пользователь не получает профиль вовсе: `/profile`
+ *   отвечает `401`. Поэтому «не вошёл» — это отсутствие профиля
+ *   (`Profile | null`), а не профиль с поднятым флагом. Фальшивый объект
+ *   опасен ровно тем, что выглядит как настоящий: любое место, забывшее
+ *   проверить флаг, покажет анонима как вошедшего.
+ * - `telegramCode` и `telegramUser` — модуля Telegram на бэкенде нет
+ *   (матрица паритета, п. 20). Формы лежат в `planned.types.ts`.
+ */
+export type Profile = {
+  id: number;
+  /** Логин. Единственное поле имени, которое гарантированно непустое. */
+  username: string;
+  /** Может не быть заполнено — тогда `null`. */
+  firstName: string | null;
+  lastName: string | null;
   email: string | null;
-  firstName: string;
-  lastName: string;
-  username: string;
-  isSuperuser: boolean;
-  isModerator: boolean;
-  isTeacher: boolean;
-  isStaff: boolean;
-  isAnonymous: boolean;
-  telegramCode: string | null;
-  telegramUser: TelegramUser | null;
-}
-
-export interface LoginForm {
-  email: string;
-  password: string;
-}
-
-export interface RegisterForm {
-  email: string;
-  password: string;
-  username: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-export type ListUsersParams = {
-  is_moderator?: boolean;
-  is_teacher?: boolean;
+  /** Путь к файлу аватара; `null`, если не загружен. */
+  avatar: string | null;
+  /**
+   * Владелец карточки преподавателя. Прав не добавляет: на закрытых ручках
+   * преподаватель получает `403` наравне с обычным пользователем.
+   */
+  teacher: boolean;
+  /** Модератор: управление новостями и загрузка файлов. */
+  moderator: boolean;
+  /** Суперпользователь. Сегодня по правам неотличим от модератора. */
+  superuser: boolean;
 };
 
+/**
+ * Тело `POST /api/users/auth/login`.
+ *
+ * Вход по **логину**, а не по почте: у прежней формы поле называлось `email`,
+ * и с ним запрос не прошёл бы валидацию.
+ */
+export type LoginRequest = {
+  username: string;
+  password: string;
+};
+
+/**
+ * Ответ логина. Токен живёт 24 часа, refresh-ручки пока нет — по истечении
+ * суток пользователь логинится заново (docs/API.md, «Планируемые изменения»).
+ */
+export type LoginResponse = {
+  accessToken: string;
+};
+
+/**
+ * Тело `POST /api/users/change-password`. Успех — `200` с пустым телом.
+ *
+ * Неверный старый пароль приходит как `400`, а не `401`: это ошибка формы,
+ * из личного кабинета на логин не выкидывает.
+ */
+export type ChangePasswordRequest = {
+  oldPassword: string;
+  /** Минимум 8 символов — проверяется и на бэкенде. */
+  newPassword: string;
+};
+
+/*
+ * Регистрации в контракте нет: `AuthController` знает только `/login`,
+ * учётные записи заводит администратор. Поэтому прежние `RegisterForm`
+ * и `ListUsersParams` (с джанговскими `is_moderator`, `is_teacher`
+ * в snake_case) удалены, а не переписаны — им не соответствует ни одна ручка.
+ */
