@@ -4,12 +4,10 @@
 > Написан 2026-07-21 после четырёхмесячного перерыва. Читается сверху вниз за один заход.
 >
 > ⚠️ Разбор §5–§6 — снимок кода **до Фазы 0**: обработки JWT-ошибок в фильтре и CORS
-> по белому списку в нём нет. В §7 часть пометок тоже устарела: дефекты D-02, D-08 и D-09
-> в §10 уже закрыты, а строки разбора описывают их как действующие, и `@Size`
-> в `NewsRequestDto` давно 255, а не 225.
-> §7 дополнен модулями Фазы 1 — `common/storage` (T-22) и `module/pages` (T-25) —
-> и покрывает 41 файл из 50; что осталось за рамками, перечислено в его шапке.
-> Актуальные статусы дефектов — в таблице §10.
+> по белому списку в нём нет.
+> §7 сверен с кодом 2026-08-26 и покрывает 41 файл из 50, включая модули Фазы 1 —
+> `common/storage` (T-22) и `module/pages` (T-25); что осталось за рамками,
+> перечислено в его шапке. Актуальные статусы дефектов — в таблице §10.
 >
 > Связанные документы: [ARCHITECTURE.md](ARCHITECTURE.md) — принятые решения и почему;
 > [MIGRATION.md](MIGRATION.md) — матрица паритета со старым порталом;
@@ -448,8 +446,7 @@ BCrypt — намеренно медленный хеш с солью внутр
 > раздела — сколько файлов в нём описано; где описано не всё, стоит «X из Y».
 > Вне разбора остались: `common/PageResponseDto`, четыре класса `common/exception`,
 > `config/DevDataSeeder`, `config/OpenApiConfig`, `security/JwtAuthenticationEntryPoint`,
-> `security/RestAccessDeniedHandler`, changeset-файлы 004–008 и все тесты,
-> кроме четырёх ниже.
+> `security/RestAccessDeniedHandler` и все тесты, кроме четырёх ниже.
 
 ### Корень и security (6 из 8 файлов)
 
@@ -485,42 +482,45 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 
 ### module/auth (1 файл)
 
-**`AuthController`** — `POST /api/users/auth/login`. Внутри `record LoginRequest/LoginResponse`
+**`AuthController`** — `POST /api/users/auth/login`. `record LoginRequest/LoginResponse`
 объявлены прямо в классе-контроллере (для одного эндпоинта нормально, при росте — вынести в `dto/`).
-Поле ответа названо `access_token` в snake_case — совместимость со старым Angular-фронтом.
+Пользователь берётся из результата `authenticate()`, а не читается из БД повторно: один SELECT
+на логин вместо двух (D-04). Перед выдачей токена вызывается `updateLastLogin` — колонка
+`last_login` перестала быть мёртвой (D-05). Поле ответа — `accessToken` в camelCase;
+snake_case `access_token` из старого Angular-контракта больше не отдаётся.
 
 ### module/user (7 файлов)
 
 | Файл | Что делает |
 |---|---|
 | `entity/User.java` | Таблица `users_user` — **имя из Django**, чтобы данные переехали без переименований. Роли — булевы колонки (`is_superuser`, `is_moderator`, `is_teacher`), тоже наследие Django. `@PrePersist onCreate()` проставляет `dateJoined`, если не задан. `OffsetDateTime`, т.к. в Postgres колонка `timestamp with time zone`. |
-| `repository/UserRepository.java` | `findByUsername` — Spring Data **генерит SQL из имени метода**. Убрать метод — сломается логин. |
-| `service/UserService.java` | `changePassword`: проверяет старый пароль через `matches()`, хеширует новый, сохраняет. Кидает `BadCredentialsException` — из-за отсутствия advice это превращается в голый 403 (дефект D-02). |
+| `repository/UserRepository.java` | `findByUsername` — Spring Data **генерит SQL из имени метода**. Убрать метод — сломается логин. Второй метод, `updateLastLogin`, написан руками: `@Modifying` + `@Query` пишут одну колонку точечным UPDATE, не поднимая сущность в память. |
+| `service/UserService.java` | `changePassword` перечитывает пользователя по id: `@AuthenticationPrincipal` отдаёт объект, собранный при разборе токена, и он не managed — правки на нём в БД не уедут. Дальше сверка старого пароля через `matches()` и `setPassword` без `save()` — работает dirty checking внутри `@Transactional`. Неверный старый пароль — `InvalidOldPasswordException`, advice отдаёт `400` с ProblemDetail. `updateLastLogin` вызывается из `AuthController` при успешном логине. |
 | `controller/UserController.java` | `GET /api/users/profile`, `POST /api/users/change-password`. Показательный пример `@AuthenticationPrincipal`. |
 | `mapper/UserMapper.java` | Один метод `toDto`. Именно он не пускает `password` в JSON. |
 | `dto/UserResponseDto.java` | Что отдаём наружу. Пароля здесь нет — и это не случайность. |
-| `dto/ChangePasswordRequest.java` | `@NotBlank`, `@Size(min=6)` — работают только благодаря `@Valid` в контроллере. Убрать `@Valid` — аннотации станут декорацией. |
+| `dto/ChangePasswordRequest.java` | `@NotBlank` на оба поля и `@Size(min = 8)` на новый пароль — работают только благодаря `@Valid` в контроллере. Убрать `@Valid` — аннотации станут декорацией. Сообщения написаны по-русски, в отличие от `NewsRequestDto` и `EditablePageRequestDto`. |
 
 ### module/news (7 файлов)
 
 | Файл | Что делает |
 |---|---|
-| `entity/NewsPost.java` | Таблица `news_post`. `@ManyToOne(fetch = LAZY)` на `author` = внешний ключ `author_id`, юзер подгружается при первом обращении к полю. `postType` — строка `"news"`/`"announcements"`; по-хорошему enum (задача паритета). |
-| `repository/NewsRepository.java` | `findAllByDisplayTrueOrderByCreatedAtDesc()` — весь фильтр и сортировка закодированы в **имени метода**, SQL пишет Spring Data. |
-| `service/NewsService.java` | `createNews` берёт автора из `SecurityContextHolder` через `getCurrentUser()` с развёрнутыми проверками. |
-| `controller/NewsController.java` | `GET /api/public/news` (всем) и `POST /api/news` под `@PreAuthorize("hasAnyRole('ADMIN','MODERATOR')")`. |
-| `mapper/NewsMapper.java` | `toDto` склеивает `authorName` через `expression = "java(...)"`. ⚠️ Упадёт с NPE, если у автора `firstName == null`. `toEntity` явно игнорирует `id`, `createdAt`, `author` — их нельзя задать снаружи. |
-| `dto/NewsRequestDto.java` | ⚠️ `@Size(max = 225)` на `shortDescription` — вероятная опечатка, в БД колонка `TEXT`, а в старой схеме было 255. |
-| `dto/NewsResponseDto.java` | Наружу отдаётся `authorName` строкой, а не вложенный объект юзера. |
+| `entity/NewsPost.java` | Таблица `news_post`. `@ManyToOne(fetch = LAZY)` на `author` = внешний ключ `author_id`, юзер подгружается при первом обращении к полю — списки поэтому читаются через `@EntityGraph` (см. репозиторий). `postType` — строка `"news"`/`"announcements"`; по-хорошему enum (задача паритета). `previewImage` хранит **ключ** файла из `common/storage`, а не URL. `display` по умолчанию `true`, `createdAt` проставляет `@PrePersist`. |
+| `repository/NewsRepository.java` | `findAllByDisplayTrue(Pageable)` — фильтр закодирован в **имени метода**, сортировка и размер страницы приходят из `Pageable`, SQL пишет Spring Data. Все четыре метода помечены `@EntityGraph(attributePaths = {"author"})`, включая переопределённые `findAll` и `findById` из `JpaRepository`: без этого каждый список новостей давал бы N+1 запрос за авторами. |
+| `service/NewsService.java` | Полный CRUD плюс три вещи, которых не видно снаружи. Автор берётся из `SecurityContextHolder` через `getCurrentUser()` с развёрнутыми проверками. `content` прогоняется через `Jsoup.clean` по белому списку `Safelist.relaxed()` — поле уходит в браузер как разметка, и без чистки модератор (или тот, кто угнал его учётку) положил бы туда скрипт (T-21). Ключ превью проверяется через `fileStorage.exists`, иначе в базу уедет ссылка на несуществующий файл (T-23). Старый файл удаляется **после коммита** через `TransactionSynchronization`: диск транзакцию не откатывает, и удаление до коммита при откате оставило бы в базе ключ уже несуществующего файла. |
+| `controller/NewsController.java` | Семь ручек. Публичные — `GET /api/public/news` (постранично, `sort = createdAt DESC` по умолчанию) и `GET /api/public/news/{id}`, обе отдают только `display = true`. Остальные — список, чтение, `POST`, `PUT`, `DELETE` — под `@PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")` и видят скрытые новости. `POST` отвечает `201` с заголовком `Location` на созданную новость. |
+| `mapper/NewsMapper.java` | Не интерфейс, а **абстрактный класс**: ему нужен `FileStorage`, чтобы собрать `previewImageUrl` из ключа. Инъекция в поле через `@Autowired` — единственная в проекте, и она вынужденная: MapStruct генерит наследника с конструктором без аргументов. `authorName` собирается `@Named`-методом с фильтрацией null и пустых строк (D-09), `toEntity` и `updateEntity` игнорируют `id`, `createdAt`, `author` — их нельзя задать снаружи. |
+| `dto/NewsRequestDto.java` | `@Pattern(regexp = "news\|announcements")` на `postType` — единственная защита от произвольной строки в этом поле, enum'а по-прежнему нет. `display` объявлен `Boolean` с `@NotNull`, а не `boolean`: примитив молча получил бы `false` при отсутствии поля в запросе, а так клиент обязан решить явно. `@Size(max = 100)` на `previewImage` совпадает с длиной колонки под ключ. |
+| `dto/NewsResponseDto.java` | Наружу отдаётся `authorName` строкой, а не вложенный объект юзера. Превью приезжает двумя полями: `previewImage` — ключ для последующего `PUT`, `previewImageUrl` — готовый адрес для `<img>`, собранный маппером. |
 
 ### module/staff (6 файлов)
 
 | Файл | Что делает |
 |---|---|
 | `entity/Teacher.java` | Таблица `employee_teacher`, `@OneToOne` на `User`. Модель **беднее оригинала**: нет отчества, предметов, enum-званий, расписания экзаменов (см. MIGRATION). |
-| `repository/TeacherRepository.java` | **Самое интересное место в проекте с точки зрения производительности.** `findAll()` переопределён с `@EntityGraph(attributePaths = {"user"})`. Без него: 1 запрос за преподавателями + по одному за каждым юзером = **проблема N+1**. С `@EntityGraph` Hibernate делает один JOIN. Приём стоит изучить — он понадобится в каждом списочном эндпоинте. |
-| `service/TeacherService.java` | Просто `findAll()` → маппер. |
-| `controller/TeacherController.java` | Только `GET /api/public/teachers`. CRUD нет — модуль частичный. |
+| `repository/TeacherRepository.java` | **Самое интересное место в проекте с точки зрения производительности.** `findAll(Pageable)` переопределён с `@EntityGraph(attributePaths = {"user"})`. Без него: 1 запрос за преподавателями + по одному за каждым юзером = **проблема N+1**. С `@EntityGraph` Hibernate делает один JOIN. Приём стоит изучить — он повторён в `NewsRepository` и понадобится в каждом списочном эндпоинте. |
+| `service/TeacherService.java` | `findAll(Pageable)` → маппер → общая обёртка `PageResponseDto`. Своей логики нет. |
+| `controller/TeacherController.java` | Только `GET /api/public/teachers`, постранично. Сортировка по умолчанию — `user.lastName`, `user.firstName`, `id`: список людей без явного порядка выглядел бы случайным, а `id` в конце делает его однозначным при полных тёзках. CRUD нет — модуль частичный. |
 | `mapper/TeacherMapper.java` | Разворачивает поля вложенного `user` в плоский DTO через `@Mapping(source = "user.firstName", ...)`. |
 | `dto/TeacherResponseDto.java` | Плоская структура: поля юзера + поля преподавателя. |
 
@@ -543,31 +543,36 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 | `dto/EditablePageResponseDto.java` | Слаг, заголовок, текст и обе даты. Адресация разделов идёт по слагу, поэтому `id` наружу не нужен. |
 
 ⚠️ `update` собирает ответ **до** коммита: `@PreUpdate` проставит `updatedAt` в момент flush,
-поэтому в теле ответа возвращается прежняя дата, а в БД оказывается новая.
+поэтому в теле ответа возвращается прежняя дата, а в БД оказывается новая (дефект D-11).
 `EditablePageIntegrationTest` этого не ловит — `updatedAt` в нём не проверяется.
 
 ### Ресурсы
 
 | Файл | Что делает |
 |---|---|
-| `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8). Закомментирован `logging.level.org.springframework.security: DEBUG` — **его стоит включать при разборе проблем с Security**, он печатает всю цепочку фильтров. |
-| `db/changelog/db.changelog-master.yaml` | Оглавление: подключает три changeset-файла по порядку. |
+| `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8) и `open-in-view: false`: вне транзакции сущность становится detached сразу после запроса в репозиторий, ленивые поля за пределами сервиса молча не подгружаются. `profiles.default: dev` — локальный запуск получает `DevDataSeeder`, прод обязан явно задать `prod`. Здесь же лимиты `multipart` (15 МБ) и корень файлового хранилища. Закомментирован `logging.level.org.springframework.security: DEBUG` — **его стоит включать при разборе проблем с Security**, он печатает всю цепочку фильтров. |
+| `db/changelog/db.changelog-master.yaml` | Оглавление: подключает восемь changeset-файлов по порядку. Liquibase идёт строго по этому списку и запоминает выполненное в служебной таблице `databasechangelog` — уже применённый файл нельзя переименовать или поправить задним числом, изменение оформляется новым changeset-файлом. |
 | `changesets/001-create-users-table.yml` | Таблица `users_user`. |
 | `changesets/002-create-news-table.yml` | Таблица `news_post` + FK `fk_news_author` на `users_user(id)`. |
 | `changesets/003-create-teacher-table.yml` | Таблица `employee_teacher` + FK `fk_teacher_user`, `user_id` уникален (это и есть OneToOne на уровне БД). |
+| `changesets/004-widen-news-post-type.yml` | `post_type` расширен с `VARCHAR(12)` до `VARCHAR(20)`: строка `announcements` — 13 символов, и любая попытка создать анонс падала на уровне БД. |
+| `changesets/005-add-news-index.yml` | Индекс `idx_news_display_created_at` под запрос главной: `WHERE display = true ORDER BY created_at DESC`. |
+| `changesets/006-add-news-author-fk-index.yml` | Индекс `idx_news_author_id`. Postgres создаёт индекс под уникальные ограничения, но **не под внешние ключи** — без него JOIN за автором и удаление пользователя сканировали бы всю таблицу новостей. |
+| `changesets/007-create-editable-page.yml` | Таблица `editable_pages_editablepage`; `page` уникален (`uq_editable_page_page`), `title` намеренно nullable — в строках, перенесённых со старого портала, он пуст. |
+| `changesets/008-seed-editable-pages.yml` | Сид тринадцати разделов. Данные справочные, а не тестовые, поэтому едут changeset-файлом, а не `DevDataSeeder`: тот работает только в профиле dev, и на проде публичные ручки страниц отвечали бы `404`. |
 
-⚠️ Ни в одном changeset **нет индексов и нет `rollback`-блоков** — обязательное требование
-ARCHITECTURE §8. Например, `findAllByDisplayTrueOrderByCreatedAtDesc` без индекса
-на `(display, created_at)` будет читать всю таблицу.
+⚠️ `rollback` прописан руками там, где Liquibase не выводит его сам: для `createTable`
+и `createIndex` откат генерируется автоматически, а для `modifyDataType` (004)
+и произвольного `sql` (008) — нет, и без явного блока шаг стал бы необратимым.
 
 ### Тесты (4 из 16 классов)
 
 | Файл | Что делает |
 |---|---|
-| `AbstractIntegrationTest.java` | База для всех тестов. Поднимает **настоящий PostgreSQL в Docker** (Testcontainers), `@DynamicPropertySource` подсовывает Spring его координаты и тестовый JWT-секрет. `@BeforeEach` делает `TRUNCATE ... RESTART IDENTITY CASCADE` — изоляция тестов друг от друга. |
-| `AuthIntegrationTest.java` | Логин с верным паролем → токен не пустой; с неверным → 4xx. Название теста говорит «403» — и это правда, но по-хорошему должен быть **401** (дефект D-02). `userRepository.deleteAll()` внутри тестов лишний — `TRUNCATE` уже отработал. |
-| `NewsIntegrationTest.java` | Лучший тест в проекте: админ создаёт новость → 200 и запись в БД с правильным автором; обычный юзер → **403 и в БД пусто**; публичный список отдаёт только `display=true`. Ровно так проверяется авторизация. |
-| `UserIntegrationTest.java` | Профиль по валидному токену; без токена → 4xx. ⚠️ Пароль сохраняется **сырым**, без хеширования, и токен генерится напрямую через `jwtService` — тест намеренно **обходит логин** и проверяет только фильтр. |
+| `AbstractIntegrationTest.java` | База для всех интеграционных тестов. Поднимает **настоящий PostgreSQL в Docker** (Testcontainers), `@DynamicPropertySource` подсовывает Spring его координаты, тестовый JWT-секрет и временный каталог хранилища. Каталог — одна константа на всю иерархию: путь входит в ключ кэша контекста Spring, и свой путь в каждом классе поднимал бы контекст заново. `@ActiveProfiles("test")` не даёт сработать `DevDataSeeder`. `@BeforeEach` делает `TRUNCATE news_post, employee_teacher, users_user RESTART IDENTITY CASCADE` — изоляция тестов друг от друга; `editable_pages_editablepage` в списке нет намеренно, её наполняет Liquibase-сид, и TRUNCATE снёс бы справочные данные на весь прогон. Хелперы `createUser` и `login` дают пользователя с нужными ролями и токен через настоящий `POST /login`. |
+| `AuthIntegrationTest.java` | Четыре случая логина: верный пароль → `200` и непустой токен; неверный → `401` с ProblemDetail; пустые поля → `400` (это `@Valid` на `LoginRequest`, до аутентификации); заблокированный пользователь (`is_active = false`) → `401`. Последний проверяет, что `SecurityUser.isEnabled()` действительно читается Security. |
+| `NewsIntegrationTest.java` | Самый большой тест проекта, около семисот строк. Матрица доступа: админ и модератор создают новость → запись в БД с правильным автором, обычный юзер → **403 и в БД пусто**, аноним → `401`. Контракт: `201` с заголовком `Location`, форма страницы, срез по `page` и `size`, `400` на неизвестное поле сортировки. Публичные ручки отдают только `display = true`, скрытая новость по id — `404`. Отдельный блок — санитизация: `<script>` и `onerror` вырезаются, форматирование и относительные картинки остаются. |
+| `UserIntegrationTest.java` | Профиль по валидному токену и четыре случая смены пароля: успех, неверный старый → `400`, пустой новый → `400` со списком полей, слишком короткий → `400`. Токен собирается напрямую через `jwtService`, а не через `POST /login`: тест намеренно **обходит логин** и проверяет фильтр и сам эндпоинт. Пароль в базу кладётся хешем — `matches()` на сырой строке всегда даст false. |
 
 Остальные 12 файлов `src/test` не разобраны: `ArchitectureTest`, `TestRole` (не тест,
 а общий для тестов enum ролей), `EndpointAccessMatrixTest`, `CorsIntegrationTest`,
@@ -631,7 +636,7 @@ changeset**, иначе приложение не стартует. Liquibase п
 
 ## 10. Известные дефекты бэкенда
 
-Статусы обновлены 2026-07-28, после закрытия T-01…T-12.
+Статусы обновлены 2026-08-26: D-01…D-10 закрыты в T-01…T-12, D-11 найден при сверке §7 с кодом.
 
 | ID | Дефект | Последствие | Статус |
 |---|---|---|---|
@@ -645,6 +650,7 @@ changeset**, иначе приложение не стартует. Liquibase п
 | **D-08** | Нет индексов и `rollback`-блоков в changeset'ах. | Полное сканирование таблиц; откат миграции невозможен. | ✅ исправлен (T-07): индекс под запрос новостей; явный rollback там, где Liquibase не генерирует его сам (004) |
 | **D-09** | `NewsMapper.authorName` собирается без null-защиты. Уточнение: реальный симптом — строка «null Иванов» при пустом `firstName`; NPE только если `author` вовсе отсутствует. | Мусор в поле `authorName` на публичном эндпоинте. | ✅ исправлен (T-12): default-метод с фильтрацией null/blank вместо строкового `expression` |
 | **D-10** | Расхождение кредов `application.yaml` ↔ `.env` ↔ `docker-compose.yml`. | Проект не стартует на чистой машине. | ✅ исправлен (T-02) |
+| **D-11** | `EditablePageService.update` собирает ответ до коммита, а `updatedAt` проставляется `@PreUpdate` в момент flush. | `PUT /api/pages/{slug}` возвращает прежнюю дату правки, в БД при этом новая; клиент видит верное время только после перезапроса. | ⏳ открыт, по плану: T-32 |
 
 Открытые дефекты и новые находки ревью 2026-07-27 разложены на тикеты в [BACKLOG.md](BACKLOG.md).
 
