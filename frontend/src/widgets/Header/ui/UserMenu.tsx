@@ -4,11 +4,18 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@shared/lib/cn';
 import type { ProfileMenuItem } from '../lib/profileMenu';
 
+/**
+ * Аватар, когда пользователь свой не загрузил: в контракте поле `avatar`
+ * приходит как `null`, и пустой `src` дал бы битую картинку.
+ */
+const DEFAULT_AVATAR_URL = '/assets/images/avatars/default-user.png';
+
 interface UserMenuProps {
   /** Отображаемое имя: «Имя Фамилия», иначе логин. */
   displayName: string;
   email: string | null;
-  avatarUrl: string;
+  /** Путь к аватару; `null` — покажем заглушку. */
+  avatarUrl: string | null;
   items: readonly ProfileMenuItem[];
   isOpen: boolean;
   onToggle: () => void;
@@ -33,6 +40,8 @@ export function UserMenu({
   onNavigate,
   containerRef,
 }: UserMenuProps) {
+  const avatarSrc = avatarUrl ?? DEFAULT_AVATAR_URL;
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -44,7 +53,7 @@ export function UserMenu({
         className="flex items-center gap-2 rounded p-1 transition-colors hover:bg-gray-100"
       >
         <img
-          src={avatarUrl}
+          src={avatarSrc}
           alt=""
           className="h-9 w-9 rounded-full object-cover"
           // Аватар декоративный: имя рядом уже озвучено, дублировать незачем.
@@ -71,7 +80,7 @@ export function UserMenu({
           )}
         >
           <div className="flex items-center gap-2 border-b border-default px-3 pb-2">
-            <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" aria-hidden />
+            <img src={avatarSrc} alt="" className="h-10 w-10 rounded-full object-cover" aria-hidden />
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-bold text-gray-900">{displayName}</span>
               {email && <span className="truncate text-xs text-text-default">{email}</span>}
