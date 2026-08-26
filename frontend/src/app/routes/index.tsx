@@ -6,9 +6,11 @@ import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
 import Loader from '@shared/ui/Loader';
-import { LOGIN_ROUTE } from '@shared/config/routes';
+import { LOGIN_ROUTE, PERSONAL_ROUTE } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
 import LoginPage from '@pages/LoginPage';
+import PersonalPage from '@pages/PersonalPage';
+import ProtectedRoute from './protectedRoute';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
@@ -28,6 +30,30 @@ export const routes: RouteObject[] = [
       {
         index: true,
         element: <Placeholder title="Главная — страница ещё не перенесена" />,
+      },
+      // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
+      // у /corp было боковое меню на два пункта, но второй из них —
+      // календарь событий — приедет только в Фазе 3. Меню из одного
+      // пункта, дублирующего текущую страницу, показывать незачем;
+      // корпоративный лейаут заведём вместе с календарём.
+      {
+        path: '/corp',
+        children: [
+          // Голый /corp — раздел, а не страница: как и в оригинале,
+          // отправляем на единственную готовую страницу раздела.
+          {
+            index: true,
+            element: <Navigate to={PERSONAL_ROUTE} replace />,
+          },
+          {
+            path: PERSONAL_ROUTE,
+            element: (
+              <ProtectedRoute>
+                <PersonalPage />
+              </ProtectedRoute>
+            ),
+          },
+        ],
       },
       // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на
       // ещё не перенесённые страницы, и если ловить их корневым '*', то на

@@ -2,13 +2,8 @@ import type { RefObject } from 'react';
 import { Link } from 'react-router';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@shared/lib/cn';
+import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
 import type { ProfileMenuItem } from '../lib/profileMenu';
-
-/**
- * Аватар, когда пользователь свой не загрузил: в контракте поле `avatar`
- * приходит как `null`, и пустой `src` дал бы битую картинку.
- */
-const DEFAULT_AVATAR_URL = '/assets/images/avatars/default-user.png';
 
 interface UserMenuProps {
   /** Отображаемое имя: «Имя Фамилия», иначе логин. */
