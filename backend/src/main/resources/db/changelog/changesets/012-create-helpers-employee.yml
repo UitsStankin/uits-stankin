@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-create-helpers-employee
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: employee_helpersemployee
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: last_name
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: patronymic
+                  type: VARCHAR(150)
+              - column:
+                  name: position
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: avatar
+                  type: VARCHAR(100)
