@@ -133,6 +133,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/news", ANYONE),
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
+            controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
@@ -142,6 +143,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/news", EDITORS),
             controller(HttpMethod.PUT, "/api/news/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/news/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
 
             infrastructure(HttpMethod.GET, "/media/{key}", ANYONE),
@@ -157,6 +159,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private static final List<String> NOT_OUR_ENDPOINTS = List.of("/error", "/v3/api-docs", "/swagger-ui");
 
     private static final String MEDIA_KEY = "matrix/probe.txt";
+    private static final String PAGE_SLUG = "contacts";
 
     static Stream<Arguments> cells() {
         return MATRIX.stream()
@@ -266,7 +269,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private ResponseEntity<String> call(Endpoint endpoint, Fixture fixture, String token) {
         String path = endpoint.path()
                 .replace("{id}", String.valueOf(fixture.newsId()))
-                .replace("{key}", MEDIA_KEY);
+                .replace("{key}", MEDIA_KEY)
+                .replace("{slug}", PAGE_SLUG);
 
         HttpHeaders headers = new HttpHeaders();
 
