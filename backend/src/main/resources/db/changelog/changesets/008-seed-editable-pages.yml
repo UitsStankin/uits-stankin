@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-seed-editable-pages
+      author: eeffeecct
+      changes:
+        # Тринадцать разделов — справочные данные, а не тестовые: без них публичные
+        # ручки страниц отвечают 404 на любом стенде, включая прод. Поэтому сид едет
+        # ченджсетом, а не DevDataSeeder — тот работает только в профиле dev.
+        # Набор слагов перенесён со старого портала (DEFAULT_EDITABLE_PAGES в settings.py)
+        # и закрыт: четырнадцатый раздел добавляется новым ченджсетом, а не правкой этого.
+        - sql:
+            sql: |
+              INSERT INTO editable_pages_editablepage (page, title, text, created_at, modified_at) VALUES
+                ('fields-of-study', 'Направления подготовки', '', now(), now()),
+                ('contacts', 'Контакты', '', now(), now()),
+                ('documents-department', 'Нормативные документы кафедры', '', now(), now()),
+                ('documents-university', 'Нормативные документы университета', '', now(), now()),
+                ('bachelor-edu-plans', 'Бакалавриат: учебные планы', '', now(), now()),
+                ('bachelor-graduate', 'Бакалавриат: защита ВКР', '', now(), now()),
+                ('bachelor-practices', 'Бакалавриат: практики', '', now(), now()),
+                ('master-edu-plans', 'Магистратура: учебные планы', '', now(), now()),
+                ('master-graduate', 'Магистратура: защита ВКР', '', now(), now()),
+                ('master-practices', 'Магистратура: практики', '', now(), now()),
+                ('scientific-activity-postgraduate', 'Аспирантура', '', now(), now()),
+                ('home-before', 'Главная: блок над новостями', '', now(), now()),
+                ('home-after', 'Главная: блок под новостями', '', now(), now());
+      # Откат пишется руками: произвольный SQL Liquibase отменить сам не умеет,
+      # и без этого блока шаг стал бы необратимым.
+      rollback:
+        - delete:
+            tableName: editable_pages_editablepage
+            where: >-
+              page IN ('fields-of-study', 'contacts', 'documents-department',
+              'documents-university', 'bachelor-edu-plans', 'bachelor-graduate',
+              'bachelor-practices', 'master-edu-plans', 'master-graduate',
+              'master-practices', 'scientific-activity-postgraduate',
+              'home-before', 'home-after')
