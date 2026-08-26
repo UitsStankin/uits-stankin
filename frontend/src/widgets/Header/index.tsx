@@ -1,9 +1,10 @@
 import { cn } from '@shared/lib/cn';
 import { Logo } from '@shared/ui/Logo';
 import { useAppStore } from '@shared/store';
-import { useAuth } from '@features/auth/lib/useAuth';
+import { useAuth, useLogout } from '@features/auth';
 import { BurgerButton } from './ui/BurgerButton';
 import { LoginLink } from './ui/LoginLink';
+import { SessionSkeleton } from './ui/SessionSkeleton';
 import { UserMenu } from './ui/UserMenu';
 import { useDropdownState } from './model/useDropdownState';
 import { buildProfileMenu } from './lib/profileMenu';
@@ -14,7 +15,8 @@ import type { HeaderProps } from './Header.types';
  * Соответствует header-nav из горизонтального лейаута портала.
  */
 export default function Header({ className }: HeaderProps) {
-  const { profile, canEdit } = useAuth();
+  const { profile, canEdit, isLoading } = useAuth();
+  const logout = useLogout();
   const menu = useDropdownState();
   const isMobileNavOpen = useAppStore((s) => s.isMobileNavOpen);
   const openMobileNav = useAppStore((s) => s.openMobileNav);
@@ -44,6 +46,9 @@ export default function Header({ className }: HeaderProps) {
       <BurgerButton isNavOpen={isMobileNavOpen} onClick={openMobileNav} />
       <Logo className="hidden lg:block" />
 
+      {/* Три состояния, а не два: «вошёл», «ещё не знаем» и «не вошёл».
+          Среднее — это первые миллисекунды после перезагрузки страницы
+          с сохранённым токеном. */}
       {profile ? (
         <UserMenu
           displayName={displayName}
@@ -53,8 +58,11 @@ export default function Header({ className }: HeaderProps) {
           isOpen={menu.isOpen}
           onToggle={menu.toggle}
           onNavigate={menu.close}
+          onLogout={logout}
           containerRef={menu.containerRef}
         />
+      ) : isLoading ? (
+        <SessionSkeleton />
       ) : (
         <LoginLink />
       )}
