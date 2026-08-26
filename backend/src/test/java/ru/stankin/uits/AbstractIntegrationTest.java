@@ -75,7 +75,8 @@ public abstract class AbstractIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbcTemplate.execute("TRUNCATE TABLE news_post, employee_teacher, users_user RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE news_post, employee_teacher, subject_subject, users_user "
+                + "RESTART IDENTITY CASCADE");
     }
 
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
