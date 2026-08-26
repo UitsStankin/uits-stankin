@@ -2,6 +2,7 @@ import { Outlet } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import Header from '@widgets/Header';
 import Navbar from '@widgets/Navbar';
+import Footer from '@widgets/Footer';
 import type { AppLayoutProps } from './AppLayout.types';
 
 /**
@@ -11,6 +12,7 @@ import type { AppLayoutProps } from './AppLayout.types';
  *   header-nav      логотип слева, вход справа
  *   header-navbar   горизонтальное меню          <- ниже 992px скрыто
  *   content
+ *   footer
  *
  * Сайдбар убран. Он достался от заготовки шаблона Espire, а портал работает
  * на `layoutType: 'horizontal'` — вертикальное меню там не используется.
@@ -31,10 +33,14 @@ export default function AppLayout({ className }: AppLayoutProps) {
 
       <Navbar className="border-b border-default" />
 
+      {/* flex-1 прижимает подвал к низу на коротких страницах — иначе он
+          висел бы посреди экрана. */}
       <main className="flex-1 p-gutter-sm md:p-gutter lg:p-[1.875rem]">
         {/* Аналог <router-outlet> */}
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 }
