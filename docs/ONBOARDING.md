@@ -20,10 +20,10 @@
 
 ## 0. Как пользоваться этим документом
 
-Главное правило проекта: **не мержишь то, что не можешь объяснить построчно.**
+Главное правило проекта: **не мержим то, что нельзя объяснить построчно.**
 
 Проверочный вопрос на каждую незнакомую аннотацию или зависимость:
-**«что сломается, если это убрать?»** Если ответа нет — ты её не понял, а скопировал.
+**«что сломается, если это убрать?»** Если ответа нет — значит, она не понята, а скопирована.
 Именно этим сеньор отличается от джуна: не объёмом знаний, а привычкой не пропускать непонятное.
 
 ---
@@ -94,7 +94,7 @@ backend/src/main/java/ru/stankin/uits/
 * **Слой** — правило о **направлении зависимостей**: Controller → Service → Repository, и никогда наоборот.
 * **Пакет** — правило о том, **что лежит рядом** и что удаляется одним куском.
 
-Это независимые оси. Разложив файлы по фичам, ты не отказываешься от слоёв — они внутри каждого модуля.
+Это независимые оси. Раскладка по фичам не отменяет слои — они внутри каждого модуля.
 
 Четыре аргумента за нарезку по фичам:
 
@@ -140,7 +140,7 @@ docker compose up -d          # PostgreSQL на порту 5433
 
 Swagger UI после старта: `http://localhost:8080/swagger-ui.html`
 
-### Три грабли, на которые ты наступишь
+### Три грабли на старте
 
 **1. Падение на старте: `Could not resolve placeholder 'JWT_SECRET_KEY'`.**
 `application.yaml` читает `${JWT_SECRET_KEY}` из **переменных окружения**, а Spring Boot файл `.env`
@@ -168,7 +168,7 @@ $env:JWT_SECRET_KEY = "<значение из backend/.env>"
 
 Аналогия — проходная в здании:
 
-| | Вопрос | На проходной | В твоём коде |
+| | Вопрос | На проходной | В коде проекта |
 |---|---|---|---|
 | **Идентификация** | «Кто ты?» | Назвал фамилию | `username` в запросе; `subject` в JWT; `loadUserByUsername()` |
 | **Аутентификация** | «Докажи» | Показал паспорт | `passwordEncoder.matches()`; проверка подписи `verifyWith(key)` |
@@ -230,7 +230,7 @@ PostgreSQL
 ### 6.1. Что такое фильтр — здесь нет магии
 
 До Spring, в голой Java EE, есть **сервлет-фильтр**: объект, который перехватывает HTTP-запрос
-**до** того, как его увидит твой код, что-то делает и решает — пропустить дальше или оборвать.
+**до** того, как его увидит код приложения, что-то делает и решает — пропустить дальше или оборвать.
 
 ```java
 void doFilter(request, response, chain) {
@@ -255,15 +255,15 @@ UsernamePasswordAuthFilter      → форма логина (не нужна, н
 ExceptionTranslationFilter      → ловит ошибки доступа → 401/403
 AuthorizationFilter             → проверяет правила из authorizeHttpRequests()
 ──────────────────────────────
-DispatcherServlet → твой @RestController
+DispatcherServlet → наш @RestController
 ```
 
 ### 6.2. Пять понятий
 
 | Понятие | Человеческим языком | Где у нас |
 |---|---|---|
-| **`Authentication`** | «пропуск» текущего запроса: кто ты + роли + аутентифицирован ли | создаётся в фильтре, строки 51–58 |
-| **`Principal`** | собственно «кто ты» — объект пользователя внутри пропуска | наш `SecurityUser` |
+| **`Authentication`** | «пропуск» текущего запроса: кто пришёл + роли + аутентифицирован ли | создаётся в фильтре, строки 51–58 |
+| **`Principal`** | собственно «кто пришёл» — объект пользователя внутри пропуска | наш `SecurityUser` |
 | **`GrantedAuthority`** | одна строка-право, напр. `"ROLE_ADMIN"` | `SecurityUser.getAuthorities()` |
 | **`SecurityContextHolder`** | глобальная переменная (`ThreadLocal`) с `Authentication` — доступна из любой точки кода в рамках запроса | `SecurityContextHolder.getContext().getAuthentication()` |
 | **`UserDetails`** | интерфейс, который Security требует от «пользователя»: `getUsername()`, `getPassword()`, `getAuthorities()`, `isEnabled()` | `SecurityUser implements UserDetails` |
@@ -282,7 +282,7 @@ authorities.add(new SimpleGrantedAuthority("ROLE_USER"));  // всем
 
 > **Про префикс `ROLE_`.** Тупая, но важная конвенция. `hasRole('ADMIN')` внутри дописывает `ROLE_`
 > и ищет authority `ROLE_ADMIN`. А `hasAuthority('ADMIN')` ищет ровно `ADMIN`. Правило:
-> **в коде/БД хранишь `ROLE_ADMIN`, в аннотациях пишешь `hasRole('ADMIN')`.** У нас так и сделано.
+> **в коде и БД хранится `ROLE_ADMIN`, в аннотациях пишется `hasRole('ADMIN')`.** У нас так и сделано.
 
 ### 6.3. Сценарий А: логин (пароль → токен)
 
@@ -322,9 +322,9 @@ header.payload.signature
 {"alg":"HS256"} . {"sub":"ivan","iat":...,"exp":...} . HMAC_SHA256(header.payload, SECRET)
 ```
 
-Payload **не зашифрован** — кто угодно его прочитает (вставь токен на jwt.io и увидишь).
+Payload **не зашифрован** — кто угодно его прочитает: достаточно вставить токен на jwt.io.
 Смысл не в секретности, а в **неподделываемости**: подпись можно проверить, только зная `SECRET`.
-Поменяешь `"sub":"ivan"` на `"sub":"admin"` — подпись перестанет сходиться, сервер отвергнет.
+Если поменять `"sub":"ivan"` на `"sub":"admin"` — подпись перестанет сходиться, сервер отвергнет.
 
 Отсюда правило: **никогда не клади в JWT ничего секретного.**
 
@@ -399,7 +399,7 @@ CSRF-атака возможна, когда браузер **автоматич
 Правила проверяются **сверху вниз, первое совпавшее выигрывает**. `anyRequest().authenticated()`
 в конце = «всё остальное закрыто по умолчанию» — правильный дефолт.
 
-Обрати внимание на конвенцию **`/api/public/**`**: вместо перечисления каждого открытого эндпоинта
+Здесь работает конвенция **`/api/public/**`**: вместо перечисления каждого открытого эндпоинта
 публичные вещи просто живут под этим префиксом. Поэтому в контроллерах:
 
 ```java
@@ -460,7 +460,7 @@ BCrypt — намеренно медленный хеш с солью внутр
 | `security/JwtService.java` | Генерация и разбор JWT. Секрет и TTL приходят из `application.yaml` через `@Value`. `getSignInKey()` декодирует Base64-секрет в `SecretKey` для HMAC-SHA256. |
 | `security/JwtAuthenticationFilter.java` | `OncePerRequestFilter` — гарантия, что отработает ровно один раз за запрос (без него при forward/include мог бы сработать дважды). Логика в §6.4. |
 | `security/SecurityUser.java` | Адаптер `User` (JPA) → `UserDetails` (Security). Здесь булевы флаги превращаются в роли. `isEnabled()` возвращает `user.isActive()` — забаненный юзер не войдёт. |
-| `security/CustomUserDetailsService.java` | Единственная реализация `UserDetailsService`: достаёт `User` из БД по username и оборачивает в `SecurityUser`. Точка входа Security в твою БД. |
+| `security/CustomUserDetailsService.java` | Единственная реализация `UserDetailsService`: достаёт `User` из БД по username и оборачивает в `SecurityUser`. Точка входа Security в БД проекта. |
 
 ### common/storage (7 файлов)
 
@@ -494,12 +494,12 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 | Файл | Что делает |
 |---|---|
 | `entity/User.java` | Таблица `users_user` — **имя из Django**, чтобы данные переехали без переименований. Роли — булевы колонки (`is_superuser`, `is_moderator`, `is_teacher`), тоже наследие Django. `@PrePersist onCreate()` проставляет `dateJoined`, если не задан. `OffsetDateTime`, т.к. в Postgres колонка `timestamp with time zone`. |
-| `repository/UserRepository.java` | `findByUsername` — Spring Data **генерит SQL из имени метода**. Убери метод — сломается логин. |
+| `repository/UserRepository.java` | `findByUsername` — Spring Data **генерит SQL из имени метода**. Убрать метод — сломается логин. |
 | `service/UserService.java` | `changePassword`: проверяет старый пароль через `matches()`, хеширует новый, сохраняет. Кидает `BadCredentialsException` — из-за отсутствия advice это превращается в голый 403 (дефект D-02). |
 | `controller/UserController.java` | `GET /api/users/profile`, `POST /api/users/change-password`. Показательный пример `@AuthenticationPrincipal`. |
 | `mapper/UserMapper.java` | Один метод `toDto`. Именно он не пускает `password` в JSON. |
 | `dto/UserResponseDto.java` | Что отдаём наружу. Пароля здесь нет — и это не случайность. |
-| `dto/ChangePasswordRequest.java` | `@NotBlank`, `@Size(min=6)` — работают только благодаря `@Valid` в контроллере. Убери `@Valid` — аннотации станут декорацией. |
+| `dto/ChangePasswordRequest.java` | `@NotBlank`, `@Size(min=6)` — работают только благодаря `@Valid` в контроллере. Убрать `@Valid` — аннотации станут декорацией. |
 
 ### module/news (7 файлов)
 
@@ -518,7 +518,7 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 | Файл | Что делает |
 |---|---|
 | `entity/Teacher.java` | Таблица `employee_teacher`, `@OneToOne` на `User`. Модель **беднее оригинала**: нет отчества, предметов, enum-званий, расписания экзаменов (см. MIGRATION). |
-| `repository/TeacherRepository.java` | **Самое интересное место в проекте с точки зрения производительности.** `findAll()` переопределён с `@EntityGraph(attributePaths = {"user"})`. Без него: 1 запрос за преподавателями + по одному за каждым юзером = **проблема N+1**. С `@EntityGraph` Hibernate делает один JOIN. Изучи этот приём — он понадобится в каждом списочном эндпоинте. |
+| `repository/TeacherRepository.java` | **Самое интересное место в проекте с точки зрения производительности.** `findAll()` переопределён с `@EntityGraph(attributePaths = {"user"})`. Без него: 1 запрос за преподавателями + по одному за каждым юзером = **проблема N+1**. С `@EntityGraph` Hibernate делает один JOIN. Приём стоит изучить — он понадобится в каждом списочном эндпоинте. |
 | `service/TeacherService.java` | Просто `findAll()` → маппер. |
 | `controller/TeacherController.java` | Только `GET /api/public/teachers`. CRUD нет — модуль частичный. |
 | `mapper/TeacherMapper.java` | Разворачивает поля вложенного `user` в плоский DTO через `@Mapping(source = "user.firstName", ...)`. |
@@ -550,7 +550,7 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 
 | Файл | Что делает |
 |---|---|
-| `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8). Закомментирован `logging.level.org.springframework.security: DEBUG` — **раскомментируй, когда разбираешься с Security**, он печатает всю цепочку фильтров. |
+| `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8). Закомментирован `logging.level.org.springframework.security: DEBUG` — **его стоит включать при разборе проблем с Security**, он печатает всю цепочку фильтров. |
 | `db/changelog/db.changelog-master.yaml` | Оглавление: подключает три changeset-файла по порядку. |
 | `changesets/001-create-users-table.yml` | Таблица `users_user`. |
 | `changesets/002-create-news-table.yml` | Таблица `news_post` + FK `fk_news_author` на `users_user(id)`. |
@@ -650,9 +650,9 @@ changeset**, иначе приложение не стартует. Liquibase п
 
 ---
 
-## 11. Как проверять, что ты действительно понял
+## 11. Вопросы для самопроверки
 
-Пройдись по списку. Если на вопрос нет ответа — возвращайся к соответствующему разделу.
+Если ответа на вопрос нет — стоит вернуться к соответствующему разделу.
 
 1. Что произойдёт, если убрать `@EnableMethodSecurity` из `SecurityConfig`?
 2. Почему при невалидном токене 401 отдаёт `AuthenticationEntryPoint`, вызванный прямо из фильтра, а `GlobalExceptionHandler` для этого не годится?
