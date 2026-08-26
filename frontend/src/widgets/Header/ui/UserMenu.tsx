@@ -21,9 +21,15 @@ interface UserMenuProps {
   onToggle: () => void;
   /** Закрыть после перехода по пункту. */
   onNavigate: () => void;
+  /** Выход. Локальный: запроса на сервер за ним не стоит. */
+  onLogout: () => void;
   /** Для закрытия по клику вне — вешается на обёртку. */
   containerRef: RefObject<HTMLDivElement | null>;
 }
+
+/** Пункты меню выглядят одинаково, ссылка это или кнопка. */
+const itemClass =
+  'flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-100 hover:text-primary';
 
 /**
  * Меню профиля справа в шапке: аватар, имя и выпадающий список.
@@ -38,6 +44,7 @@ export function UserMenu({
   isOpen,
   onToggle,
   onNavigate,
+  onLogout,
   containerRef,
 }: UserMenuProps) {
   const avatarSrc = avatarUrl ?? DEFAULT_AVATAR_URL;
@@ -92,7 +99,21 @@ export function UserMenu({
               const Icon = item.icon;
               return (
                 <li key={item.key}>
-                  {item.external ? (
+                  {item.kind === 'logout' ? (
+                    // Кнопка, а не ссылка: за выходом не стоит адреса,
+                    // он ничего не открывает.
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate();
+                        onLogout();
+                      }}
+                      className={itemClass}
+                    >
+                      <Icon size={18} className="shrink-0" aria-hidden />
+                      {item.title}
+                    </button>
+                  ) : item.external ? (
                     // Админка живёт вне SPA, поэтому обычная ссылка в новую
                     // вкладку, а не переход роутером.
                     <a
@@ -100,17 +121,13 @@ export function UserMenu({
                       target="_blank"
                       rel="noreferrer"
                       onClick={onNavigate}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-100 hover:text-primary"
+                      className={itemClass}
                     >
                       <Icon size={18} className="shrink-0" aria-hidden />
                       {item.title}
                     </a>
                   ) : (
-                    <Link
-                      to={item.path}
-                      onClick={onNavigate}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-100 hover:text-primary"
-                    >
+                    <Link to={item.path} onClick={onNavigate} className={itemClass}>
                       <Icon size={18} className="shrink-0" aria-hidden />
                       {item.title}
                     </Link>

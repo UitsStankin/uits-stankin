@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { Suspense } from 'react';
 
 // Layouts
@@ -8,10 +8,10 @@ import AuthLayout from '../layouts/AuthLayout';
 import Loader from '@shared/ui/Loader';
 import { LOGIN_ROUTE } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
+import LoginPage from '@pages/LoginPage';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
-// const AuthRoutes = lazy(() => import('@pages/auth'));
 // const ErrorsRoutes = lazy(() => import('@pages/errors'));
 
 // Базовые роуты
@@ -48,17 +48,19 @@ export const routes: RouteObject[] = [
     ),
     children: [
       // === AUTH_LAYOUT_ROUTES (AuthModule) ===
+      // Голый /auth — не страница, а раздел: показывать по нему пустую
+      // карточку незачем, отправляем на единственную форму раздела.
       {
         index: true,
-        element: <Placeholder title="Вход — страница ещё не перенесена" />,
+        element: <Navigate to={LOGIN_ROUTE} replace />,
       },
-      // Заглушка до F-12, но роут нужен уже сейчас: на этот путь уводит
-      // интерцептор при 401, и без него протухшая сессия приводила бы
-      // пользователя на ошибку роутера вместо формы входа.
       {
         path: LOGIN_ROUTE,
-        element: <Placeholder title="Вход — страница ещё не перенесена" />,
+        element: <LoginPage />,
       },
+      // Роута /auth/logout нет: выход в контракте не серверный, а локальный —
+      // забыть токен и очистить кэш. Это действие кнопки в меню профиля
+      // (features/auth/model/useLogout.ts), для него не нужна страница.
     ],
   },
 ];
