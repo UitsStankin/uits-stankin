@@ -25,6 +25,7 @@ import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
+import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
@@ -138,6 +139,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/helpers", ANYONE),
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
@@ -159,6 +161,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.DELETE, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/subjects", EDITORS),
+            controller(HttpMethod.POST, "/api/helpers", EDITORS),
+            controller(HttpMethod.PUT, "/api/helpers/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/helpers/{id}", EDITORS),
 
             infrastructure(HttpMethod.GET, "/media/{key}", ANYONE),
             infrastructure(HttpMethod.GET, "/actuator/health", ANYONE)
@@ -314,6 +319,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
             case "POST /api/subjects" -> json(headers, subjectRequest());
+            case "POST /api/helpers", "PUT /api/helpers/{id}" -> json(headers, helperRequest());
             case "POST /api/files" -> multipart(headers);
             default -> new HttpEntity<>(headers);
         };
@@ -376,6 +382,14 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private SubjectRequestDto subjectRequest() {
         return SubjectRequestDto.builder()
                 .name("Матричная дисциплина")
+                .build();
+    }
+
+    private HelpersEmployeeRequestDto helperRequest() {
+        return HelpersEmployeeRequestDto.builder()
+                .lastName("Матрицына")
+                .firstName("Тест")
+                .position("инженер")
                 .build();
     }
 

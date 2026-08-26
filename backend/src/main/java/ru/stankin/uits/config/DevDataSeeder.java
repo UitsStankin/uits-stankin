@@ -9,9 +9,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
+import ru.stankin.uits.module.staff.entity.HelpersEmployee;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.enums.TeacherDegree;
 import ru.stankin.uits.module.staff.enums.TeacherRank;
+import ru.stankin.uits.module.staff.repository.HelpersEmployeeRepository;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
@@ -35,6 +37,7 @@ public class DevDataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
+    private final HelpersEmployeeRepository helpersEmployeeRepository;
     private final NewsRepository newsRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -129,6 +132,13 @@ public class DevDataSeeder implements CommandLineRunner {
                 .position("приглашённый преподаватель")
                 .bio("Ведёт практикум по промышленной разработке.")
                 .professionalExperience(8)
+                .build());
+
+        helpersEmployeeRepository.save(HelpersEmployee.builder()
+                .lastName("Кузнецова")
+                .firstName("Анна")
+                .patronymic("Сергеевна")
+                .position("инженер кафедры")
                 .build());
 
         // createdAt задаётся явно, чтобы порядок в списке был предсказуемым
