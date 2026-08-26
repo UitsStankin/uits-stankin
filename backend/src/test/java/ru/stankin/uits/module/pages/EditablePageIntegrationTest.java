@@ -1,5 +1,6 @@
 package ru.stankin.uits.module.pages;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -13,11 +14,13 @@ import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
 import ru.stankin.uits.module.pages.dto.EditablePageResponseDto;
 import ru.stankin.uits.module.pages.entity.EditablePage;
 import ru.stankin.uits.module.pages.repository.EditablePageRepository;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,6 +43,9 @@ public class EditablePageIntegrationTest extends AbstractIntegrationTest {
             "scientific-activity-postgraduate",
             "home-before",
             "home-after");
+
+    private static final String WRITABLE_SLUG = "home-after";
+    private static final String WRITABLE_TITLE = "Главная: блок под новостями";
 
     @Test
     void seed_CreatesEveryDeclaredSection() {
@@ -106,6 +112,126 @@ public class EditablePageIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.totalElements()).isEqualTo(SEEDED_SLUGS.size());
         assertThat(body.content().stream().map(EditablePageResponseDto::getSlug))
                 .containsExactlyElementsOf(SEEDED_SLUGS);
+    }
+
+    @Test
+    void update_WhenModerator_ReplacesTitleAndTextAndMovesUpdatedAt() {
+        createUser("moderator", TestRole.MODERATOR);
+        String token = login("moderator");
+        EditablePage before = editablePageRepository.findBySlug(WRITABLE_SLUG).orElseThrow();
+
+        EditablePageRequestDto request = EditablePageRequestDto.builder()
+                .title("Блок под новостями")
+                .text("## Контакты приёмной\n\nтелефон: 000")
+                .build();
+
+        ResponseEntity<EditablePageResponseDto> response = restTemplate.exchange(
+                "/api/pages/" + WRITABLE_SLUG, HttpMethod.PUT,
+                withToken(request, token), EditablePageResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        EditablePageResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getSlug()).isEqualTo(WRITABLE_SLUG);
+        assertThat(body.getTitle()).isEqualTo("Блок под новостями");
+        assertThat(body.getText()).isEqualTo("## Контакты приёмной\n\nтелефон: 000");
+
+        EditablePage after = editablePageRepository.findBySlug(WRITABLE_SLUG).orElseThrow();
+        assertThat(after.getTitle()).isEqualTo("Блок под новостями");
+        assertThat(after.getId()).isEqualTo(before.getId());
+        assertThat(after.getCreatedAt()).isEqualTo(before.getCreatedAt());
+        assertThat(after.getUpdatedAt()).isAfter(before.getUpdatedAt());
+    }
+
+    @Test
+    void update_AcceptsEmptyText() {
+        String token = moderatorToken();
+
+        ResponseEntity<EditablePageResponseDto> response = restTemplate.exchange(
+                "/api/pages/" + WRITABLE_SLUG, HttpMethod.PUT,
+                withToken(request(WRITABLE_TITLE, ""), token),
+                EditablePageResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getText()).isEmpty();
+    }
+
+    @Test
+    void update_WhenUnknownSlug_ReturnsNotFoundAndCreatesNothing() {
+        String token = moderatorToken();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/pages/no-such-section", HttpMethod.PUT,
+                withToken(request(WRITABLE_TITLE, "текст"), token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(editablePageRepository.findBySlug("no-such-section")).isEmpty();
+        assertThat(editablePageRepository.count()).isEqualTo(SEEDED_SLUGS.size());
+    }
+
+    @Test
+    void update_WhenTitleBlank_ReturnsValidationError() {
+        String token = moderatorToken();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/pages/" + WRITABLE_SLUG, HttpMethod.PUT,
+                withToken(request(" ", "текст"), token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("title");
+    }
+
+    @Test
+    void update_WhenTextMissing_ReturnsValidationError() {
+        String token = moderatorToken();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/pages/" + WRITABLE_SLUG, HttpMethod.PUT,
+                withToken(request(WRITABLE_TITLE, null), token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("text");
+    }
+
+    @AfterEach
+    void restoreWritableSection() {
+        editablePageRepository.findBySlug(WRITABLE_SLUG).ifPresent(section -> {
+            section.setTitle(WRITABLE_TITLE);
+            section.setText("");
+            editablePageRepository.save(section);
+        });
+    }
+
+    private String moderatorToken() {
+        createUser("moderator", TestRole.MODERATOR);
+
+        return login("moderator");
+    }
+
+    private EditablePageRequestDto request(String title, String text) {
+        return EditablePageRequestDto.builder()
+                .title(title)
+                .text(text)
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fieldErrors(ResponseEntity<ProblemDetail> response) {
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties()).isNotNull();
+
+        return (Map<String, Object>) response.getBody().getProperties().get("errors");
+    }
+
+    private <T> HttpEntity<T> withToken(T body, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+
+        return new HttpEntity<>(body, headers);
     }
 
     private HttpEntity<Void> withToken(String token) {

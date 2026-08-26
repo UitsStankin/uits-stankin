@@ -1,14 +1,13 @@
 package ru.stankin.uits.module.pages.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
 import ru.stankin.uits.module.pages.dto.EditablePageResponseDto;
 import ru.stankin.uits.module.pages.service.EditablePageService;
 
@@ -28,5 +27,13 @@ public class EditablePageController {
     public PageResponseDto<EditablePageResponseDto> getAll(
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return editablePageService.getAll(pageable);
+    }
+
+    @PutMapping("/pages/{slug}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public EditablePageResponseDto update(
+            @PathVariable String slug,
+            @Valid @RequestBody EditablePageRequestDto request) {
+        return editablePageService.update(slug, request);
     }
 }

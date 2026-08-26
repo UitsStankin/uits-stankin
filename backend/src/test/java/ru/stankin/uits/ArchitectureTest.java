@@ -142,6 +142,20 @@ class ArchitectureTest {
                             + "наружу отдаются только DTO");
 
     /**
+     * Правило 4г. Сущности pages не покидают свой модуль.
+     *
+     * <p>Исключения {@code ..config..} здесь нет, в отличие от новостей и staff:
+     * тринадцать разделов создаёт ченджсет Liquibase, а не {@code DevDataSeeder},
+     * поэтому за пределами модуля {@code EditablePage} не нужен никому.
+     */
+    @ArchTest
+    static final ArchRule pagesEntitiesStayInTheirModule =
+            classes().that().resideInAPackage("..module.pages.entity..")
+                    .should().onlyHaveDependentClassesThat().resideInAPackage("..module.pages..")
+                    .because("EditablePage — внутренняя модель модуля страниц, "
+                            + "наружу отдаются только DTO");
+
+    /**
      * Правило 6. Файловая система — только внутри common.storage.
      *
      * <p>Смысл интерфейса {@code FileStorage} в том, что смена хранилища (диск → S3)
