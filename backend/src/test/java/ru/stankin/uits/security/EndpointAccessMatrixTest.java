@@ -31,6 +31,7 @@ import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
+import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
 
 import javax.imageio.ImageIO;
@@ -150,6 +151,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/teachers/{teacherId}/achievements", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
+            controller(HttpMethod.PUT, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
@@ -332,6 +334,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         return switch (endpoint.key()) {
             case "POST /api/users/auth/login" ->
                     json(headers, new AuthController.LoginRequest(fixture.user().getUsername(), TEST_PASSWORD));
+            case "PUT /api/users/profile" -> json(headers, profileRequest());
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
@@ -365,6 +368,14 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         body.add("category", "news");
 
         return new HttpEntity<>(body, headers);
+    }
+
+    private UserUpdateRequestDto profileRequest() {
+        UserUpdateRequestDto request = new UserUpdateRequestDto();
+        request.setFirstName("Матрица");
+        request.setLastName("Доступа");
+
+        return request;
     }
 
     private ChangePasswordRequest changePasswordRequest() {
