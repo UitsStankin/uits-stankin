@@ -22,6 +22,7 @@ import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.auth.controller.AuthController;
+import ru.stankin.uits.module.auth.service.RefreshCookieFactory;
 import ru.stankin.uits.module.news.dto.ConferenceRequestDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -138,6 +139,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
      */
     private static final List<Endpoint> MATRIX = List.of(
             controller(HttpMethod.POST, "/api/users/auth/login", ANYONE),
+            controller(HttpMethod.POST, "/api/users/auth/refresh", ANYONE),
+            controller(HttpMethod.POST, "/api/users/auth/logout", ANYONE),
             controller(HttpMethod.GET, "/api/public/news", ANYONE),
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
@@ -334,6 +337,11 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         return switch (endpoint.key()) {
             case "POST /api/users/auth/login" ->
                     json(headers, new AuthController.LoginRequest(fixture.user().getUsername(), TEST_PASSWORD));
+            case "POST /api/users/auth/refresh" -> {
+                headers.add(HttpHeaders.COOKIE, RefreshCookieFactory.COOKIE_NAME + "="
+                        + refreshCookieValue(loginResponse(fixture.user().getUsername())));
+                yield new HttpEntity<>(null, headers);
+            }
             case "PUT /api/users/profile" -> json(headers, profileRequest());
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());

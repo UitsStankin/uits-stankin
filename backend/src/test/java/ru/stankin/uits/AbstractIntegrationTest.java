@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,6 +21,7 @@ import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.HttpCookie;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -76,8 +78,8 @@ public abstract class AbstractIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbcTemplate.execute("TRUNCATE TABLE news_post, news_conferenceannouncement, achievements_achievement, "
-                + "employee_teacher, subject_subject, "
+        jdbcTemplate.execute("TRUNCATE TABLE refresh_token, news_post, news_conferenceannouncement, "
+                + "achievements_achievement, employee_teacher, subject_subject, "
                 + "employee_helpersemployee, users_user RESTART IDENTITY CASCADE");
     }
 
@@ -137,15 +139,28 @@ public abstract class AbstractIntegrationTest {
      * весь путь, по которому ходит фронт, включая {@code JwtAuthenticationFilter}.
      */
     protected String login(String username) {
-        ResponseEntity<AuthController.LoginResponse> response = restTemplate.postForEntity(
-                "/api/users/auth/login",
-                new AuthController.LoginRequest(username, TEST_PASSWORD),
-                AuthController.LoginResponse.class
-        );
+        ResponseEntity<AuthController.LoginResponse> response = loginResponse(username);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
 
         return response.getBody().accessToken();
+    }
+
+    /** Тот же логин, но целиком: телу нужен access-токен, заголовкам — cookie с refresh-токеном. */
+    protected ResponseEntity<AuthController.LoginResponse> loginResponse(String username) {
+        return restTemplate.postForEntity(
+                "/api/users/auth/login",
+                new AuthController.LoginRequest(username, TEST_PASSWORD),
+                AuthController.LoginResponse.class
+        );
+    }
+
+    /** Значение refresh-токена из заголовка {@code Set-Cookie} ответа. */
+    protected static String refreshCookieValue(ResponseEntity<?> response) {
+        String setCookie = response.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertThat(setCookie).isNotNull();
+
+        return HttpCookie.parse(setCookie).getFirst().getValue();
     }
 }

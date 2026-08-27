@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-add-refresh-token-indexes
+      author: eeffeecct
+      changes:
+        - createIndex:
+            tableName: refresh_token
+            indexName: idx_refresh_token_family_id
+            columns:
+              - column:
+                  name: family_id
+        - createIndex:
+            tableName: refresh_token
+            indexName: idx_refresh_token_user_id
+            columns:
+              - column:
+                  name: user_id

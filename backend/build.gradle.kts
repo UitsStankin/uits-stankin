@@ -47,6 +47,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.jsoup:jsoup:1.23.1")
 	implementation("net.coobird:thumbnailator:0.4.21")
+	implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0")
 
 	// Тесты
 	testImplementation("org.springframework.boot:spring-boot-starter-test")

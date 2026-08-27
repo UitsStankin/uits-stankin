@@ -103,6 +103,10 @@ class ArchitectureTest {
                             "..module.news.service..",
                             // логин достаёт id пользователя для обновления last_login
                             "..module.auth.controller..",
+                            // сессия принадлежит пользователю: FK refresh_token.user_id
+                            // и отзыв всех сессий учётки при смене пароля
+                            "..module.auth.entity..",
+                            "..module.auth.service..",
                             // безопасность построена вокруг User: SecurityUser оборачивает
                             // сущность, CustomUserDetailsService её загружает
                             "..security..",

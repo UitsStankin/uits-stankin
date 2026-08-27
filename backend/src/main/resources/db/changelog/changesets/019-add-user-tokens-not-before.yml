@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-add-user-tokens-not-before
+      author: eeffeecct
+      changes:
+        - addColumn:
+            tableName: users_user
+            columns:
+              - column:
+                  name: tokens_not_before
+                  type: TIMESTAMP WITH TIME ZONE

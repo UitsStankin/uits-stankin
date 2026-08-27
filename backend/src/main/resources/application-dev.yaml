@@ -10,3 +10,8 @@ spring:
 #logging:
 #  level:
 #    org.springframework.security: DEBUG
+
+application:
+  security:
+    refresh:
+      cookie-secure: false

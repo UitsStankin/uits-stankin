@@ -22,15 +22,15 @@ public class CorsIntegrationTest extends AbstractIntegrationTest {
     private static final String FOREIGN_ORIGIN = "http://evil.example";
 
     @Test
-    @DisplayName("Preflight с origin из белого списка разрешён — и без режима credentials")
-    void preflight_WhenOriginIsAllowed_AllowsOriginWithoutCredentials() {
+    @DisplayName("Preflight с origin из белого списка разрешён вместе с режимом credentials")
+    void preflight_WhenOriginIsAllowed_AllowsOriginWithCredentials() {
         ResponseEntity<String> response = preflight(ALLOWED_ORIGIN);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getAccessControlAllowOrigin()).isEqualTo(ALLOWED_ORIGIN);
 
         assertThat(response.getHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS))
-                .isNull();
+                .isEqualTo("true");
     }
 
     @Test
