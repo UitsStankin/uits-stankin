@@ -54,6 +54,7 @@ services:
       # и получит отказ на каждом запросе
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
       STORAGE_ROOT: /app/media
+      ORPHAN_CLEANUP_MIN_AGE: ${ORPHAN_CLEANUP_MIN_AGE:-86400000}
     volumes:
       - media_data:/app/media
     networks:
