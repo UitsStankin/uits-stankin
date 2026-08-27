@@ -1,5 +1,6 @@
 package ru.stankin.uits.module.news.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class ConferenceResponseDto {
     String description;
     LocalDate startDate;
     LocalDate endDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     LocalTime time;
     String organizer;
     String contactEmail;

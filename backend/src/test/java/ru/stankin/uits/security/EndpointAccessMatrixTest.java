@@ -141,6 +141,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/teachers/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/helpers", ANYONE),
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/conferences", ANYONE),
+            controller(HttpMethod.GET, "/api/public/conferences/{id}", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
@@ -153,6 +155,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/news", EDITORS),
             controller(HttpMethod.PUT, "/api/news/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/news/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/conferences", EDITORS),
+            controller(HttpMethod.GET, "/api/conferences/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
