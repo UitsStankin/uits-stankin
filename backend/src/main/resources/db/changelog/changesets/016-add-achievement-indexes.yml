@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-add-achievement-indexes
+      author: eeffeecct
+      changes:
+        - createIndex:
+            tableName: achievements_achievement
+            indexName: idx_achievement_display_created_at
+            columns:
+              - column:
+                  name: display
+              - column:
+                  name: created_at
+        - createIndex:
+            tableName: achievements_achievement
+            indexName: idx_achievement_teacher_id
+            columns:
+              - column:
+                  name: teacher_id

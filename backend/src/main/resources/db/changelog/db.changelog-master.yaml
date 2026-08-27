@@ -27,3 +27,7 @@ databaseChangeLog:
       file: db/changelog/changesets/013-create-conference-table.yml
   - include:
       file: db/changelog/changesets/014-add-conference-index.yml
+  - include:
+      file: db/changelog/changesets/015-create-achievement-table.yml
+  - include:
+      file: db/changelog/changesets/016-add-achievement-indexes.yml
