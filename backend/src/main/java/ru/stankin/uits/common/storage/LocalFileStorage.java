@@ -5,11 +5,14 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * Файлы на диске приложения. Корень — {@code application.storage.root}: локально папка
@@ -68,6 +71,28 @@ public class LocalFileStorage implements FileStorage {
     public boolean exists(String key) {
         Path target = resolve(key);
         return isInsideRoot(target) && Files.isRegularFile(target);
+    }
+
+    @Override
+    public List<StoredFile> listFiles() {
+        try (Stream<Path> paths = Files.walk(root)) {
+            return paths
+                    .filter(Files::isRegularFile)
+                    .map(this::toStoredFile)
+                    .toList();
+        } catch (IOException e) {
+            throw new IllegalStateException("Не удалось обойти хранилище: " + root, e);
+        }
+    }
+
+    private StoredFile toStoredFile(Path file) {
+        String key = root.relativize(file).toString().replace('\\', '/');
+
+        try {
+            return new StoredFile(key, Files.getLastModifiedTime(file).toInstant());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Не удалось прочитать время изменения: " + key, e);
+        }
     }
 
     @Override

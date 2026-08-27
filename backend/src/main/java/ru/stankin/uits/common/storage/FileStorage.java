@@ -1,6 +1,7 @@
 package ru.stankin.uits.common.storage;
 
 import java.io.InputStream;
+import java.util.List;
 
 /**
  * Хранилище загруженных файлов: превью новостей, аватары, PDF.
@@ -33,6 +34,12 @@ public interface FileStorage {
      * указывать на конкретный файл, иначе в базу уедет ссылка, по которой отдавать нечего.
      */
     boolean exists(String key);
+
+    /**
+     * Все файлы хранилища с временем последнего изменения. Каталоги в список
+     * не попадают: сущности ссылаются на файлы, каталог — деталь раскладки.
+     */
+    List<StoredFile> listFiles();
 
     /**
      * Есть ли файл с таким ключом именно в разделе {@code category}. Раздел сверяется

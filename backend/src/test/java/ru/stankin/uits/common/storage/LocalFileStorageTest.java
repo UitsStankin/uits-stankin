@@ -183,6 +183,28 @@ class LocalFileStorageTest {
     }
 
     @Test
+    void listFiles_WhenStorageHasFiles_ReturnsKeysWithForwardSlashes() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
+        String newsKey = storage.store(content("новость"), EXTENSION, CATEGORY);
+        String avatarKey = storage.store(content("аватар"), EXTENSION, "avatars");
+
+        var files = storage.listFiles();
+
+        assertThat(files).extracting(StoredFile::key).containsExactlyInAnyOrder(newsKey, avatarKey);
+        assertThat(files).allSatisfy(file -> {
+            assertThat(file.key()).doesNotContain("\\");
+            assertThat(file.lastModified()).isNotNull();
+        });
+    }
+
+    @Test
+    void listFiles_WhenStorageIsEmpty_ReturnsEmptyList() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.resolve("media").toString(), PUBLIC_BASE_URL);
+
+        assertThat(storage.listFiles()).isEmpty();
+    }
+
+    @Test
     void url_WhenCalled_PrependsPublicBaseUrl() {
         LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
 

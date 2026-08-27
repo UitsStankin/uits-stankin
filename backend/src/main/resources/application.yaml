@@ -61,3 +61,6 @@ application:
   storage:
     root: ${STORAGE_ROOT:./media}
     public-base-url: ${STORAGE_PUBLIC_BASE_URL:/media}
+    orphan-cleanup:
+      cron: ${ORPHAN_CLEANUP_CRON:0 45 3 * * *}
+      min-age: ${ORPHAN_CLEANUP_MIN_AGE:86400000}
