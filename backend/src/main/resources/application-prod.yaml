@@ -3,3 +3,6 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+server:
+  forward-headers-strategy: framework

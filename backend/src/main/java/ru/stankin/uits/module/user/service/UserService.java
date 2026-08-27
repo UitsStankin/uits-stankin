@@ -16,6 +16,7 @@ import ru.stankin.uits.module.user.mapper.UserMapper;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +61,7 @@ public class UserService {
         }
 
         managedUser.setPassword(passwordEncoder.encode(newPassword));
+        managedUser.setTokensNotBefore(OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusSeconds(1));
     }
 
     @Transactional

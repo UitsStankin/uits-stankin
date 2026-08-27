@@ -76,6 +76,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.UNAUTHORIZED, "Неверный логин или пароль.");
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ProblemDetail handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        log.warn("Отказ в обновлении сессии: {}", ex.getMessage());
+
+        return problemDetail(HttpStatus.UNAUTHORIZED, "Сессия недействительна. Требуется повторный вход.");
+    }
+
     @ExceptionHandler(PropertyReferenceException.class)
     public ProblemDetail handlePropertyReference(PropertyReferenceException ex) {
         return problemDetail(HttpStatus.BAD_REQUEST,

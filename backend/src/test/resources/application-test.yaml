@@ -1,0 +1,4 @@
+application:
+  security:
+    login-rate-limit:
+      attempts: 100000

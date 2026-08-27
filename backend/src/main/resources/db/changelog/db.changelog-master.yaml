@@ -31,3 +31,9 @@ databaseChangeLog:
       file: db/changelog/changesets/015-create-achievement-table.yml
   - include:
       file: db/changelog/changesets/016-add-achievement-indexes.yml
+  - include:
+      file: db/changelog/changesets/017-create-refresh-token.yml
+  - include:
+      file: db/changelog/changesets/018-add-refresh-token-indexes.yml
+  - include:
+      file: db/changelog/changesets/019-add-user-tokens-not-before.yml

@@ -31,6 +31,7 @@ public abstract class UserMapper {
     @Mapping(target = "teacher", ignore = true)
     @Mapping(target = "lastLogin", ignore = true)
     @Mapping(target = "dateJoined", ignore = true)
+    @Mapping(target = "tokensNotBefore", ignore = true)
     public abstract void updateEntity(@MappingTarget User user, UserUpdateRequestDto dto);
 
     @Named("avatarUrl")
