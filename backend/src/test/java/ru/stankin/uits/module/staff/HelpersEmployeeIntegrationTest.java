@@ -18,6 +18,8 @@ import ru.stankin.uits.module.staff.dto.HelpersEmployeeResponseDto;
 import ru.stankin.uits.module.staff.entity.HelpersEmployee;
 import ru.stankin.uits.module.staff.repository.HelpersEmployeeRepository;
 
+import java.io.IOException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
@@ -131,6 +133,34 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getPosition()).isEqualTo("методист");
+    }
+
+    @Test
+    void updateHelper_WhenAvatarIsBlank_ClearsAvatarAndDeletesFile() throws IOException {
+        HelpersEmployee helper = createHelper("Белова", "Ирина");
+        String key = storeFile("avatars");
+        helper.setAvatar(key);
+        helpersEmployeeRepository.save(helper);
+
+        HelpersEmployeeRequestDto request = HelpersEmployeeRequestDto.builder()
+                .lastName("Белова")
+                .firstName("Ирина")
+                .position("инженер")
+                .avatar("")
+                .build();
+
+        ResponseEntity<HelpersEmployeeResponseDto> response = restTemplate.exchange(
+                "/api/helpers/" + helper.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                HelpersEmployeeResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatarUrl()).isNull();
+        assertThat(helpersEmployeeRepository.findById(helper.getId()).orElseThrow().getAvatar()).isNull();
+        assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
     }
 
     @Test

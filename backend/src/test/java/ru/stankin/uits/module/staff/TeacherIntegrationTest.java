@@ -25,6 +25,7 @@ import ru.stankin.uits.module.staff.repository.SubjectRepository;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.user.entity.User;
 
+import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -222,6 +223,63 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.getPosition()).isEqualTo("профессор");
         assertThat(body.getRank()).isEqualTo("PROFESSOR");
         assertThat(body.getSubjects()).extracting(SubjectDto::getName).containsExactly("Веб-разработка");
+    }
+
+    @Test
+    void updateTeacher_WhenOptionalFieldsAreBlank_SavesNull() {
+        Teacher card = createCard("Иванова", "Мария");
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .patronymic("")
+                .email("   ")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TeacherDetailsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getPatronymic()).isNull();
+        assertThat(body.getEmail()).isNull();
+        Teacher updated = teacherRepository.findById(card.getId()).orElseThrow();
+        assertThat(updated.getPatronymic()).isNull();
+        assertThat(updated.getEmail()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAvatarIsBlank_ClearsAvatarAndDeletesFile() throws IOException {
+        Teacher card = createCard("Иванова", "Мария");
+        String key = storeFile("avatars");
+        card.setAvatar(key);
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .avatar("")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatarUrl()).isNull();
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isNull();
+        assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
     }
 
     @Test

@@ -163,6 +163,25 @@ public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
         assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
     }
 
+    @Test
+    void updateNews_WhenCoverKeyIsBlank_RemovesCoverAndDeletesFile() throws IOException {
+        User admin = createAdmin();
+        String token = login("admin");
+        String key = storeFile();
+        NewsPost saved = saveNews(admin, key);
+
+        ResponseEntity<NewsResponseDto> response = restTemplate.exchange(
+                "/api/news/" + saved.getId(),
+                HttpMethod.PUT,
+                withToken(requestWithCover(""), token),
+                NewsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getPreviewImage()).isNull();
+        assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
+    }
+
     /**
      * PUT — полная замена, и форма присылает тот же ключ при правке одного заголовка.
      * Удаление «того, что было до правки» без сравнения стёрло бы картинку живой новости.
