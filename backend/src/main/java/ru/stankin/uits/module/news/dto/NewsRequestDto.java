@@ -1,6 +1,7 @@
 package ru.stankin.uits.module.news.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import ru.stankin.uits.common.validation.SafeHtmlNotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -31,6 +32,7 @@ public class NewsRequestDto {
     String previewImageDescription;
 
     @NotBlank(message = "Content cant be empty")
+    @SafeHtmlNotBlank(message = "Текст новости пуст после удаления небезопасной разметки")
     String content;
 
     @NotNull(message = "Display flag is required")
