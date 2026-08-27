@@ -129,16 +129,39 @@ class ArchitectureTest {
 
     /**
      * Правило 4в. Сущности staff не покидают свой модуль.
-     * Исключение одно — DevDataSeeder (см. правило 4а).
+     * Исключения — DevDataSeeder (см. правило 4а) и модуль достижений.
+     *
+     * <p>Достижение кафедры привязано к преподавателю (FK на employee_teacher),
+     * и связь эта — ровно того же рода, что «у новости есть автор» из правила 4а:
+     * сущность нужна и самой связи, и мапперу, собирающему ФИО в ответ.
+     * Достижения ходят к Teacher только на чтение и только через
+     * {@code TeacherService} — репозиторий staff им недоступен.
      */
     @ArchTest
     static final ArchRule staffEntitiesStayInTheirModule =
             classes().that().resideInAPackage("..module.staff.entity..")
                     .should().onlyHaveDependentClassesThat().resideInAnyPackage(
                             "..module.staff..",
+                            "..module.achievements.entity..",
+                            "..module.achievements.mapper..",
+                            "..module.achievements.service..",
                             "..config.."
                     )
                     .because("Teacher — внутренняя модель модуля staff, "
+                            + "наружу отдаются только DTO");
+
+    /**
+     * Правило 4д. Сущности achievements не покидают свой модуль.
+     * Исключение одно — DevDataSeeder (см. правило 4а).
+     */
+    @ArchTest
+    static final ArchRule achievementEntitiesStayInTheirModule =
+            classes().that().resideInAPackage("..module.achievements.entity..")
+                    .should().onlyHaveDependentClassesThat().resideInAnyPackage(
+                            "..module.achievements..",
+                            "..config.."
+                    )
+                    .because("Achievement — внутренняя модель модуля достижений, "
                             + "наружу отдаются только DTO");
 
     /**
@@ -181,6 +204,9 @@ class ArchitectureTest {
      *       (сервис — публичная граница модуля, в отличие от репозитория);</li>
      *   <li>* → user.entity: FK-связи и сборка имён; кто именно допущен —
      *       точечно ограничивает правило 4а, здесь дубль не нужен.</li>
+     *   <li>achievements → staff.entity и staff.service: достижение привязано
+     *       к преподавателю. Сущность — ради FK и ФИО в ответе, сервис — потому
+     *       что публичная граница модуля staff одна, и это он, а не репозиторий.</li>
      * </ul>
      */
     @ArchTest
@@ -193,6 +219,12 @@ class ArchitectureTest {
                     .ignoreDependency(
                             DescribedPredicate.alwaysTrue(),
                             resideInAPackage("..module.user.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.achievements.."),
+                            resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.achievements.service.."),
+                            resideInAPackage("..module.staff.service.."))
                     .because("границы модулей — сервисы и DTO; прямой доступ к чужим "
                             + "внутренностям превращает модули обратно в один клубок");
 }

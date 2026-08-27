@@ -51,7 +51,7 @@
 | 3 | Роли (admin/moderator/teacher/user) | ✅ | — |
 | 4 | Новости / Объявления | ✅ | — |
 | 5 | Объявления о конференциях | ✅ | — (T-28: сущность, CRUD, публичный список, даты проведения и контакты) |
-| 6 | Достижения кафедры | ❌ | сущность (привязка к преподавателю), CRUD, публикация |
+| 6 | Достижения кафедры | ✅ | — (T-29: сущность с FK на преподавателя, CRUD, публичный список, достижения одного преподавателя) |
 | 7 | Преподаватели (ППС) | ✅ | — (T-26: карточка до паритета, CRUD, «моя карточка» `/api/teachers/me`) |
 | 8 | УВП (учебно-вспом. персонал) | ✅ | — (T-27: карточка, публичный список, модераторский CRUD) |
 | 9 | Дисциплины (Subject) | ✅ | — (T-26: сущность, M2M-связь, список и создание) |
@@ -84,7 +84,7 @@
 - **Student** — фио, group, education_level (enum), speciality, diploma_theme, admission_year.
 - **Postgraduate** — student(FK) ↔ teacher(FK).
 - **Post** — title, short_description, post_type (NEWS/ANNOUNCEMENT), preview_image(+thumbnail), content(rich), display, author. **Announcement**, **ConferenceAnnouncement** (даты/организатор/контакты/content).
-- **Achievement** — title, description, content(rich), image, is_published, teacher(FK).
+- **Achievement** — title, description, content(rich), image, is_published, teacher(FK, `SET NULL`). В новой схеме колонки названы `preview_image` и `display` — как у новостей и конференций; смысл прежний, перенос данных требует явного маппинга этих двух колонок.
 - **Tag**, **ScientificPublication** — name, author(JSON), description, url, file, tags(M2M), year, source, pages, vol_n, isbn, uuid.
 - **EditablePage** — title, text(Markdown), page(slug, unique), timestamps.
 - **UserEvent** — name, description, started/ended_at, all_day, assigned_users(M2M), color, user(FK), start_notified, notification_frequency (enum), next_notification_at, status (enum).

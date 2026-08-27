@@ -17,7 +17,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class FileController {
 
-    private static final Set<String> ALLOWED_CATEGORIES = Set.of("news", "avatars", "publications");
+    private static final Set<String> ALLOWED_CATEGORIES =
+            Set.of("news", "avatars", "publications", "achievements");
 
     private final FileStorage fileStorage;
     private final ImageProcessor imageProcessor;

@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
+import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.news.dto.ConferenceRequestDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
@@ -144,6 +145,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/achievements", ANYONE),
+            controller(HttpMethod.GET, "/api/public/achievements/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/teachers/{teacherId}/achievements", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
@@ -161,6 +165,11 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/conferences", EDITORS),
             controller(HttpMethod.PUT, "/api/conferences/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/conferences/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/achievements", EDITORS),
+            controller(HttpMethod.GET, "/api/achievements/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/achievements", EDITORS),
+            controller(HttpMethod.PUT, "/api/achievements/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/achievements/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
@@ -186,6 +195,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private static final List<String> NOT_OUR_ENDPOINTS = List.of("/error", "/v3/api-docs", "/swagger-ui");
 
     private static final String MEDIA_KEY = "matrix/probe.txt";
+    private static final String TEACHER_ID = "1";
     private static final String PAGE_SLUG = "home-before";
     private static final String PAGE_TITLE = "Главная: блок над новостями";
 
@@ -297,6 +307,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private ResponseEntity<String> call(Endpoint endpoint, Fixture fixture, String token) {
         String path = endpoint.path()
                 .replace("{id}", String.valueOf(fixture.newsId()))
+                .replace("{teacherId}", TEACHER_ID)
                 .replace("{key}", MEDIA_KEY)
                 .replace("{slug}", PAGE_SLUG);
 
@@ -324,6 +335,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
+            case "POST /api/achievements", "PUT /api/achievements/{id}" -> json(headers, achievementRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
@@ -376,6 +388,16 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private ConferenceRequestDto conferenceRequest() {
         return ConferenceRequestDto.builder()
                 .title("Конференция из матрицы")
+                .display(true)
+                .build();
+    }
+
+    private AchievementRequestDto achievementRequest() {
+        return AchievementRequestDto.builder()
+                .title("Достижение из матрицы")
+                .description("Описание")
+                .content("Содержимое")
+                .previewImage(MEDIA_KEY)
                 .display(true)
                 .build();
     }
