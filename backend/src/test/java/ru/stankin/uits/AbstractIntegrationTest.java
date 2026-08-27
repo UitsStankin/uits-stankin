@@ -23,6 +23,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -95,6 +96,16 @@ public abstract class AbstractIntegrationTest {
         registry.add("application.security.jwt.expiration", () -> 86400000);
 
         registry.add("application.storage.root", STORAGE_ROOT::toString);
+    }
+
+    /** Файл в хранилище под ключом вида {@code <prefix>/<uuid>.jpg}; на выходе — ключ. */
+    protected String storeFile(String prefix) throws IOException {
+        String key = prefix + "/" + UUID.randomUUID() + ".jpg";
+        Path target = STORAGE_ROOT.resolve(key);
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, "содержимое картинки");
+
+        return key;
     }
 
     /**

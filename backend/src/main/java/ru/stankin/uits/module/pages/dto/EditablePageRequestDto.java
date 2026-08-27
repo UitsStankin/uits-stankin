@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.deser.jdk.StringDeserializer;
 
 @Data
 @Builder
@@ -18,5 +20,6 @@ public class EditablePageRequestDto {
     String title;
 
     @NotNull(message = "Text is required")
+    @JsonDeserialize(using = StringDeserializer.class)
     String text;
 }
