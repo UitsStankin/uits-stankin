@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.module.news.entity.ConferenceAnnouncement;
 import ru.stankin.uits.module.news.entity.NewsPost;
+import ru.stankin.uits.module.news.repository.ConferenceRepository;
 import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.staff.entity.HelpersEmployee;
 import ru.stankin.uits.module.staff.entity.Teacher;
@@ -18,6 +20,8 @@ import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 
 /**
@@ -39,6 +43,7 @@ public class DevDataSeeder implements CommandLineRunner {
     private final TeacherRepository teacherRepository;
     private final HelpersEmployeeRepository helpersEmployeeRepository;
     private final NewsRepository newsRepository;
+    private final ConferenceRepository conferenceRepository;
     private final PasswordEncoder passwordEncoder;
 
     // Одна транзакция на весь сидинг: либо создаётся всё, либо ничего.
@@ -49,7 +54,8 @@ public class DevDataSeeder implements CommandLineRunner {
     public void run(String... args) {
         // Сидинг только в пустую базу: повторный запуск ничего не дублирует
         if (userRepository.count() > 0) {
-            log.info("DevDataSeeder: база не пуста, сидинг пропущен");
+            log.info("DevDataSeeder: база не пуста, сидинг пользователей и контента пропущен");
+            seedConferences();
             return;
         }
 
@@ -178,7 +184,51 @@ public class DevDataSeeder implements CommandLineRunner {
                 .createdAt(OffsetDateTime.now())
                 .build());
 
+        seedConferences();
+
         log.info("DevDataSeeder: созданы пользователи admin, student, teacher1, teacher2 "
-                + "(пароли — в backend/README.md), 2 преподавателя и 3 новости");
+                + "(пароли — в backend/README.md), 3 преподавателя, 1 сотрудник УВП, "
+                + "3 новости и 3 объявления о конференциях");
+    }
+
+    /**
+     * Отдельный предохранитель: общий на весь сидинг проверяет пользователей,
+     * и в уже наполненную базу новая пачка данных иначе никогда бы не доехала.
+     */
+    private void seedConferences() {
+        if (conferenceRepository.count() > 0) {
+            return;
+        }
+
+        conferenceRepository.save(ConferenceAnnouncement.builder()
+                .title("Информационные технологии в промышленности — 2026")
+                .description("Ежегодная научно-практическая конференция кафедры.")
+                .startDate(LocalDate.now().plusMonths(1))
+                .endDate(LocalDate.now().plusMonths(1).plusDays(2))
+                .time(LocalTime.of(10, 0))
+                .organizer("кафедра УИТС, МГТУ «СТАНКИН»")
+                .contactEmail("conf@stankin.ru")
+                .contactPhone("+7 (499) 972-95-84")
+                .content("<p>Приглашаем к участию преподавателей, аспирантов и студентов.</p>")
+                .display(true)
+                .createdAt(OffsetDateTime.now().minusDays(2))
+                .build());
+
+        conferenceRepository.save(ConferenceAnnouncement.builder()
+                .title("Семинар по промышленной автоматизации")
+                .description("Однодневный семинар: endDate = null, а не равный началу.")
+                .startDate(LocalDate.now().plusWeeks(2))
+                .time(LocalTime.of(14, 30))
+                .organizer("кафедра УИТС")
+                .display(true)
+                .createdAt(OffsetDateTime.now().minusDays(1))
+                .build());
+
+        conferenceRepository.save(ConferenceAnnouncement.builder()
+                .title("Черновик: скрытое объявление о конференции")
+                .description("Не должно появляться в публичном списке конференций.")
+                .display(false)
+                .createdAt(OffsetDateTime.now())
+                .build());
     }
 }

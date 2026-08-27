@@ -21,6 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.module.auth.controller.AuthController;
+import ru.stankin.uits.module.news.dto.ConferenceRequestDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
@@ -157,6 +158,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.DELETE, "/api/news/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/conferences", EDITORS),
             controller(HttpMethod.GET, "/api/conferences/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/conferences", EDITORS),
+            controller(HttpMethod.PUT, "/api/conferences/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/conferences/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
@@ -319,6 +323,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                     json(headers, new AuthController.LoginRequest(fixture.user().getUsername(), TEST_PASSWORD));
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
+            case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
@@ -364,6 +369,13 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .shortDescription("Описание")
                 .postType("news")
                 .content("Содержимое")
+                .display(true)
+                .build();
+    }
+
+    private ConferenceRequestDto conferenceRequest() {
+        return ConferenceRequestDto.builder()
+                .title("Конференция из матрицы")
                 .display(true)
                 .build();
     }
