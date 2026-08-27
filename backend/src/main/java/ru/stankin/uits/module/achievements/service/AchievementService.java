@@ -1,18 +1,15 @@
 package ru.stankin.uits.module.achievements.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.validation.HtmlSanitizer;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
+import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.achievements.dto.AchievementResponseDto;
@@ -22,15 +19,17 @@ import ru.stankin.uits.module.achievements.repository.AchievementRepository;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.service.TeacherService;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AchievementService {
+
+    private static final String ACHIEVEMENT_CATEGORY = "achievements";
 
     private final AchievementRepository achievementRepository;
     private final AchievementMapper achievementMapper;
     private final TeacherService teacherService;
     private final FileStorage fileStorage;
+    private final FileCleanup fileCleanup;
 
     @Transactional(readOnly = true)
     public PageResponseDto<AchievementResponseDto> getPublishedAchievements(Pageable pageable) {
@@ -85,7 +84,7 @@ public class AchievementService {
         achievement.setTeacher(teacher);
 
         if (!oldKey.equals(achievement.getPreviewImage())) {
-            deleteFileAfterCommit(oldKey);
+            fileCleanup.deleteAfterCommit(oldKey);
         }
 
         return achievementMapper.toDto(achievement);
@@ -98,11 +97,11 @@ public class AchievementService {
         String key = achievement.getPreviewImage();
 
         achievementRepository.delete(achievement);
-        deleteFileAfterCommit(key);
+        fileCleanup.deleteAfterCommit(key);
     }
 
     private void prepare(AchievementRequestDto request) {
-        String cleaned = Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true));
+        String cleaned = HtmlSanitizer.sanitize(request.getContent());
 
         if (cleaned.isBlank()) {
             throw new InvalidRequestException("Содержание состоит только из запрещённой разметки");
@@ -123,21 +122,8 @@ public class AchievementService {
     private void validatePreviewImage(AchievementRequestDto request) {
         String key = request.getPreviewImage();
 
-        if (!fileStorage.exists(key)) {
+        if (!fileStorage.existsInCategory(key, ACHIEVEMENT_CATEGORY)) {
             throw new InvalidFileException("Файл обложки не найден: " + key);
         }
-    }
-
-    private void deleteFileAfterCommit(String key) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    fileStorage.delete(key);
-                } catch (RuntimeException e) {
-                    log.warn("Не удалось удалить файл обложки {}: файл останется в хранилище", key, e);
-                }
-            }
-        });
     }
 }

@@ -6,12 +6,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
+import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
@@ -37,6 +36,7 @@ public class TeacherService {
     private final SubjectRepository subjectRepository;
     private final TeacherMapper teacherMapper;
     private final FileStorage fileStorage;
+    private final FileCleanup fileCleanup;
 
     @Transactional(readOnly = true)
     public PageResponseDto<TeacherResponseDto> getAllTeachers(Pageable pageable) {
@@ -87,7 +87,7 @@ public class TeacherService {
         teacherRepository.delete(teacher);
 
         if (avatarKey != null) {
-            deleteFileAfterCommit(avatarKey);
+            fileCleanup.deleteAfterCommit(avatarKey);
         }
     }
 
@@ -110,7 +110,7 @@ public class TeacherService {
         teacherMapper.updateEntity(teacher, request);
 
         if (oldAvatarKey != null && !oldAvatarKey.equals(teacher.getAvatar())) {
-            deleteFileAfterCommit(oldAvatarKey);
+            fileCleanup.deleteAfterCommit(oldAvatarKey);
         }
     }
 
@@ -152,14 +152,5 @@ public class TeacherService {
         if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
             throw new InvalidFileException("Файл аватара не найден: " + key);
         }
-    }
-
-    private void deleteFileAfterCommit(String key) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                fileStorage.delete(key);
-            }
-        });
     }
 }

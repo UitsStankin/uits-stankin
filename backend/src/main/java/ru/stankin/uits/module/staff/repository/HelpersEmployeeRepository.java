@@ -6,4 +6,6 @@ import ru.stankin.uits.module.staff.entity.HelpersEmployee;
 
 @NullMarked
 public interface HelpersEmployeeRepository extends JpaRepository<HelpersEmployee, Long> {
+
+    boolean existsByAvatar(String avatar);
 }

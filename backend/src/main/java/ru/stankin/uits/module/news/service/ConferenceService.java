@@ -1,17 +1,14 @@
 package ru.stankin.uits.module.news.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.validation.HtmlSanitizer;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.NotFoundException;
+import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.news.dto.ConferenceRequestDto;
 import ru.stankin.uits.module.news.dto.ConferenceResponseDto;
@@ -21,14 +18,16 @@ import ru.stankin.uits.module.news.repository.ConferenceRepository;
 
 import java.time.temporal.ChronoUnit;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConferenceService {
 
+    private static final String NEWS_CATEGORY = "news";
+
     private final ConferenceRepository conferenceRepository;
     private final ConferenceMapper conferenceMapper;
     private final FileStorage fileStorage;
+    private final FileCleanup fileCleanup;
 
     @Transactional(readOnly = true)
     public PageResponseDto<ConferenceResponseDto> getPublishedConferences(Pageable pageable) {
@@ -74,7 +73,7 @@ public class ConferenceService {
         conferenceMapper.updateEntity(conference, request);
 
         if (oldKey != null && !oldKey.equals(conference.getPreviewImage())) {
-            deleteFileAfterCommit(oldKey);
+            fileCleanup.deleteAfterCommit(oldKey);
         }
 
         return conferenceMapper.toDto(conference);
@@ -89,7 +88,7 @@ public class ConferenceService {
         conferenceRepository.delete(conference);
 
         if (key != null) {
-            deleteFileAfterCommit(key);
+            fileCleanup.deleteAfterCommit(key);
         }
     }
 
@@ -100,7 +99,7 @@ public class ConferenceService {
      */
     private void prepare(ConferenceRequestDto request) {
         if (request.getContent() != null) {
-            String cleaned = Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true));
+            String cleaned = HtmlSanitizer.sanitize(request.getContent());
             request.setContent(cleaned.isBlank() ? null : cleaned);
         }
 
@@ -117,26 +116,8 @@ public class ConferenceService {
 
     private void validatePreviewImage(ConferenceRequestDto request) {
         String key = request.getPreviewImage();
-        if (key != null && !fileStorage.exists(key)) {
+        if (key != null && !fileStorage.existsInCategory(key, NEWS_CATEGORY)) {
             throw new InvalidFileException("Файл обложки не найден: " + key);
         }
-    }
-
-    /**
-     * Откладывает удаление файла до успешного коммита: диск транзакцию не откатывает.
-     * Сбой самой уборки не пробрасывается: коммит уже прошёл, и исключение отсюда
-     * превратило бы удавшийся запрос в 500. Файл остаётся сиротой — это забота T-31.
-     */
-    private void deleteFileAfterCommit(String key) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    fileStorage.delete(key);
-                } catch (RuntimeException e) {
-                    log.warn("Не удалось удалить файл обложки {}: файл останется в хранилище", key, e);
-                }
-            }
-        });
     }
 }

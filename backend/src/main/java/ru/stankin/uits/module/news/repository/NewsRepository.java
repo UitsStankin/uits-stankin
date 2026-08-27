@@ -9,6 +9,8 @@ import ru.stankin.uits.module.news.entity.NewsPost;
 import java.util.Optional;
 
 public interface NewsRepository extends JpaRepository<NewsPost, Long> {
+
+    boolean existsByPreviewImage(String previewImage);
     @EntityGraph(attributePaths = {"author"})
     Page<NewsPost> findAllByDisplayTrue(Pageable pageable);
 
