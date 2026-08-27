@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/changesets/011-create-subject-tables.yml
   - include:
       file: db/changelog/changesets/012-create-helpers-employee.yml
+  - include:
+      file: db/changelog/changesets/013-create-conference-table.yml
