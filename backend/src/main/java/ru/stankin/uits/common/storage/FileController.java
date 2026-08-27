@@ -24,7 +24,7 @@ public class FileController {
     private final ImageProcessor imageProcessor;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    @PreAuthorize("#category == 'avatars' or hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<FileUploadResponseDto> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "news") String category

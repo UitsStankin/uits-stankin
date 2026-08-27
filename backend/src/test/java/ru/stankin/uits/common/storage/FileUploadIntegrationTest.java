@@ -56,7 +56,10 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 
-    /** Загрузка файлов — право редактора: обычный пользователь не должен занимать диск. */
+    /**
+     * Контент портала грузят редакторы: чужой раздел обычному пользователю закрыт,
+     * даже когда собственный аватар ему разрешён.
+     */
     @Test
     void upload_WhenPlainUser_Returns403() throws IOException {
         createUser("user", TestRole.USER);
@@ -67,6 +70,31 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
                 ProblemDetail.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    /** Аватар меняет владелец учётной записи, а не редактор: раздел avatars открыт всем авторизованным. */
+    @Test
+    void upload_WhenPlainUserUploadsAvatar_Returns201() throws IOException {
+        createUser("user", TestRole.USER);
+        String token = login("user");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(300, 300), "photo.jpg", "avatars", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().key()).startsWith("avatars/");
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key())).exists();
+    }
+
+    @Test
+    void upload_WhenAnonymousUploadsAvatar_Returns401() throws IOException {
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(300, 300), "photo.jpg", "avatars", null),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test

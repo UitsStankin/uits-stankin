@@ -8,10 +8,13 @@ import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
+import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.security.JwtService;
 import ru.stankin.uits.security.SecurityUser;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -134,6 +137,156 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("Пароль должен быть минимум 8 символов");
+    }
+
+    @Test
+    void shouldUpdateProfile_WhenRequestIsValid() throws IOException {
+        String avatarKey = storeFile("avatars");
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", avatarKey)),
+                UserResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        UserResponseDto profile = response.getBody();
+        assertThat(profile).isNotNull();
+        assertThat(profile.getFirstName()).isEqualTo("Иван");
+        assertThat(profile.getLastName()).isEqualTo("Иванов");
+        assertThat(profile.getAvatar()).isEqualTo(avatarKey);
+        assertThat(profile.getAvatarUrl()).isEqualTo("/media/" + avatarKey);
+
+        User stored = userRepository.findByUsername("prof_ivanov").orElseThrow();
+        assertThat(stored.getFirstName()).isEqualTo("Иван");
+        assertThat(stored.getAvatar()).isEqualTo(avatarKey);
+    }
+
+    /**
+     * PUT заменяет карточку целиком: не присланное поле очищается. Форма правки обязана
+     * отправлять все три поля, иначе правка аватара сотрёт имя.
+     */
+    @Test
+    void shouldClearFields_WhenTheyAreOmitted() throws IOException {
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", storeFile("avatars"))), UserResponseDto.class);
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withToken(updateRequest(null, null, null)),
+                UserResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getFirstName()).isNull();
+        assertThat(response.getBody().getAvatar()).isNull();
+        assertThat(response.getBody().getAvatarUrl()).isNull();
+    }
+
+    /**
+     * Логин, почта и флаги ролей в этой форме не редактируются: в старом портале
+     * тот же запрос позволял выдать себе доступ в админку (MIGRATION §7 п.8).
+     */
+    @Test
+    void shouldIgnoreFieldsOutsideTheForm_WhenTheyArePassed() {
+        String body = """
+                {
+                  "firstName": "Иван",
+                  "username": "hacker",
+                  "email": "hacker@example.com",
+                  "superuser": true,
+                  "moderator": true,
+                  "telegramCode": "123456"
+                }""";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(validToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile", HttpMethod.PUT, new HttpEntity<>(body, headers), UserResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        User stored = userRepository.findByUsername("prof_ivanov").orElseThrow();
+        assertThat(stored.getFirstName()).isEqualTo("Иван");
+        assertThat(stored.getEmail()).isNull();
+        assertThat(stored.isSuperuser()).isFalse();
+        assertThat(stored.isModerator()).isFalse();
+        assertThat(stored.getTelegramCode()).isNull();
+    }
+
+    @Test
+    void shouldReturn400_WhenAvatarFileIsMissing() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", "avatars/never-existed.jpg")),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("Файл аватара не найден");
+    }
+
+    /**
+     * Ключ из чужого раздела, замаскированный под аватар: приняв его, портал отдал бы
+     * обложку новости как аватар и удалил бы её при следующей правке профиля.
+     */
+    @Test
+    void shouldReturn400_WhenAvatarKeyClimbsIntoOtherCategory() throws IOException {
+        String foreignKey = storeFile("news");
+        String disguisedKey = "avatars/../" + foreignKey;
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", disguisedKey)),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(Files.exists(STORAGE_ROOT.resolve(foreignKey))).isTrue();
+    }
+
+    @Test
+    void shouldDeleteOldAvatarFile_WhenAvatarReplaced() throws IOException {
+        String oldKey = storeFile("avatars");
+        String newKey = storeFile("avatars");
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", oldKey)), UserResponseDto.class);
+
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", newKey)), UserResponseDto.class);
+
+        assertThat(Files.exists(STORAGE_ROOT.resolve(oldKey))).isFalse();
+        assertThat(Files.exists(STORAGE_ROOT.resolve(newKey))).isTrue();
+    }
+
+    @Test
+    void shouldReturn400WithFieldErrors_WhenFirstNameIsTooLong() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withToken(updateRequest("И".repeat(151), "Иванов", null)),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("firstName");
+        assertThat(response.getBody()).contains("\"instance\":\"/api/users/profile\"");
+    }
+
+    private UserUpdateRequestDto updateRequest(String firstName, String lastName, String avatar) {
+        UserUpdateRequestDto body = new UserUpdateRequestDto();
+        body.setFirstName(firstName);
+        body.setLastName(lastName);
+        body.setAvatar(avatar);
+
+        return body;
     }
 
     private ChangePasswordRequest changeRequest(String oldPassword, String newPassword) {
