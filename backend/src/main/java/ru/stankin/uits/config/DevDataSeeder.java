@@ -7,6 +7,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.storage.FileStorage;
+import ru.stankin.uits.module.achievements.entity.Achievement;
+import ru.stankin.uits.module.achievements.repository.AchievementRepository;
 import ru.stankin.uits.module.news.entity.ConferenceAnnouncement;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.ConferenceRepository;
@@ -20,6 +23,14 @@ import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -44,6 +55,8 @@ public class DevDataSeeder implements CommandLineRunner {
     private final HelpersEmployeeRepository helpersEmployeeRepository;
     private final NewsRepository newsRepository;
     private final ConferenceRepository conferenceRepository;
+    private final AchievementRepository achievementRepository;
+    private final FileStorage fileStorage;
     private final PasswordEncoder passwordEncoder;
 
     // Одна транзакция на весь сидинг: либо создаётся всё, либо ничего.
@@ -56,6 +69,7 @@ public class DevDataSeeder implements CommandLineRunner {
         if (userRepository.count() > 0) {
             log.info("DevDataSeeder: база не пуста, сидинг пользователей и контента пропущен");
             seedConferences();
+            seedAchievements();
             return;
         }
 
@@ -185,10 +199,11 @@ public class DevDataSeeder implements CommandLineRunner {
                 .build());
 
         seedConferences();
+        seedAchievements();
 
         log.info("DevDataSeeder: созданы пользователи admin, student, teacher1, teacher2 "
                 + "(пароли — в backend/README.md), 3 преподавателя, 1 сотрудник УВП, "
-                + "3 новости и 3 объявления о конференциях");
+                + "3 новости, 3 объявления о конференциях и 3 достижения кафедры");
     }
 
     /**
@@ -230,5 +245,65 @@ public class DevDataSeeder implements CommandLineRunner {
                 .display(false)
                 .createdAt(OffsetDateTime.now())
                 .build());
+    }
+
+    /**
+     * Отдельный предохранитель — по тем же причинам, что и у конференций.
+     */
+    private void seedAchievements() {
+        if (achievementRepository.count() > 0) {
+            return;
+        }
+
+        Teacher teacher = teacherRepository.findAll().stream().findFirst().orElse(null);
+        String previewImage = storePlaceholderImage();
+
+        achievementRepository.save(Achievement.builder()
+                .title("Победа в конкурсе «Инженер года»")
+                .description("Преподаватель кафедры стал лауреатом всероссийского конкурса.")
+                .content("<p>Награда присуждена за работы в области автоматизации "
+                        + "технологических процессов.</p>")
+                .previewImage(previewImage)
+                .teacher(teacher)
+                .display(true)
+                .createdAt(OffsetDateTime.now().minusDays(2))
+                .build());
+
+        achievementRepository.save(Achievement.builder()
+                .title("Грант на исследование цифровых двойников")
+                .description("Достижение кафедры без привязки к преподавателю: teacherId = null.")
+                .content("<p>Кафедра получила финансирование на трёхлетний исследовательский "
+                        + "проект.</p>")
+                .previewImage(previewImage)
+                .display(true)
+                .createdAt(OffsetDateTime.now().minusDays(1))
+                .build());
+
+        achievementRepository.save(Achievement.builder()
+                .title("Черновик: скрытое достижение")
+                .description("Не должно появляться в публичном списке достижений.")
+                .content("<p>Запись с display=false: публичный эндпоинт обязан её отфильтровать.</p>")
+                .previewImage(previewImage)
+                .display(false)
+                .createdAt(OffsetDateTime.now())
+                .build());
+    }
+
+    private String storePlaceholderImage() {
+        BufferedImage image = new BufferedImage(800, 450, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(new Color(0x1F3A5F));
+        graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+        graphics.dispose();
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
+        try {
+            ImageIO.write(image, "jpeg", bytes);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Не удалось подготовить заглушку обложки", e);
+        }
+
+        return fileStorage.store(new ByteArrayInputStream(bytes.toByteArray()), "jpg", "achievements");
     }
 }

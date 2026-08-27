@@ -49,6 +49,12 @@ public class TeacherService {
                 .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
     }
 
+    @Transactional(readOnly = true)
+    public Teacher getTeacherEntity(Long id) {
+        return teacherRepository.findById(id)
+                .orElseThrow(() -> new InvalidRequestException("Преподаватель не найден: id=" + id));
+    }
+
     @Transactional
     public TeacherDetailsResponseDto createTeacher(TeacherRequestDto request) {
         validateAvatar(request);
