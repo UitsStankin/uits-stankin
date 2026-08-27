@@ -19,10 +19,12 @@ import ru.stankin.uits.module.pages.dto.EditablePageResponseDto;
 import ru.stankin.uits.module.pages.entity.EditablePage;
 import ru.stankin.uits.module.pages.repository.EditablePageRepository;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 public class EditablePageIntegrationTest extends AbstractIntegrationTest {
 
@@ -142,6 +144,9 @@ public class EditablePageIntegrationTest extends AbstractIntegrationTest {
         assertThat(after.getId()).isEqualTo(before.getId());
         assertThat(after.getCreatedAt()).isEqualTo(before.getCreatedAt());
         assertThat(after.getUpdatedAt()).isAfter(before.getUpdatedAt());
+
+        assertThat(body.getUpdatedAt()).isAfter(before.getUpdatedAt());
+        assertThat(body.getUpdatedAt()).isCloseTo(after.getUpdatedAt(), within(1, ChronoUnit.MILLIS));
     }
 
     @Test

@@ -39,7 +39,7 @@ public class EditablePageService {
         editablePage.setTitle(editablePageRequestDto.getTitle());
         editablePage.setText(editablePageRequestDto.getText());
 
-        return editablePageMapper.toDto(editablePage);
+        return editablePageMapper.toDto(editablePageRepository.saveAndFlush(editablePage));
     }
 
 }
