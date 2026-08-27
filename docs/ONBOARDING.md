@@ -379,7 +379,9 @@ SecurityContextHolder.getContext().getAuthentication().getPrincipal()
 CSRF-атака возможна, когда браузер **автоматически** прикладывает креды (cookie-сессию) к запросу
 с чужого сайта. У нас токен кладётся в заголовок **вручную** из JavaScript — автоматически он никуда
 не уедет, значит CSRF неприменим. Отключено корректно.
-⚠️ Когда появится refresh-токен в httpOnly cookie — CSRF снова станет актуален для эндпоинта refresh.
+Refresh-токен в httpOnly cookie появился в T-30, и CSRF остаётся неприменим: cookie помечена
+`SameSite=Lax`, поэтому браузер не приложит её к cross-site POST — а `refresh` и `logout`
+отвечают только на POST. Отдельный CSRF-токен осознанно не заводился (ARCHITECTURE §4.5).
 
 ```java
 .cors(... setAllowedOriginPatterns("*") ...)

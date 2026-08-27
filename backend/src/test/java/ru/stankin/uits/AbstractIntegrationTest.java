@@ -96,7 +96,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.password", postgres::getPassword);
 
         registry.add("application.security.jwt.secret-key", () -> JWT_SECRET);
-        registry.add("application.security.jwt.expiration", () -> 86400000);
+        registry.add("application.security.jwt.expiration", () -> 3600000);
 
         registry.add("application.storage.root", STORAGE_ROOT::toString);
     }

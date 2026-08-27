@@ -127,9 +127,17 @@ Secrets и запись `.env` на сервере из `deploy.yml`.
 (либо пакет переведён в public — образ секретов не содержит).
 **Изучить** — GitHub Actions Secrets и environments; чем readiness отличается
 от liveness при выкатке; срок жизни `GITHUB_TOKEN` при `docker login` на сервере.
-*Rate limit на `/login` сделан в T-30 — здесь остаётся проверить, что за IP клиента
-отвечает `forward-headers-strategy: framework` из `application-prod.yaml`: без него
-все запросы приходят с адреса nginx и попадают в одно общее ведро.*
+*Rate limit на `/login` сделан в T-30, но пока считает по адресу TCP-соединения:
+`forward-headers-strategy` намеренно выключен. Включать его до появления nginx нельзя —
+`ForwardedHeaderFilter` слепо берёт первый адрес из `X-Forwarded-For`, и клиент,
+подставляя заголовок сам, получает новое ведро на каждый запрос (проверено тестом
+`LoginRateLimitProxyHeaderIntegrationTest`). Когда nginx появится, включать заголовки
+можно только вместе с тремя условиями: nginx **перезаписывает** заголовок
+(`proxy_set_header X-Forwarded-For $remote_addr;`, а не `$proxy_add_x_forwarded_for`);
+контейнер приложения перестаёт публиковать порт 8080 наружу, иначе мимо nginx можно
+ходить напрямую; стратегия — `native` с явным списком доверенных прокси
+(`server.tomcat.remoteip.internal-proxies`). Пока nginx нет, общее ведро на всех —
+осознанный компромисс: заперемся все разом, но обойти лимит нельзя.*
 
 **Долги T-22, всплывающие на этом шаге.** Том `uits_media_data` нужно включить
 в бэкап: у базы есть дамп, у загруженных файлов — ничего, и потеря тома означает
