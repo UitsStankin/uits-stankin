@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-create-conference-table
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: news_conferenceannouncement
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: start_date
+                  type: DATE
+              - column:
+                  name: end_date
+                  type: DATE
+              - column:
+                  name: time
+                  type: TIME
+              - column:
+                  name: organizer
+                  type: VARCHAR(255)
+              - column:
+                  name: contact_email
+                  type: VARCHAR(254)
+              - column:
+                  name: contact_phone
+                  type: VARCHAR(32)
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: preview_image
+                  type: VARCHAR(100)
+              - column:
+                  name: preview_image_description
+                  type: VARCHAR(256)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

@@ -1,6 +1,7 @@
 package ru.stankin.uits.module.news.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,7 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.security.SecurityUser;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NewsService {
@@ -123,12 +125,20 @@ public class NewsService {
         }
     }
 
-    /** Откладывает удаление файла до успешного коммита: диск транзакцию не откатывает. */
+    /**
+     * Откладывает удаление файла до успешного коммита: диск транзакцию не откатывает.
+     * Сбой самой уборки не пробрасывается: коммит уже прошёл, и исключение отсюда
+     * превратило бы удавшийся запрос в 500. Файл остаётся сиротой — это забота T-31.
+     */
     private void deleteFileAfterCommit(String key) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                fileStorage.delete(key);
+                try {
+                    fileStorage.delete(key);
+                } catch (RuntimeException e) {
+                    log.warn("Не удалось удалить файл обложки {}: файл останется в хранилище", key, e);
+                }
             }
         });
     }
