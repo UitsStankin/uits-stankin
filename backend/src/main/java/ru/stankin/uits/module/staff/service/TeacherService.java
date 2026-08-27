@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TeacherService {
 
+    private static final String AVATAR_CATEGORY = "avatars";
+
     private final TeacherRepository teacherRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherMapper teacherMapper;
@@ -147,7 +149,7 @@ public class TeacherService {
 
     private void validateAvatar(TeacherRequestDto request) {
         String key = request.getAvatar();
-        if (key != null && !fileStorage.exists(key)) {
+        if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
             throw new InvalidFileException("Файл аватара не найден: " + key);
         }
     }

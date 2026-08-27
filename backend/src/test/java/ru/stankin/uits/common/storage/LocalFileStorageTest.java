@@ -152,6 +152,37 @@ class LocalFileStorageTest {
     }
 
     @Test
+    void existsInCategory_WhenFileStoredInThatCategory_ReturnsTrue() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
+        String key = storage.store(content("данные"), EXTENSION, "avatars");
+
+        assertThat(storage.existsInCategory(key, "avatars")).isTrue();
+    }
+
+    @Test
+    void existsInCategory_WhenFileStoredInOtherCategory_ReturnsFalse() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
+        String key = storage.store(content("данные"), EXTENSION, CATEGORY);
+
+        assertThat(storage.exists(key)).isTrue();
+        assertThat(storage.existsInCategory(key, "avatars")).isFalse();
+    }
+
+    /**
+     * Ключ начинается с нужного раздела, но уводит в соседний. Приняв такой ключ,
+     * сервис записал бы в свою колонку чужой файл и удалил бы его при следующей правке.
+     */
+    @Test
+    void existsInCategory_WhenKeyClimbsIntoOtherCategory_ReturnsFalse() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
+        String foreignKey = storage.store(content("чужая обложка"), EXTENSION, CATEGORY);
+        String disguisedKey = "avatars/../" + foreignKey;
+
+        assertThat(storage.exists(disguisedKey)).isTrue();
+        assertThat(storage.existsInCategory(disguisedKey, "avatars")).isFalse();
+    }
+
+    @Test
     void url_WhenCalled_PrependsPublicBaseUrl() {
         LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
 
