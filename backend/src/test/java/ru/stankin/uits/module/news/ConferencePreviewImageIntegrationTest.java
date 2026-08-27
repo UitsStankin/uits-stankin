@@ -46,6 +46,22 @@ public class ConferencePreviewImageIntegrationTest extends AbstractIntegrationTe
         assertThat(conferenceRepository.findAll()).isEmpty();
     }
 
+    /** Ключ существующего файла из чужого раздела: обложка конференции живёт в news (D-13). */
+    @Test
+    void create_WhenCoverFromOtherCategory_Returns400() throws IOException {
+        String token = moderatorToken();
+        String avatarKey = storeFile("avatars");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/conferences",
+                withToken(requestWithCover(avatarKey), token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(conferenceRepository.findAll()).isEmpty();
+        assertThat(STORAGE_ROOT.resolve(avatarKey)).exists();
+    }
+
     /** Вторая дверь записи: закрытая одна оставила бы вторую открытой (урок T-23). */
     @Test
     void update_WhenCoverMissingInStorage_Returns400AndKeepsOldCover() throws IOException {

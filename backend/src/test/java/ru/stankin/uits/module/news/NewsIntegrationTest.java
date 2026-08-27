@@ -630,6 +630,76 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         assertThat(newsRepository.findAll()).hasSize(1);
     }
 
+    /**
+     * {@code @NotBlank} проверяет строку до чистки, поэтому тело из одной небезопасной
+     * разметки проходило валидацию и сохранялось пустым: новость с заголовком и без текста.
+     */
+    @Test
+    void createNews_WhenContentIsOnlyUnsafeMarkup_Returns400() {
+        String token = createAdminAndLogin();
+        NewsRequestDto request = validRequest();
+        request.setContent("<script>alert(1)</script>");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/news", withToken(request, token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrors(response)).containsKey("content");
+        assertThat(newsRepository.findAll()).isEmpty();
+    }
+
+    /**
+     * Сортировка только по {@code createdAt} оставляет порядок строк с одинаковой датой
+     * на усмотрение Postgres, и он вправе выдать его по-разному на каждый запрос: одна
+     * и та же новость приходит на двух страницах, другая не приходит ни на одной.
+     * Вторичный ключ {@code id} делает порядок однозначным.
+     */
+    @Test
+    void publishedNews_WhenCreatedAtIsEqual_PagesDoNotOverlap() {
+        User admin = createAdmin();
+        OffsetDateTime sameMoment = OffsetDateTime.parse("2026-08-27T12:00:00Z");
+        NewsPost first = saveNewsAt(admin, "Первая", sameMoment);
+        saveNewsAt(admin, "Вторая", sameMoment);
+        saveNewsAt(admin, "Третья", sameMoment);
+
+        // правка переносит строку в конец таблицы: без вторичного ключа порядок
+        // выдачи следует за физическим расположением строк, а не за их id
+        first.setTitle("Первая, поправленная");
+        newsRepository.saveAndFlush(first);
+
+        List<Long> collected = new java.util.ArrayList<>();
+
+        for (int page = 0; page < 3; page++) {
+            ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                    "/api/public/news?page=" + page + "&size=1",
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {});
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().content()).hasSize(1);
+            collected.add(response.getBody().content().getFirst().getId());
+        }
+
+        assertThat(collected).doesNotHaveDuplicates();
+        assertThat(collected).containsExactlyInAnyOrderElementsOf(
+                newsRepository.findAll().stream().map(NewsPost::getId).toList());
+        assertThat(collected).isSortedAccordingTo(java.util.Comparator.reverseOrder());
+    }
+
+    private NewsPost saveNewsAt(User author, String title, OffsetDateTime createdAt) {
+        return newsRepository.save(NewsPost.builder()
+                .title(title)
+                .shortDescription("Desc")
+                .postType("news")
+                .content("Content")
+                .display(true)
+                .createdAt(createdAt)
+                .author(author)
+                .build());
+    }
+
     private NewsRequestDto validRequest() {
         return NewsRequestDto.builder()
                 .title("Test News Title")

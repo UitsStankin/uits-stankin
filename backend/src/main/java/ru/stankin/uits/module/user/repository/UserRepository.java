@@ -9,6 +9,8 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    boolean existsByAvatar(String avatar);
     Optional<User> findByUsername(String username);
 
     @Modifying

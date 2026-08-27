@@ -25,7 +25,7 @@ public class NewsController {
 
     @GetMapping("/public/news")
     public PageResponseDto<NewsResponseDto> getNews(
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 20, sort = {"createdAt", "id"}, direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return newsService.getPublishedNews(pageable);
     }
@@ -38,7 +38,7 @@ public class NewsController {
     @GetMapping("/news")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public PageResponseDto<NewsResponseDto> getAllNews(
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 20, sort = {"createdAt", "id"}, direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return newsService.getAllNews(pageable);
     }

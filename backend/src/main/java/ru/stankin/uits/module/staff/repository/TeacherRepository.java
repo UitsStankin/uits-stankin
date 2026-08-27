@@ -8,5 +8,7 @@ import java.util.Optional;
 
 @NullMarked
 public interface TeacherRepository extends JpaRepository<Teacher, Long> {
+
+    boolean existsByAvatar(String avatar);
     Optional<Teacher> findByUserUsername(String username);
 }

@@ -253,6 +253,58 @@ public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
         assertThat(STORAGE_ROOT.resolve(key)).exists();
     }
 
+    /**
+     * Ключ из чужого раздела хранилища: файл существует, но это аватар, а не обложка.
+     * Приняв такой ключ, портал показал бы чужую картинку и удалил бы её при следующей
+     * правке новости (D-13).
+     */
+    @Test
+    void createNews_WhenCoverFromOtherCategory_Returns400() throws IOException {
+        String token = createAdminAndLogin();
+        String avatarKey = storeFileIn("avatars");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/news",
+                withToken(requestWithCover(avatarKey), token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(newsRepository.findAll()).isEmpty();
+        assertThat(STORAGE_ROOT.resolve(avatarKey)).exists();
+    }
+
+    /**
+     * Один файл стоит обложкой у двух новостей. Удаление первой не должно оставлять
+     * вторую с битой картинкой; файл уходит с диска вместе с последней ссылкой.
+     */
+    @Test
+    void deleteNews_WhenCoverSharedWithAnotherNews_KeepsFileUntilLastReferenceGone() throws IOException {
+        User admin = createAdmin();
+        String token = login("admin");
+        String sharedKey = storeFile();
+        NewsPost first = saveNews(admin, sharedKey);
+        NewsPost second = saveNews(admin, sharedKey);
+
+        restTemplate.exchange("/api/news/" + first.getId(), HttpMethod.DELETE,
+                withToken(token), Void.class);
+
+        assertThat(STORAGE_ROOT.resolve(sharedKey)).exists();
+
+        restTemplate.exchange("/api/news/" + second.getId(), HttpMethod.DELETE,
+                withToken(token), Void.class);
+
+        assertThat(STORAGE_ROOT.resolve(sharedKey)).doesNotExist();
+    }
+
+    private String storeFileIn(String category) throws IOException {
+        String key = category + "/2026/08/" + UUID.randomUUID() + ".jpg";
+        Path target = STORAGE_ROOT.resolve(key);
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, "содержимое картинки");
+
+        return key;
+    }
+
     private String storeFile() throws IOException {
         String key = "news/2026/08/" + UUID.randomUUID() + ".jpg";
         Path target = STORAGE_ROOT.resolve(key);

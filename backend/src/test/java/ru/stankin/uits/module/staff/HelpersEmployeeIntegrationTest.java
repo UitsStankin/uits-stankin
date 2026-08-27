@@ -113,6 +113,28 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    /** Аватар карточки живёт в avatars: ключ существующего файла из чужого раздела не принимается (D-13). */
+    @Test
+    void createHelper_WithAvatarKeyFromOtherCategory_Returns400() throws IOException {
+        String newsKey = storeFile("news");
+        HelpersEmployeeRequestDto request = HelpersEmployeeRequestDto.builder()
+                .lastName("Кузнецова")
+                .firstName("Анна")
+                .position("инженер")
+                .avatar(newsKey)
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/helpers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(STORAGE_ROOT.resolve(newsKey)).exists();
+    }
+
     @Test
     void updateHelper_ReplacesFields() {
         HelpersEmployee helper = createHelper("Белова", "Ирина");

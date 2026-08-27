@@ -236,6 +236,22 @@ public class AchievementIntegrationTest extends AbstractIntegrationTest {
         assertThat(achievementRepository.findAll()).isEmpty();
     }
 
+    /** Тело из одной небезопасной разметки после чистки пусто: достижение без содержания. */
+    @Test
+    void create_WhenContentIsOnlyUnsafeMarkup_Returns400() throws IOException {
+        String token = moderatorToken();
+        AchievementRequestDto request = validRequest()
+                .content("<script>alert(1)</script>")
+                .build();
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/api/achievements", withToken(request, token), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("content");
+        assertThat(achievementRepository.findAll()).isEmpty();
+    }
+
     /** Тело без display дало бы молча скрытое достижение, а не ошибку. */
     @Test
     void create_WhenDisplayMissing_Returns400() throws IOException {

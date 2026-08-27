@@ -40,6 +40,20 @@ public class AchievementPreviewImageIntegrationTest extends AbstractIntegrationT
         assertThat(achievementRepository.findAll()).isEmpty();
     }
 
+    /** Ключ существующего файла из чужого раздела: обложка достижения живёт в achievements (D-13). */
+    @Test
+    void create_WhenCoverFromOtherCategory_Returns400() throws IOException {
+        String token = moderatorToken();
+        String avatarKey = storeFile("avatars");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/achievements", withToken(requestWithCover(avatarKey), token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(achievementRepository.findAll()).isEmpty();
+        assertThat(STORAGE_ROOT.resolve(avatarKey)).exists();
+    }
+
     /** Вторая дверь записи: закрытая одна оставила бы вторую открытой (урок T-23). */
     @Test
     void update_WhenCoverMissingInStorage_Returns400AndKeepsOldCover() throws IOException {

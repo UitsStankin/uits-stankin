@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface ConferenceRepository extends JpaRepository<ConferenceAnnouncement, Long> {
 
+    boolean existsByPreviewImage(String previewImage);
+
     Page<ConferenceAnnouncement> findAllByDisplayTrue(Pageable pageable);
 
     Optional<ConferenceAnnouncement> findByIdAndDisplayTrue(Long id);

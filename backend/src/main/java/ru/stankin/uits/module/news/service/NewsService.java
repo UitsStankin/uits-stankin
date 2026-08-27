@@ -1,18 +1,15 @@
 package ru.stankin.uits.module.news.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import ru.stankin.uits.common.validation.HtmlSanitizer;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
@@ -23,19 +20,21 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.security.SecurityUser;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NewsService {
 
+    private static final String NEWS_CATEGORY = "news";
+
     private final NewsRepository newsRepository;
     private final NewsMapper newsMapper;
     private final FileStorage fileStorage;
+    private final FileCleanup fileCleanup;
 
     @Transactional
     public NewsResponseDto createNews(NewsRequestDto request) {
         User currentUser = getCurrentUser();
-        request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
+        request.setContent(HtmlSanitizer.sanitize(request.getContent()));
         validatePreviewImage(request);
         NewsPost newsPost = newsMapper.toEntity(request);
         newsPost.setAuthor(currentUser);
@@ -99,14 +98,14 @@ public class NewsService {
     public NewsResponseDto updateNews(Long id, NewsRequestDto request) {
         NewsPost newsPost = newsRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
-        request.setContent(Jsoup.clean(request.getContent(), Safelist.relaxed().preserveRelativeLinks(true)));
+        request.setContent(HtmlSanitizer.sanitize(request.getContent()));
         validatePreviewImage(request);
 
         String oldKey = newsPost.getPreviewImage();
         newsMapper.updateEntity(newsPost, request);
 
         if (oldKey != null && !oldKey.equals(newsPost.getPreviewImage())) {
-            deleteFileAfterCommit(oldKey);
+            fileCleanup.deleteAfterCommit(oldKey);
         }
 
         return newsMapper.toDto(newsPost);
@@ -121,31 +120,13 @@ public class NewsService {
         newsRepository.delete(newsPost);
 
         if (key != null) {
-            deleteFileAfterCommit(key);
+            fileCleanup.deleteAfterCommit(key);
         }
-    }
-
-    /**
-     * Откладывает удаление файла до успешного коммита: диск транзакцию не откатывает.
-     * Сбой самой уборки не пробрасывается: коммит уже прошёл, и исключение отсюда
-     * превратило бы удавшийся запрос в 500. Файл остаётся сиротой — это забота T-31.
-     */
-    private void deleteFileAfterCommit(String key) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    fileStorage.delete(key);
-                } catch (RuntimeException e) {
-                    log.warn("Не удалось удалить файл обложки {}: файл останется в хранилище", key, e);
-                }
-            }
-        });
     }
 
     private void validatePreviewImage(NewsRequestDto request) {
         String key = request.getPreviewImage();
-        if (key != null && !fileStorage.exists(key)) {
+        if (key != null && !fileStorage.existsInCategory(key, NEWS_CATEGORY)) {
             throw new InvalidFileException("Файл обложки не найден: " + key);
         }
     }

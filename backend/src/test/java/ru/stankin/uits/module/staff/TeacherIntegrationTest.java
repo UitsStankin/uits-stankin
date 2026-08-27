@@ -282,6 +282,31 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
     }
 
+    /** Аватар карточки живёт в avatars: ключ существующего файла из чужого раздела не принимается (D-13). */
+    @Test
+    void updateTeacher_WhenAvatarKeyFromOtherCategory_Returns400() throws IOException {
+        Teacher card = createCard("Иванова", "Мария");
+        String newsKey = storeFile("news");
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .avatar(newsKey)
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isNull();
+        assertThat(STORAGE_ROOT.resolve(newsKey)).exists();
+    }
+
     @Test
     void deleteTeacher_Returns204AndCardDisappears() {
         Teacher card = createCard("Иванова", "Мария");
