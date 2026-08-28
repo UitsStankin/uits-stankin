@@ -9,7 +9,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.TestRole;
+import ru.stankin.uits.module.news.dto.NewsRequestDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,6 +42,63 @@ public class CorsIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<String> response = preflight(FOREIGN_ORIGIN);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("Location и Retry-After открыты браузеру: без Expose-Headers фронт их не прочитает")
+    void response_ExposesHeadersFrontendReads() {
+        createUser("cors_admin", TestRole.ADMIN);
+        String token = login("cors_admin");
+
+        NewsRequestDto request = new NewsRequestDto();
+        request.setTitle("Новость для проверки CORS");
+        request.setShortDescription("Короткое описание");
+        request.setPostType("news");
+        request.setContent("<p>Текст</p>");
+        request.setDisplay(true);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(HttpHeaders.ORIGIN, ALLOWED_ORIGIN);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/news", HttpMethod.POST, new HttpEntity<>(request, headers), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS))
+                .isNotNull()
+                .contains(HttpHeaders.LOCATION)
+                .contains(HttpHeaders.RETRY_AFTER);
+    }
+
+    @Test
+    @DisplayName("Location — путь, а не абсолютный адрес: за прокси абсолютный увёл бы на внутренний хост")
+    void createdResource_LocationIsRelativePath() {
+        createUser("cors_author", TestRole.ADMIN);
+        String token = login("cors_author");
+
+        NewsRequestDto request = new NewsRequestDto();
+        request.setTitle("Новость для проверки Location");
+        request.setShortDescription("Короткое описание");
+        request.setPostType("news");
+        request.setContent("<p>Текст</p>");
+        request.setDisplay(true);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/news", HttpMethod.POST, new HttpEntity<>(request, headers), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getHeaders().getLocation())
+                .isNotNull()
+                .satisfies(location -> {
+                    assertThat(location.isAbsolute()).isFalse();
+                    assertThat(location.toString()).startsWith("/api/news/");
+                });
     }
 
     private ResponseEntity<String> preflight(String origin) {

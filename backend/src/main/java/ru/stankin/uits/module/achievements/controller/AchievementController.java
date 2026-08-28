@@ -8,7 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.achievements.dto.AchievementResponseDto;
@@ -61,8 +61,7 @@ public class AchievementController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<AchievementResponseDto> createAchievement(@Valid @RequestBody AchievementRequestDto request) {
         AchievementResponseDto created = achievementService.createAchievement(request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
+        URI location = UriComponentsBuilder.fromPath("/api/achievements/{id}")
                 .buildAndExpand(created.getId())
                 .toUri();
 

@@ -7,7 +7,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.HelpersEmployeeResponseDto;
@@ -34,8 +34,7 @@ public class HelpersEmployeeController {
     public ResponseEntity<HelpersEmployeeResponseDto> createHelper(
             @Valid @RequestBody HelpersEmployeeRequestDto request) {
         HelpersEmployeeResponseDto created = helpersEmployeeService.createHelper(request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
+        URI location = UriComponentsBuilder.fromPath("/api/helpers/{id}")
                 .buildAndExpand(created.getId())
                 .toUri();
 
