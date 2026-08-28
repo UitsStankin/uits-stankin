@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.validation.HtmlSanitizer;
 import ru.stankin.uits.common.exception.InvalidFileException;
+import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
+import ru.stankin.uits.module.news.PostType;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -69,9 +71,16 @@ public class NewsService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDto<NewsResponseDto> getPublishedNews(Pageable pageable) {
-        return PageResponseDto.from(newsRepository.findAllByDisplayTrue(pageable)
+    public PageResponseDto<NewsResponseDto> getPublishedNews(String postType, Pageable pageable) {
+        validatePostType(postType);
+
+        if (postType == null || postType.isBlank()) {
+            return PageResponseDto.from(newsRepository.findAllByDisplayTrue(pageable)
                 .map(newsMapper::toDto));
+        } else {
+            return PageResponseDto.from(newsRepository.findAllByDisplayTrueAndPostType(postType, pageable)
+                .map(newsMapper::toDto));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -82,9 +91,16 @@ public class NewsService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDto<NewsResponseDto> getAllNews(Pageable pageable) {
-        return PageResponseDto.from(newsRepository.findAll(pageable)
+    public PageResponseDto<NewsResponseDto> getAllNews(String postType, Pageable pageable) {
+        validatePostType(postType);
+
+        if (postType == null || postType.isBlank()) {
+            return PageResponseDto.from(newsRepository.findAll(pageable)
                 .map(newsMapper::toDto));
+        } else {
+            return PageResponseDto.from(newsRepository.findAllByPostType(postType, pageable)
+                .map(newsMapper::toDto));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -121,6 +137,14 @@ public class NewsService {
 
         if (key != null) {
             fileCleanup.deleteAfterCommit(key);
+        }
+    }
+
+    private void validatePostType(String postType) {
+        if (postType == null || postType.isBlank() || PostType.ALLOWED.contains(postType)) {
+            return;
+        } else {
+            throw new InvalidRequestException("Неизвестный тип записи: " + postType);
         }
     }
 

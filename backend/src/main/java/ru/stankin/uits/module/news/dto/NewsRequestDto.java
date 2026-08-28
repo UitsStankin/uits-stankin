@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.stankin.uits.module.news.PostType;
 
 @Data
 @Builder
@@ -22,7 +23,7 @@ public class NewsRequestDto {
     @Size(max = 255, message = "Краткое описание длиннее 255 символов")
     String shortDescription;
 
-    @Pattern(regexp = "news|announcements", message = "Тип записи может быть только news или announcements")
+    @Pattern(regexp = PostType.PATTERN, message = "Тип записи может быть только news или announcements")
     @NotBlank(message = "Тип записи обязателен")
     String postType;
 

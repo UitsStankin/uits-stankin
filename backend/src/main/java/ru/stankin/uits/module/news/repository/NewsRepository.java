@@ -19,6 +19,12 @@ public interface NewsRepository extends JpaRepository<NewsPost, Long> {
     @EntityGraph(attributePaths = {"author"})
     Optional<NewsPost> findByIdAndDisplayTrue(Long id);
 
+    @EntityGraph(attributePaths = {"author"})
+    Page<NewsPost> findAllByDisplayTrueAndPostType(String postType, Pageable pageable); // for public
+
+    @EntityGraph(attributePaths = {"author"})
+    Page<NewsPost> findAllByPostType(String postType, Pageable pageable); // for admin
+
     @Override
     @EntityGraph(attributePaths = {"author"})
     Optional<NewsPost> findById(Long id);
