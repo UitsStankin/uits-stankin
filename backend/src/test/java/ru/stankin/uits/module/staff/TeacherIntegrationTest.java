@@ -155,7 +155,7 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.getId()).isNotNull();
         assertThat(response.getHeaders().getLocation())
                 .isNotNull()
-                .hasToString(restTemplate.getRootUri() + "/api/teachers/" + body.getId());
+                .hasToString("/api/teachers/" + body.getId());
         assertThat(body.getSubjects()).extracting(SubjectDto::getName).containsExactly("Базы данных");
     }
 

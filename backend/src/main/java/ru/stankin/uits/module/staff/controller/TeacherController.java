@@ -7,7 +7,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
@@ -39,8 +39,7 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<TeacherDetailsResponseDto> createTeacher(@Valid @RequestBody TeacherRequestDto request) {
         TeacherDetailsResponseDto created = teacherService.createTeacher(request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
+        URI location = UriComponentsBuilder.fromPath("/api/teachers/{id}")
                 .buildAndExpand(created.getId())
                 .toUri();
 

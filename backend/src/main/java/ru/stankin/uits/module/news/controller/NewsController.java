@@ -8,7 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.dto.NewsResponseDto;
@@ -53,8 +53,7 @@ public class NewsController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<NewsResponseDto> createNews(@Valid @RequestBody NewsRequestDto request) {
         NewsResponseDto created = newsService.createNews(request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
+        URI location = UriComponentsBuilder.fromPath("/api/news/{id}")
                 .buildAndExpand(created.getId())
                 .toUri();
 

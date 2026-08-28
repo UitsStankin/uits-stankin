@@ -90,7 +90,7 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.getId()).isNotNull();
         assertThat(response.getHeaders().getLocation())
                 .isNotNull()
-                .hasToString(restTemplate.getRootUri() + "/api/helpers/" + body.getId());
+                .hasToString("/api/helpers/" + body.getId());
         assertThat(body.getPatronymic()).isEqualTo("Сергеевна");
     }
 
