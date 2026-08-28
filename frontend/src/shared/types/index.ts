@@ -14,7 +14,12 @@
 export type { Page, PageParams, FileCategory, FileUploadResponse } from './api.types';
 
 // Аутентификация и профиль
-export type { Profile, LoginRequest, LoginResponse, ChangePasswordRequest } from './auth.types';
+export type {
+  Profile,
+  LoginRequest,
+  AccessTokenResponse,
+  ChangePasswordRequest,
+} from './auth.types';
 
 // Новости и объявления
 export type { News, NewsRequest, NewsPage, PostType } from './news.types';

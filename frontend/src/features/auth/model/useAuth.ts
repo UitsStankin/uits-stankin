@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { profileQuery } from '../api/profileQuery';
-import { useAccessToken } from './useAccessToken';
+import { useRestoreSession } from './useRestoreSession';
+import { useAccessToken } from './useSession';
 
 /**
  * Текущая сессия: кто вошёл и что ему можно.
@@ -13,15 +14,15 @@ import { useAccessToken } from './useAccessToken';
  * `['profile']` делает запрос один на всех, а ответ — общим.
  *
  * Запрос включается токеном, а не размонтированием: без токена ходить
- * на закрытую ручку незачем — она ответит 401, а интерцептор на 401
- * уводит на форму входа. Гость на публичной странице оказался бы на логине,
- * ничего для этого не сделав.
+ * на закрытую ручку незачем — она ответит 401. Гость на публичной странице
+ * оказался бы на форме входа, ничего для этого не сделав.
  */
 export function useAuth() {
   const token = useAccessToken();
+  const isRestoring = useRestoreSession();
   const { data, isLoading } = useQuery({ ...profileQuery, enabled: token !== null });
 
-  // Профиль признаётся только вместе с токеном. Между `clearToken()`
+  // Профиль признаётся только вместе с токеном. Между `clearSession()`
   // и очисткой кэша есть короткий промежуток, и без этой связки шапка
   // успела бы показать имя пользователя, который только что вышел.
   const profile = token !== null ? (data ?? null) : null;
@@ -30,16 +31,17 @@ export function useAuth() {
     profile,
     isAuthenticated: profile !== null,
     /**
-     * Токен есть, профиль ещё едет — про пользователя пока не известно
-     * ничего. Отличать это состояние от «не вошёл» обязательно: иначе
-     * защищённая страница на каждой перезагрузке успевает выкинуть
-     * вошедшего на форму входа.
+     * Про пользователя пока не известно ничего. Состояний-источников два,
+     * и оба приходятся на первые миллисекунды после перезагрузки страницы:
+     * идёт обмен refresh-cookie на токен либо токен уже есть, а профиль
+     * ещё едет. Отличать это от «не вошёл» обязательно: иначе защищённая
+     * страница на каждом F5 успевает выкинуть вошедшего на форму входа.
      *
-     * Без токена запрос выключен и `isLoading` равен false: у выключенного
-     * запроса `fetchStatus` — `idle`, и именно этим `isLoading` отличается
-     * от `isPending`, который был бы true всегда.
+     * Без токена запрос профиля выключен и `isLoading` равен false:
+     * у выключенного запроса `fetchStatus` — `idle`, и именно этим
+     * `isLoading` отличается от `isPending`, который был бы true всегда.
      */
-    isLoading,
+    isLoading: isRestoring || isLoading,
     /** Модератор или суперпользователь: управление новостями и файлами. */
     canEdit: profile !== null && (profile.moderator || profile.superuser),
   };
