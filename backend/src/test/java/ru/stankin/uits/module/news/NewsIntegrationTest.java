@@ -688,6 +688,134 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         assertThat(collected).isSortedAccordingTo(java.util.Comparator.reverseOrder());
     }
 
+    @Test
+    void getNews_WhenPostTypeIsNews_ReturnsOnlyNewsAndCountsFiltered() {
+        User admin = createAdmin();
+        saveNews(admin, "Новость первая", true);
+        saveNews(admin, "Новость вторая", true);
+        saveNews(admin, "Объявление", true, "announcements");
+
+        PageResponseDto<NewsResponseDto> body = publicNews("?postType=news");
+
+        assertThat(body.content()).extracting(NewsResponseDto::getTitle)
+                .containsExactlyInAnyOrder("Новость первая", "Новость вторая");
+        // Счётчик обязан учитывать фильтр: именно на нём фронт строит пагинацию,
+        // и с тремя вместо двух он обещал бы страницу, которой нет
+        assertThat(body.totalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void getNews_WhenPostTypeIsAnnouncements_ReturnsOnlyAnnouncements() {
+        User admin = createAdmin();
+        saveNews(admin, "Новость", true);
+        saveNews(admin, "Объявление", true, "announcements");
+
+        PageResponseDto<NewsResponseDto> body = publicNews("?postType=announcements");
+
+        assertThat(body.content()).extracting(NewsResponseDto::getTitle)
+                .containsExactly("Объявление");
+        assertThat(body.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getNews_WhenPostTypeIsMissing_ReturnsBothTypes() {
+        User admin = createAdmin();
+        saveNews(admin, "Новость", true);
+        saveNews(admin, "Объявление", true, "announcements");
+
+        PageResponseDto<NewsResponseDto> body = publicNews("");
+
+        assertThat(body.content()).extracting(NewsResponseDto::getTitle)
+                .containsExactlyInAnyOrder("Новость", "Объявление");
+        assertThat(body.totalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void getNews_WhenPostTypeIsBlank_ReturnsBothTypes() {
+        User admin = createAdmin();
+        saveNews(admin, "Новость", true);
+        saveNews(admin, "Объявление", true, "announcements");
+
+        // Пустое значение фронт присылает сам, когда в фильтре выбрано «все типы»:
+        // отсутствие выбора — не то же самое, что неверный выбор
+        PageResponseDto<NewsResponseDto> body = publicNews("?postType=");
+
+        assertThat(body.totalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void getNews_WhenPostTypeIsUnknown_Returns400() {
+        User admin = createAdmin();
+        saveNews(admin, "Новость", true);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/news?postType=announcement", ProblemDetail.class);
+
+        // Молчаливый пустой список выглядел бы как «объявлений пока нет»,
+        // и опечатку в запросе искали бы в контенте
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("announcement");
+    }
+
+    @Test
+    void getNews_WhenPostTypeCombinedWithPaging_AppliesBoth() {
+        User admin = createAdmin();
+        saveNews(admin, "Альфа", true);
+        saveNews(admin, "Бета", true);
+        saveNews(admin, "Гамма", true);
+        saveNews(admin, "Объявление", true, "announcements");
+
+        PageResponseDto<NewsResponseDto> body =
+                publicNews("?postType=news&page=1&size=1&sort=title,asc");
+
+        assertThat(body.content()).extracting(NewsResponseDto::getTitle).containsExactly("Бета");
+        assertThat(body.page()).isEqualTo(1);
+        // Три новости при size=1 — три страницы; объявление в счёт не идёт
+        assertThat(body.totalElements()).isEqualTo(3);
+        assertThat(body.totalPages()).isEqualTo(3);
+    }
+
+    @Test
+    void getAllNews_WhenPostTypeIsSet_FiltersHiddenRecordsToo() {
+        User admin = createAdmin();
+        String token = login("admin");
+        saveNews(admin, "Скрытая новость", false);
+        saveNews(admin, "Скрытое объявление", false, "announcements");
+
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                "/api/news?postType=announcements", HttpMethod.GET, withToken(token),
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().content()).extracting(NewsResponseDto::getTitle)
+                .containsExactly("Скрытое объявление");
+        assertThat(response.getBody().totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getAllNews_WhenPostTypeIsUnknown_Returns400() {
+        createAdmin();
+        String token = login("admin");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/news?postType=мусор", HttpMethod.GET, withToken(token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    private PageResponseDto<NewsResponseDto> publicNews(String query) {
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                "/api/public/news" + query, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+
+        return response.getBody();
+    }
+
     private NewsPost saveNewsAt(User author, String title, OffsetDateTime createdAt) {
         return newsRepository.save(NewsPost.builder()
                 .title(title)
@@ -781,10 +909,14 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     private NewsPost saveNews(User author, String title, boolean display) {
+        return saveNews(author, title, display, "news");
+    }
+
+    private NewsPost saveNews(User author, String title, boolean display, String postType) {
         NewsPost post = NewsPost.builder()
                 .title(title)
                 .shortDescription("Desc")
-                .postType("news")
+                .postType(postType)
                 .content("Content")
                 .display(display)
                 .author(author)

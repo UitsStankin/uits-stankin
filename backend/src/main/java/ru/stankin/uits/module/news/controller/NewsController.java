@@ -25,9 +25,10 @@ public class NewsController {
 
     @GetMapping("/public/news")
     public PageResponseDto<NewsResponseDto> getNews(
+            @RequestParam(name = "postType", required = false) String postType,
             @PageableDefault(size = 20, sort = {"createdAt", "id"}, direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return newsService.getPublishedNews(pageable);
+        return newsService.getPublishedNews(postType, pageable);
     }
 
     @GetMapping("/public/news/{id}")
@@ -38,9 +39,10 @@ public class NewsController {
     @GetMapping("/news")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public PageResponseDto<NewsResponseDto> getAllNews(
+            @RequestParam(name = "postType", required = false) String postType,
             @PageableDefault(size = 20, sort = {"createdAt", "id"}, direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return newsService.getAllNews(pageable);
+        return newsService.getAllNews(postType, pageable);
     }
 
     @GetMapping("/news/{id}")
