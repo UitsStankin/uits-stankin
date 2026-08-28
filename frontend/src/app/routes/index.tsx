@@ -13,6 +13,7 @@ import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
 import NewsDetailPage from '@pages/NewsDetailPage';
 import ProtectedRoute from './protectedRoute';
+import RouteError from './RouteError';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
@@ -39,11 +40,15 @@ export const routes: RouteObject[] = [
       // Детальная — вложенным роутом, а не отдельной записью с полным путём:
       // так адрес `/about/news` объявлен один раз, и переименование раздела
       // не оставит детальную страницу на старом пути.
+      //
+      // `errorElement` — на дочерних роутах, а не на лейауте: роутер рисует
+      // его вместо упавшего роута, и на дочернем от лейаута остаются шапка,
+      // меню и подвал. Повешенный на лейаут, он унёс бы их вместе со страницей.
       {
         path: NEWS_ROUTE,
         children: [
-          { index: true, element: <NewsPage /> },
-          { path: ':id', element: <NewsDetailPage /> },
+          { index: true, element: <NewsPage />, errorElement: <RouteError /> },
+          { path: ':id', element: <NewsDetailPage />, errorElement: <RouteError /> },
         ],
       },
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
