@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router';
 
-import { setToken } from '@shared/api';
+import { setAccessToken } from '@shared/api';
 import { HOME_ROUTE, LOGIN_ROUTE } from '@shared/config/routes';
 
 import { login } from '../api/authApi';
@@ -9,9 +9,14 @@ import { login } from '../api/authApi';
 /**
  * Вход: логин и пароль → токен → переход туда, откуда пришли.
  *
- * Профиль здесь не запрашивается. Он подтянется сам: `setToken` рассылает
- * изменение, `useAuth` в шапке видит токен и включает свой запрос. Тянуть
- * профиль ещё и отсюда значило бы завести второй путь к тому же ответу.
+ * Профиль здесь не запрашивается. Он подтянется сам: `setAccessToken`
+ * рассылает изменение, `useAuth` в шапке видит токен и включает свой запрос.
+ * Тянуть профиль ещё и отсюда значило бы завести второй путь к тому же
+ * ответу.
+ *
+ * Refresh-токен в ответе не приходит и в код не попадает вовсе: он уезжает
+ * заголовком `Set-Cookie`, и всё, что для этого нужно от фронта, —
+ * `withCredentials` у клиента.
  *
  * Ошибку хук не разбирает и не показывает — этим занимается форма
  * (`useLoginForm`), потому что часть ошибок ложится на поля, а не в баннер.
@@ -23,7 +28,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: login,
     onSuccess: ({ accessToken }) => {
-      setToken(accessToken);
+      setAccessToken(accessToken);
       // `replace`, чтобы кнопка «назад» не возвращала на форму входа:
       // вошедшего она тут же отправит обратно, и получится ловушка.
       void navigate(resolveRedirect(location.state), { replace: true });

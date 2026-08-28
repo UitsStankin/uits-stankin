@@ -75,10 +75,15 @@ export type LoginRequest = {
 };
 
 /**
- * Ответ логина. Токен живёт 24 часа, refresh-ручки пока нет — по истечении
- * суток пользователь логинится заново (docs/API.md, «Планируемые изменения»).
+ * Ответ `POST /api/users/auth/login` и `POST /api/users/auth/refresh` —
+ * тело у них одно и то же, поэтому и тип один.
+ *
+ * Access-токен живёт **15 минут** и в теле ответа приезжает целиком.
+ * Второго токена здесь нет и быть не должно: refresh уезжает
+ * заголовком `Set-Cookie`, помечен `HttpOnly` и коду не виден вовсе —
+ * ни прочитать, ни отправить его руками нельзя, этим занимается браузер.
  */
-export type LoginResponse = {
+export type AccessTokenResponse = {
   accessToken: string;
 };
 

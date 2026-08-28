@@ -16,7 +16,7 @@ interface UserMenuProps {
   onToggle: () => void;
   /** Закрыть после перехода по пункту. */
   onNavigate: () => void;
-  /** Выход. Локальный: запроса на сервер за ним не стоит. */
+  /** Выход: гасит сессию на сервере и забывает её локально. */
   onLogout: () => void;
   /** Для закрытия по клику вне — вешается на обёртку. */
   containerRef: RefObject<HTMLDivElement | null>;
