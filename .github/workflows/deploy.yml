@@ -8,6 +8,7 @@ on:
     # Правка документации не повод перезапускать боевой стенд
     paths:
       - "backend/**"
+      - "!backend/**.md"
       - ".github/workflows/**"
 
 jobs:
