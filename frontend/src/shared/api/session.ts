@@ -138,4 +138,3 @@ export function subscribeSession(listener: Listener): () => void {
     if (listeners.size === 0) window.removeEventListener('storage', handleStorageEvent);
   };
 }
-

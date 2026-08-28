@@ -85,10 +85,23 @@ function defaultUnauthorizedHandler(): void {
   window.location.assign(LOGIN_ROUTE);
 }
 
-/** Сессии больше нет: забыть её и увести на форму входа. */
-function expireSession(): void {
-  clearSession();
+function goToLogin(): void {
   (unauthorizedHandler ?? defaultUnauthorizedHandler)();
+}
+
+/**
+ * Сессии больше нет: забыть её и увести на форму входа.
+ *
+ * Гасится она ровно один раз. На протухший токен налетает столько запросов,
+ * сколько их было в полёте, и каждый вернулся бы сюда со своим переходом
+ * на логин — в истории оказалось бы пять одинаковых записей подряд,
+ * и кнопка «назад» перестала бы уводить со страницы входа.
+ */
+function expireSession(): void {
+  if (!hasSession()) return;
+
+  clearSession();
+  goToLogin();
 }
 
 api.interceptors.request.use((config) => {
@@ -184,8 +197,17 @@ api.interceptors.response.use(
     if (isAuthPath(config?.url)) return Promise.reject(apiError);
 
     // Обменивать нечего: пользователь не входил, а постучался в закрытую
-    // дверь. Лишний запрос к `refresh` тут ничего не даст.
-    if (!hasSession() || config === undefined) {
+    // дверь. Лишний запрос к `refresh` тут ничего не даст, гасить тоже
+    // нечего — остаётся увести на форму входа.
+    if (!hasSession()) {
+      goToLogin();
+      return Promise.reject(apiError);
+    }
+
+    // Ответ без конфига повторить нечем. В axios такого не бывает, но если
+    // однажды случится, молча отдать 401 вызывающему хуже: он ждёт данные,
+    // а сессия к этому моменту уже не работает.
+    if (config === undefined) {
       expireSession();
       return Promise.reject(apiError);
     }
@@ -231,4 +253,3 @@ async function retryWithFreshToken(config: InternalAxiosRequestConfig, token: st
     return Promise.reject(retryApiError);
   }
 }
-
