@@ -15,11 +15,11 @@ import tools.jackson.databind.deser.jdk.StringDeserializer;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EditablePageRequestDto {
-    @NotBlank(message = "Title cant be empty")
-    @Size(max = 255)
+    @NotBlank(message = "Подпись раздела обязательна")
+    @Size(max = 255, message = "Подпись раздела длиннее 255 символов")
     String title;
 
-    @NotNull(message = "Text is required")
+    @NotNull(message = "Текст раздела обязателен")
     @JsonDeserialize(using = StringDeserializer.class)
     String text;
 }

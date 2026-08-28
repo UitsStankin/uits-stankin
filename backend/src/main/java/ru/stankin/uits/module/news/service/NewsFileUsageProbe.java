@@ -15,6 +15,9 @@ public class NewsFileUsageProbe implements FileUsageProbe {
 
     @Override
     public boolean uses(String key) {
-        return newsRepository.existsByPreviewImage(key) || conferenceRepository.existsByPreviewImage(key);
+        return newsRepository.existsByPreviewImage(key)
+                || conferenceRepository.existsByPreviewImage(key)
+                || newsRepository.existsByContentContaining(key)
+                || conferenceRepository.existsByContentContaining(key);
     }
 }
