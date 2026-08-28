@@ -30,7 +30,7 @@ export default function PersonalPage() {
         username={profile.username}
         fullName={formatFullName(profile)}
         email={profile.email}
-        avatarUrl={profile.avatar}
+        avatarUrl={profile.avatarUrl}
         roles={describeRoles(profile)}
       />
 

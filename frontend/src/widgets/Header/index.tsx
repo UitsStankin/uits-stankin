@@ -53,7 +53,7 @@ export default function Header({ className }: HeaderProps) {
         <UserMenu
           displayName={displayName}
           email={profile.email}
-          avatarUrl={profile.avatar}
+          avatarUrl={profile.avatarUrl}
           items={items}
           isOpen={menu.isOpen}
           onToggle={menu.toggle}
