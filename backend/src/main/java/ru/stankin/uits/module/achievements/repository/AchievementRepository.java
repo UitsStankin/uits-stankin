@@ -12,6 +12,8 @@ public interface AchievementRepository extends JpaRepository<Achievement, Long> 
 
     boolean existsByPreviewImage(String previewImage);
 
+    boolean existsByContentContaining(String key);
+
     @EntityGraph(attributePaths = {"teacher"})
     Page<Achievement> findAllByDisplayTrue(Pageable pageable);
 

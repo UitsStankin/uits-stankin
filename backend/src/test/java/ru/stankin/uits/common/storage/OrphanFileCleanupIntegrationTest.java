@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
+import ru.stankin.uits.module.news.entity.NewsPost;
+import ru.stankin.uits.module.news.repository.NewsRepository;
 import ru.stankin.uits.module.user.entity.User;
 
 import java.io.IOException;
@@ -23,6 +25,9 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private FileStorage fileStorage;
+
+    @Autowired
+    private NewsRepository newsRepository;
 
     @Test
     @DisplayName("Старый файл без единой ссылки в БД удаляется")
@@ -58,6 +63,38 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
         cleanupTask.sweep();
 
         assertThat(fileStorage.exists(freshKey)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Картинка, вставленная в текст новости, не считается сиротой")
+    void sweep_WhenFileIsUsedInsideRichTextContent_KeepsIt() throws IOException {
+        String inlineKey = storeFile("news");
+        makeOld(inlineKey);
+
+        User author = createUser("inline_author", TestRole.ADMIN);
+        newsRepository.save(NewsPost.builder()
+                .title("Новость с картинкой в тексте")
+                .shortDescription("Описание")
+                .postType("news")
+                .content("<p>Текст</p><img src=\"" + fileStorage.url(inlineKey) + "\">")
+                .display(true)
+                .author(author)
+                .build());
+
+        cleanupTask.sweep();
+
+        assertThat(fileStorage.exists(inlineKey)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Раздел без владельца не подметается: удалять то, чью занятость спросить не у кого, нельзя")
+    void sweep_WhenCategoryHasNoOwner_KeepsFile() throws IOException {
+        String publicationKey = storeFile("publications");
+        makeOld(publicationKey);
+
+        cleanupTask.sweep();
+
+        assertThat(fileStorage.exists(publicationKey)).isTrue();
     }
 
     private void makeOld(String key) throws IOException {

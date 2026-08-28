@@ -13,6 +13,7 @@ public class AchievementFileUsageProbe implements FileUsageProbe {
 
     @Override
     public boolean uses(String key) {
-        return achievementRepository.existsByPreviewImage(key);
+        return achievementRepository.existsByPreviewImage(key)
+                || achievementRepository.existsByContentContaining(key);
     }
 }

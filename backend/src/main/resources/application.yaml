@@ -64,3 +64,4 @@ application:
     orphan-cleanup:
       cron: ${ORPHAN_CLEANUP_CRON:0 45 3 * * *}
       min-age: ${ORPHAN_CLEANUP_MIN_AGE:86400000}
+      categories: ${ORPHAN_CLEANUP_CATEGORIES:news,avatars,achievements}

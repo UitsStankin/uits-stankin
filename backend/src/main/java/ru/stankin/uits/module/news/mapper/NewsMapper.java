@@ -42,11 +42,13 @@ public abstract class NewsMapper {
     public String authorName(User author) {
         if (author == null) {
             return null;
-        } else {
-            return Stream.of(author.getFirstName(), author.getLastName())
-                    .filter(part -> part != null && !part.isBlank())
-                    .collect(Collectors.joining(" "));
         }
+
+        String name = Stream.of(author.getFirstName(), author.getLastName())
+                .filter(part -> part != null && !part.isBlank())
+                .collect(Collectors.joining(" "));
+
+        return name.isEmpty() ? null : name;
     }
 
     @Named("previewImageUrl")

@@ -11,6 +11,8 @@ public interface ConferenceRepository extends JpaRepository<ConferenceAnnounceme
 
     boolean existsByPreviewImage(String previewImage);
 
+    boolean existsByContentContaining(String key);
+
     Page<ConferenceAnnouncement> findAllByDisplayTrue(Pageable pageable);
 
     Optional<ConferenceAnnouncement> findByIdAndDisplayTrue(Long id);

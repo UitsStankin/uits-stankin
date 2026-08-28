@@ -140,6 +140,19 @@ public class UserIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldReturn400_WhenNewPasswordExceedsBcryptByteLimit() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/users/change-password",
+                HttpMethod.POST,
+                withToken(changeRequest(OLD_PASSWORD, "П".repeat(37))),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("newPassword");
+    }
+
+    @Test
     void shouldUpdateProfile_WhenRequestIsValid() throws IOException {
         String avatarKey = storeFile("avatars");
 
