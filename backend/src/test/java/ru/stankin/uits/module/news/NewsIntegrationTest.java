@@ -739,6 +739,47 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         return login("admin");
     }
 
+    @Test
+    void getNews_WhenAuthorHasName_JoinsFirstAndLastName() {
+        User author = createAdmin();
+        author.setFirstName("Иван");
+        author.setLastName("Иванов");
+        userRepository.save(author);
+        saveNews(author, "Новость с автором", true);
+
+        assertThat(firstPublicNews().getAuthorName()).isEqualTo("Иван Иванов");
+    }
+
+    @Test
+    void getNews_WhenAuthorHasOnlyLastName_OmitsMissingPart() {
+        User author = createAdmin();
+        author.setLastName("Иванов");
+        userRepository.save(author);
+        saveNews(author, "Новость без имени", true);
+
+        assertThat(firstPublicNews().getAuthorName()).isEqualTo("Иванов");
+    }
+
+    @Test
+    void getNews_WhenAuthorHasNoName_ReturnsNullNotEmptyString() {
+        User author = createAdmin();
+        saveNews(author, "Новость безымянного автора", true);
+
+        assertThat(firstPublicNews().getAuthorName()).isNull();
+    }
+
+    private NewsResponseDto firstPublicNews() {
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                "/api/public/news", HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().content()).hasSize(1);
+
+        return response.getBody().content().getFirst();
+    }
+
     private NewsPost saveNews(User author, String title, boolean display) {
         NewsPost post = NewsPost.builder()
                 .title(title)
