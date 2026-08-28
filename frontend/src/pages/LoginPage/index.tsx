@@ -24,6 +24,7 @@ export default function LoginPage() {
       fieldErrors={form.fieldErrors}
       formError={form.formError}
       isPending={form.isPending}
+      isBlocked={form.isBlocked}
       isPasswordVisible={form.isPasswordVisible}
       onTogglePassword={form.onTogglePassword}
     />

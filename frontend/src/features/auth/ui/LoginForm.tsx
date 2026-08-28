@@ -15,6 +15,8 @@ interface LoginFormProps {
   /** Ошибка, не привязанная к полю. `null` — баннера нет. */
   formError: string | null;
   isPending: boolean;
+  /** Пауза после превышения лимита попыток: отправлять нечего смысла. */
+  isBlocked: boolean;
   isPasswordVisible: boolean;
   onTogglePassword: () => void;
 }
@@ -36,6 +38,7 @@ export function LoginForm({
   fieldErrors,
   formError,
   isPending,
+  isBlocked,
   isPasswordVisible,
   onTogglePassword,
 }: LoginFormProps) {
@@ -114,7 +117,7 @@ export function LoginForm({
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || isBlocked}
         className={cn(
           'flex items-center justify-center gap-2 rounded bg-primary px-4 py-2.5',
           'text-base font-bold text-white transition',

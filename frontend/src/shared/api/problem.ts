@@ -53,6 +53,17 @@ export class ApiError extends Error {
   readonly timestamp: string | null;
   /** Словарь ошибок валидации формы; `null` у всех остальных ошибок. */
   readonly errors: Record<string, string[]> | null;
+  /**
+   * Через сколько секунд повторять — заголовок `Retry-After` ответа `429`.
+   * `null` у всех остальных ошибок и у `429` без заголовка.
+   *
+   * Из всех заголовков ответа браузер отдаёт коду только безопасный набор;
+   * `Retry-After` в него не входит и виден лишь потому, что бэкенд добавил
+   * его в `Access-Control-Expose-Headers` (D-14). Стоит об этом помнить:
+   * пропавший из CORS заголовок здесь превратится в тихий `null`,
+   * а не в ошибку.
+   */
+  readonly retryAfter: number | null;
 
   constructor(init: {
     status: number;
@@ -61,6 +72,7 @@ export class ApiError extends Error {
     instance?: string | null;
     timestamp?: string | null;
     errors?: Record<string, string[]> | null;
+    retryAfter?: number | null;
     cause?: unknown;
   }) {
     super(userMessage(init.status, init.detail), { cause: init.cause });
@@ -71,6 +83,7 @@ export class ApiError extends Error {
     this.instance = init.instance ?? null;
     this.timestamp = init.timestamp ?? null;
     this.errors = init.errors ?? null;
+    this.retryAfter = init.retryAfter ?? null;
   }
 }
 
@@ -115,6 +128,7 @@ export function toApiError(error: unknown): ApiError {
         instance: body.instance ?? null,
         timestamp: body.timestamp ?? null,
         errors: parseFieldErrors(body.errors),
+        retryAfter: parseRetryAfter(response.headers),
         cause: error,
       });
     }
@@ -123,6 +137,7 @@ export function toApiError(error: unknown): ApiError {
       status: response.status,
       title: response.statusText || 'HTTP Error',
       detail: '',
+      retryAfter: parseRetryAfter(response.headers),
       cause: error,
     });
   }
@@ -158,6 +173,26 @@ function parseFieldErrors(raw: unknown): Record<string, string[]> | null {
   }
 
   return Object.keys(result).length > 0 ? result : null;
+}
+
+/**
+ * Сколько секунд ждать до повтора.
+ *
+ * Контракт обещает в `Retry-After` целое число секунд, и только его здесь
+ * и разбирают. RFC допускает вторую форму — HTTP-дату, — но бэкенд её
+ * не присылает, а поддержка «на всякий случай» означала бы код, который
+ * никто никогда не выполнит и не проверит: пришедшая дата станет `null`,
+ * то есть «сколько ждать, неизвестно», и форма покажет общий текст.
+ */
+function parseRetryAfter(headers: unknown): number | null {
+  if (typeof headers !== 'object' || headers === null) return null;
+
+  // axios приводит имена заголовков ответа к нижнему регистру.
+  const raw = (headers as Record<string, unknown>)['retry-after'];
+  if (typeof raw !== 'string' && typeof raw !== 'number') return null;
+
+  const seconds = Number.parseInt(String(raw), 10);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
 }
 
 /**
@@ -197,6 +232,8 @@ function fallbackMessage(status: number): string {
       return 'Данные успели измениться, повторите попытку.';
     case 413:
       return 'Файл слишком большой.';
+    case 429:
+      return 'Слишком много попыток. Повторите позже.';
     default:
       return status >= 500 ? 'Ошибка на сервере, попробуйте позже.' : 'Не удалось выполнить запрос.';
   }
