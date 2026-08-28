@@ -23,7 +23,7 @@
 
 | Слой | Технологии |
 |---|---|
-| Backend | Spring Boot 4, Java 21, Spring Security (JWT), Spring Data JPA |
+| Backend | Spring Boot 4, Java 21, Spring Security (access + refresh JWT), Spring Data JPA |
 | БД | PostgreSQL 17, миграции — Liquibase |
 | API | REST, документация — OpenAPI / Swagger UI |
 | Тесты | JUnit 5, Spring Security Test, Testcontainers |
@@ -67,7 +67,9 @@ docker compose up -d --wait
 
 Зафиксированы в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Ключевые:
 
-* **JWT** вместо session/token-auth;
+* **JWT** вместо session/token-auth: короткий access-токен в памяти клиента
+  и refresh в httpOnly-cookie, сессии хранятся в БД — иначе отозвать выданный
+  токен нечем;
 * напоминания — `@Scheduled` + outbox-таблица в PostgreSQL, без Celery/Redis/Quartz
   (минус два контейнера в деплое);
 * Telegram-бот — webhook на Spring-эндпоинте, тонкий клиент `RestClient` к Bot API
@@ -81,11 +83,20 @@ docker compose up -d --wait
 
 ## Статус
 
-Проект в активной разработке. Готовы модули аутентификации (JWT, роли,
-блокировка учёток) и профиля пользователя; частично — новости и карточки
-преподавателей. Дорожная карта по фазам — в
-[docs/MIGRATION.md](docs/MIGRATION.md#6-дорожная-карта-фазы), текущая очередь
-задач — в [docs/BACKLOG.md](docs/BACKLOG.md).
+Проект в активной разработке; паритет со старым порталом — **11 модулей из 23**.
+
+Фаза 1 бэкенда закрыта: аутентификация (пара access/refresh, роли, блокировка
+учёток, ограничение попыток входа), профиль и смена пароля, новости и объявления,
+конференции, достижения кафедры, карточки ППС и УВП, дисциплины, 13 редактируемых
+Markdown-страниц, загрузка файлов с фоновой уборкой неиспользованных.
+
+Фронтенд: собран каркас и работает вход против живого API; контентные страницы
+и админ-панель — в работе.
+
+Дальше по дорожной карте идут расписания и микросервис парсинга PDF. Карта фаз —
+в [docs/MIGRATION.md](docs/MIGRATION.md#6-дорожная-карта-фазы), очередь задач
+бэкенда — в [docs/BACKLOG.md](docs/BACKLOG.md), фронтенда —
+в [docs/FRONTEND_BACKLOG.md](docs/FRONTEND_BACKLOG.md).
 
 ---
 
@@ -99,6 +110,7 @@ docker compose up -d --wait
 | [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) | подходы к сложным частям (Telegram, расписание, файлы) |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | разбор кодовой базы для нового участника |
 | [docs/GIT.md](docs/GIT.md) | соглашения по веткам, коммитам и PR |
-| [docs/BACKLOG.md](docs/BACKLOG.md) | очередь задач |
+| [docs/BACKLOG.md](docs/BACKLOG.md) | очередь задач бэкенда |
+| [docs/FRONTEND_BACKLOG.md](docs/FRONTEND_BACKLOG.md) | очередь задач фронтенда |
 
 Рабочий процесс: ветки от `dev`, PR в `dev`, слияние в `main` — релизное.

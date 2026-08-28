@@ -184,12 +184,43 @@ docker compose up -d
 | `POSTGRES_DB` | имя базы | нет, по умолчанию `uits_db` | `uits_db` |
 | `POSTGRES_USER` | пользователь базы | да | `uits_stankin_db` |
 | `POSTGRES_PASSWORD` | его пароль | да | `localdevpass123` |
-| `POSTGRES_HOST_PORT` | порт на хост-машине | да (в шаблоне `.env.example` уже стоит `5433`; | `5433` |
-| `JWT_SECRET_KEY` | ключ подписи токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
-| `JWT_EXPIRATION` | время жизни токена в миллисекундах | нет, по умолчанию сутки | `86400000` |
+| `POSTGRES_HOST_PORT` | порт на хост-машине | да; в шаблоне `.env.example` уже стоит `5433` | `5433` |
+| `JWT_SECRET_KEY` | ключ подписи access-токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
+| `JWT_EXPIRATION` | время жизни access-токена в миллисекундах | нет, по умолчанию 15 минут | `900000` |
 | `CORS_ALLOWED_ORIGINS` | origin'ы фронтенда через запятую | локально нет, по умолчанию `http://localhost:5173`; в `docker-compose.prod.yml` да | `https://uits.example` |
 
 Внутри контейнера PostgreSQL всегда слушает порт 5432. `POSTGRES_HOST_PORT` — это порт снаружи, на хост-машине. Значение 5433 выбрано, чтобы не конфликтовать с PostgreSQL, установленным в систему напрямую.
+
+Refresh-сессии (T-30):
+
+| Переменная | Что это | Обязательна | Пример |
+|---|---|---|---|
+| `REFRESH_EXPIRATION` | время жизни refresh-токена | нет, по умолчанию 14 дней | `1209600000` |
+| `REFRESH_GRACE_PERIOD` | окно, в котором повторный обмен одним токеном считается гонкой вкладок, а не кражей | нет, по умолчанию минута | `60000` |
+| `REFRESH_COOKIE_SECURE` | флаг `Secure` на cookie | нет, по умолчанию `true`; профиль `dev` ставит `false`, иначе cookie не приедет по http | `true` |
+| `REFRESH_CLEANUP_CRON` | когда удалять просроченные строки `refresh_token` | нет, по умолчанию 03:15 | `0 15 3 * * *` |
+
+Ограничение попыток входа:
+
+| Переменная | Что это | Обязательна | Пример |
+|---|---|---|---|
+| `LOGIN_RATE_LIMIT_ATTEMPTS` | попыток входа с одного адреса за период | нет, по умолчанию 5 | `5` |
+| `LOGIN_RATE_LIMIT_PERIOD` | длина периода в миллисекундах | нет, по умолчанию минута | `60000` |
+| `LOGIN_RATE_LIMIT_EVICTION_CRON` | когда выбрасывать счётчики простаивающих адресов | нет, по умолчанию каждые 10 минут | `0 */10 * * * *` |
+
+Файловое хранилище и уборка сирот:
+
+| Переменная | Что это | Обязательна | Пример |
+|---|---|---|---|
+| `STORAGE_ROOT` | корень хранилища файлов | нет, по умолчанию `./media` | `/app/media` |
+| `STORAGE_PUBLIC_BASE_URL` | префикс публичных адресов файлов | нет, по умолчанию `/media` | `/media` |
+| `ORPHAN_CLEANUP_CRON` | когда искать файлы без ссылок | нет, по умолчанию 03:45 | `0 45 3 * * *` |
+| `ORPHAN_CLEANUP_MIN_AGE` | возраст, начиная с которого файл без ссылок считается сиротой | нет, по умолчанию сутки | `86400000` |
+| `ORPHAN_CLEANUP_CATEGORIES` | разделы хранилища, которые подметает уборка | нет, по умолчанию `news,avatars,achievements` | `news,avatars` |
+
+Раздел, которого нет в `ORPHAN_CLEANUP_CATEGORIES`, уборка не трогает вовсе.
+Список закрыт намеренно: занятость файла спрашивается у модулей, и раздел без
+такого модуля удалять не у кого спросить — сейчас это `publications`.
 
 ### Кто читает `.env`
 
@@ -259,6 +290,10 @@ docker inspect --format "{{json .State.Health}}" uits_postgres
 
 Интеграционные тесты поднимают **собственный** контейнер PostgreSQL через Testcontainers и подставляют свои настройки. Локальная база и `.env` им не нужны — но Docker должен быть запущен. Тесты работают в профиле `test`, поэтому сидер dev-данных в них не участвует.
 
+Прогон занимает около двух минут и поднимает контейнер один раз на всю иерархию
+интеграционных тестов. Если прогон падает с `Could not find a valid Docker
+environment` — дело не в коде: Docker не запущен либо его движок отвалился.
+
 ---
 
 ## Полезные адреса
@@ -267,8 +302,10 @@ docker inspect --format "{{json .State.Health}}" uits_postgres
 |---|---|
 | `http://localhost:8080` | приложение |
 | `http://localhost:8080/api/public/news` | публичный эндпоинт, годится для проверки живости |
-| `http://localhost:8080/api/users/auth/login` | вход, `POST` |
-| `http://localhost:8080/swagger-ui/index.html` | Swagger UI — интерактивная документация API. Кнопка **Authorize** принимает токен из `/api/users/auth/login`. Только вне профиля `prod`, см. «Что зависит от профиля» |
+| `http://localhost:8080/api/users/auth/login` | вход, `POST`. В ответе access-токен в теле и refresh в httpOnly-cookie |
+| `http://localhost:8080/api/users/auth/refresh` | обмен refresh-cookie на новую пару, `POST` без тела |
+| `http://localhost:8080/api/users/auth/logout` | выход с отзывом сессии на сервере, `POST`, ответ `204` |
+| `http://localhost:8080/swagger-ui/index.html` | Swagger UI — интерактивная документация API. Кнопка **Authorize** принимает access-токен из `/api/users/auth/login`; он живёт 15 минут, после чего нужен новый вход или `/refresh`. Только вне профиля `prod`, см. «Что зависит от профиля» |
 | `http://localhost:8080/actuator/health` | статус приложения, `{"status":"UP"}`, без токена |
 | `http://localhost:8080/actuator/health/readiness` | готовность обслуживать запросы — этот адрес проверяет деплой |
 
