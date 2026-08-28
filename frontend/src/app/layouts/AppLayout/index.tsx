@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router';
+import { Outlet, ScrollRestoration } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import Header from '@widgets/Header';
 import Navbar from '@widgets/Navbar';
@@ -41,6 +41,16 @@ export default function AppLayout({ className }: AppLayoutProps) {
       </main>
 
       <Footer />
+
+      {/* Восстановление прокрутки. Роутер данных сам этого не делает: без
+          компонента переход по ссылке сохраняет позицию скролла, и клик
+          по карточке из середины ленты открывал бы статью с середины,
+          а возврат «назад» бросал бы читателя в начало списка вместо того
+          места, откуда он ушёл.
+
+          Стоит на лейауте, а не на странице: касается всех страниц разом,
+          и заводить его на каждой — значит однажды забыть. */}
+      <ScrollRestoration />
     </div>
   );
 }
