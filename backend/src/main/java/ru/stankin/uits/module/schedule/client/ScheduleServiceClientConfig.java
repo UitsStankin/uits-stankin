@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.time.Duration;
 
 @Configuration
@@ -22,7 +23,9 @@ public class ScheduleServiceClientConfig {
                 .withTimeouts(connectTimeout, readTimeout);
         return builder
                 .baseUrl(url)
-                .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
+                .requestFactory(ClientHttpRequestFactoryBuilder.jdk()
+                        .withHttpClientCustomizer(client -> client.version(HttpClient.Version.HTTP_1_1))
+                        .build(settings))
                 .build();
     }
 }
