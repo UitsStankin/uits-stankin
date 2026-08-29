@@ -24,6 +24,9 @@ export type {
 // Новости и объявления
 export type { News, NewsRequest, NewsPage, PostType } from './news.types';
 
+// Редактируемые разделы
+export type { EditablePage, EditablePageSlug } from './pages.types';
+
 // Преподаватели
 export type {
   Teacher,
