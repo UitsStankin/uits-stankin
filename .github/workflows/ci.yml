@@ -46,14 +46,26 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@v3
         with:
+          # every: файл обязан совпасть со всеми паттернами фильтра. В режиме
+          # по умолчанию хватает одного, а '!backend/**.md' означает «что угодно,
+          # кроме .md внутри backend» — под него подходит и docs/, и frontend/,
+          # и фильтр срабатывает на правке документации.
+          # Пути workflow вынесены во второй фильтр: при every все паттерны
+          # одного фильтра обязаны совпасть, а файл не лежит в двух каталогах
+          predicate-quantifier: every
           filters: |
             backend:
               - 'backend/**'
               - '!backend/**.md'
+            workflows:
               - '.github/workflows/**'
 
+      - name: Нужна ли сборка
+        id: gate
+        run: echo "build=${{ github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true' || steps.changes.outputs.workflows == 'true' }}" >> "$GITHUB_OUTPUT"
+
       - name: Установка JDK 21
-        if: github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true'
+        if: steps.gate.outputs.build == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -62,12 +74,12 @@ jobs:
           cache: gradle
 
       - name: Права на gradlew
-        if: github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true'
+        if: steps.gate.outputs.build == 'true'
         run: chmod +x ./gradlew
         working-directory: backend
 
       - name: Сборка и тесты
-        if: github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true'
+        if: steps.gate.outputs.build == 'true'
         # --no-daemon: в CI сборка одна, переиспользовать демон некому,
         # а лишний живущий JVM-процесс мешает шагу завершиться
         run: ./gradlew build --no-daemon
