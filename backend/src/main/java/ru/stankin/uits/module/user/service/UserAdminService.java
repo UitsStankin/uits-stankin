@@ -16,6 +16,9 @@ import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.mapper.UserMapper;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+
 @Service
 @RequiredArgsConstructor
 public class UserAdminService {
@@ -40,9 +43,7 @@ public class UserAdminService {
 
     @Transactional(readOnly = true)
     public UserAdminResponseDto getUser(Long id) {
-        return userRepository.findById(id)
-                .map(userMapper::toAdminDto)
-                .orElseThrow(() -> new NotFoundException("Пользователь id=" + id + " не найден"));
+        return userMapper.toAdminDto(findUser(id));
     }
 
     @Transactional
@@ -59,13 +60,34 @@ public class UserAdminService {
 
     @Transactional
     public UserAdminResponseDto updateUser(Long id, Long currentUserId, UserAdminUpdateRequestDto request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Пользователь id=" + id + " не найден"));
+        User user = findUser(id);
 
         validateSelfStaysAdmin(user, currentUserId, request);
         userMapper.updateEntity(user, request);
 
         return userMapper.toAdminDto(user);
+    }
+
+    @Transactional
+    public void resetPassword(Long id, String newPassword) {
+        User user = findUser(id);
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setTokensNotBefore(sessionsCutoff());
+    }
+
+    @Transactional
+    public void terminateSessions(Long id) {
+        findUser(id).setTokensNotBefore(sessionsCutoff());
+    }
+
+    private User findUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Пользователь id=" + id + " не найден"));
+    }
+
+    private static OffsetDateTime sessionsCutoff() {
+        return OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusSeconds(1);
     }
 
     private void validateSelfStaysAdmin(User user, Long currentUserId, UserAdminUpdateRequestDto request) {

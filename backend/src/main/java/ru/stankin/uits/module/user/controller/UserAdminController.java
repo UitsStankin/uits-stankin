@@ -19,6 +19,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
+import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
 import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.service.UserAdminService;
 import ru.stankin.uits.security.SecurityUser;
@@ -68,5 +69,24 @@ public class UserAdminController {
             @Valid @RequestBody UserAdminUpdateRequestDto request
     ) {
         return userAdminService.updateUser(id, securityUser.getUser().getId(), request);
+    }
+
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> resetPassword(
+            @PathVariable Long id,
+            @Valid @RequestBody PasswordResetRequestDto request
+    ) {
+        userAdminService.resetPassword(id, request.getNewPassword());
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/logout")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> terminateSessions(@PathVariable Long id) {
+        userAdminService.terminateSessions(id);
+
+        return ResponseEntity.noContent().build();
     }
 }

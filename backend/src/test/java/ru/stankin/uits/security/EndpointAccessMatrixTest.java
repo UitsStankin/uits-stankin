@@ -32,6 +32,7 @@ import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
+import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
 import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
@@ -164,6 +165,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/users/{id}", ADMINS),
             controller(HttpMethod.POST, "/api/users", ADMINS),
             controller(HttpMethod.PUT, "/api/users/{id}", ADMINS),
+            controller(HttpMethod.POST, "/api/users/{id}/reset-password", ADMINS),
+            controller(HttpMethod.POST, "/api/users/{id}/logout", ADMINS),
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
@@ -353,6 +356,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "PUT /api/users/profile" -> json(headers, profileRequest());
             case "POST /api/users" -> json(headers, createUserRequest());
             case "PUT /api/users/{id}" -> json(headers, adminUpdateRequest());
+            case "POST /api/users/{id}/reset-password" -> json(headers, passwordResetRequest());
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
@@ -392,6 +396,13 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         UserUpdateRequestDto request = new UserUpdateRequestDto();
         request.setFirstName("Матрица");
         request.setLastName("Доступа");
+
+        return request;
+    }
+
+    private PasswordResetRequestDto passwordResetRequest() {
+        PasswordResetRequestDto request = new PasswordResetRequestDto();
+        request.setNewPassword("matrix_password");
 
         return request;
     }

@@ -11,8 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.module.auth.controller.AuthController;
+import ru.stankin.uits.module.auth.service.RefreshCookieFactory;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
 import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
@@ -25,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class UserAdminIntegrationTest extends AbstractIntegrationTest {
 
     private static final long MISSING_ID = 999_999L;
+    private static final String NEW_PASSWORD = "brand_new_password";
 
     private String adminToken;
 
@@ -338,6 +342,102 @@ public class UserAdminIntegrationTest extends AbstractIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         return new HttpEntity<>(body, headers);
+    }
+
+    @Test
+    void resetPassword_SetsNewPasswordAndCutsOldSessions() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+        String ivanovToken = login("ivanov");
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId() + "/reset-password", HttpMethod.POST,
+                withToken(resetRequest(NEW_PASSWORD), adminToken), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(profileStatus(ivanovToken)).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(loginStatus("ivanov", TEST_PASSWORD)).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(loginStatus("ivanov", NEW_PASSWORD)).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void resetPassword_CutsRefreshSession() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+        String refreshToken = refreshCookieValue(loginResponse("ivanov"));
+
+        restTemplate.exchange(
+                "/api/users/" + ivanov.getId() + "/reset-password", HttpMethod.POST,
+                withToken(resetRequest(NEW_PASSWORD), adminToken), Void.class);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.COOKIE, RefreshCookieFactory.COOKIE_NAME + "=" + refreshToken);
+
+        ResponseEntity<ProblemDetail> refreshed = restTemplate.exchange(
+                "/api/users/auth/refresh", HttpMethod.POST, new HttpEntity<>(headers), ProblemDetail.class);
+
+        assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void resetPassword_RejectsShortPassword() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId() + "/reset-password", HttpMethod.POST,
+                withToken(resetRequest("short"), adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(loginStatus("ivanov", TEST_PASSWORD)).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void resetPassword_Returns404_WhenUserIsMissing() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + MISSING_ID + "/reset-password", HttpMethod.POST,
+                withToken(resetRequest(NEW_PASSWORD), adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void terminateSessions_CutsAccessAndKeepsPassword() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+        String ivanovToken = login("ivanov");
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId() + "/logout", HttpMethod.POST,
+                withToken(adminToken), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(profileStatus(ivanovToken)).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(loginStatus("ivanov", TEST_PASSWORD)).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void terminateSessions_Returns404_WhenUserIsMissing() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + MISSING_ID + "/logout", HttpMethod.POST,
+                withToken(adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    private PasswordResetRequestDto resetRequest(String password) {
+        PasswordResetRequestDto request = new PasswordResetRequestDto();
+        request.setNewPassword(password);
+
+        return request;
+    }
+
+    private HttpStatus profileStatus(String token) {
+        return (HttpStatus) restTemplate.exchange(
+                "/api/users/profile", HttpMethod.GET, withToken(token), String.class).getStatusCode();
+    }
+
+    private HttpStatus loginStatus(String username, String password) {
+        return (HttpStatus) restTemplate.postForEntity(
+                "/api/users/auth/login",
+                new AuthController.LoginRequest(username, password),
+                String.class).getStatusCode();
     }
 
     private PageResponseDto<UserAdminResponseDto> getUsers(String url, Object... variables) {
