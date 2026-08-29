@@ -6,6 +6,7 @@ export {
   LOGOUT_PATH,
 } from './client';
 export type { RefreshResult } from './client';
+export { uploadFile } from './files';
 export { ApiError, isApiError, toApiError } from './problem';
 export type { ProblemDetail } from './problem';
 export {
