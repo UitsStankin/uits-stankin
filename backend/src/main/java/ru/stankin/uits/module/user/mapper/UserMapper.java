@@ -7,6 +7,8 @@ import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
+import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
+import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
@@ -22,6 +24,28 @@ public abstract class UserMapper {
 
     @Mapping(target = "avatarUrl", source = "avatar", qualifiedByName = "avatarUrl")
     public abstract UserAdminResponseDto toAdminDto(User user);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "avatar", ignore = true)
+    @Mapping(target = "telegramCode", ignore = true)
+    @Mapping(target = "staff", ignore = true)
+    @Mapping(target = "active", constant = "true")
+    @Mapping(target = "lastLogin", ignore = true)
+    @Mapping(target = "dateJoined", ignore = true)
+    @Mapping(target = "tokensNotBefore", ignore = true)
+    public abstract User toEntity(UserCreateRequestDto dto);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "username", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "avatar", ignore = true)
+    @Mapping(target = "telegramCode", ignore = true)
+    @Mapping(target = "staff", ignore = true)
+    @Mapping(target = "lastLogin", ignore = true)
+    @Mapping(target = "dateJoined", ignore = true)
+    @Mapping(target = "tokensNotBefore", ignore = true)
+    public abstract void updateEntity(@MappingTarget User user, UserAdminUpdateRequestDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "username", ignore = true)

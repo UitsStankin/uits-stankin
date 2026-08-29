@@ -2,12 +2,17 @@ package ru.stankin.uits.module.user.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
+import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
+import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
+import ru.stankin.uits.module.user.entity.User;
+import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.mapper.UserMapper;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
@@ -17,6 +22,7 @@ public class UserAdminService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public PageResponseDto<UserAdminResponseDto> getUsers(
@@ -37,6 +43,39 @@ public class UserAdminService {
         return userRepository.findById(id)
                 .map(userMapper::toAdminDto)
                 .orElseThrow(() -> new NotFoundException("Пользователь id=" + id + " не найден"));
+    }
+
+    @Transactional
+    public UserAdminResponseDto createUser(UserCreateRequestDto request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new InvalidRequestException("Логин уже занят: " + request.getUsername());
+        }
+
+        User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        return userMapper.toAdminDto(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserAdminResponseDto updateUser(Long id, Long currentUserId, UserAdminUpdateRequestDto request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Пользователь id=" + id + " не найден"));
+
+        validateSelfStaysAdmin(user, currentUserId, request);
+        userMapper.updateEntity(user, request);
+
+        return userMapper.toAdminDto(user);
+    }
+
+    private void validateSelfStaysAdmin(User user, Long currentUserId, UserAdminUpdateRequestDto request) {
+        if (!user.getId().equals(currentUserId)) {
+            return;
+        }
+
+        if (!request.getSuperuser() || !request.getActive()) {
+            throw new InvalidRequestException("Нельзя снять с себя права администратора или заблокировать себя");
+        }
     }
 
     private static String normalize(String value) {

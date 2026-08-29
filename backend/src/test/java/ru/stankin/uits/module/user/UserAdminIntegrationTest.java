@@ -6,6 +6,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,8 @@ import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
+import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
+import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
 
 import java.util.List;
@@ -151,6 +154,190 @@ public class UserAdminIntegrationTest extends AbstractIntegrationTest {
                 "/api/users/" + MISSING_ID, HttpMethod.GET, withToken(adminToken), ProblemDetail.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void createUser_CreatesAccountThatCanLogIn() {
+        UserCreateRequestDto request = createRequest("novikov");
+        request.setModerator(true);
+
+        ResponseEntity<UserAdminResponseDto> response = restTemplate.exchange(
+                "/api/users", HttpMethod.POST, withToken(request, adminToken), UserAdminResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UserAdminResponseDto created = response.getBody();
+        assertThat(created).isNotNull();
+        assertThat(created.getUsername()).isEqualTo("novikov");
+        assertThat(created.isModerator()).isTrue();
+        assertThat(created.isActive()).isTrue();
+        assertThat(response.getHeaders().getLocation()).hasPath("/api/users/" + created.getId());
+
+        assertThat(login("novikov")).isNotBlank();
+    }
+
+    @Test
+    void createUser_DoesNotReturnPassword() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/users", HttpMethod.POST, withToken(createRequest("novikov"), adminToken), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody())
+                .doesNotContain("password")
+                .doesNotContain(TEST_PASSWORD);
+    }
+
+    @Test
+    void createUser_RejectsTakenUsername() {
+        saveUser("novikov", "Иван", "Новиков", "novikov@stankin.ru", true, TestRole.USER);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users", HttpMethod.POST, withToken(createRequest("novikov"), adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Логин уже занят: novikov");
+    }
+
+    @Test
+    void createUser_RejectsShortPassword() {
+        UserCreateRequestDto request = createRequest("novikov");
+        request.setPassword("short");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users", HttpMethod.POST, withToken(request, adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties()).containsKey("errors");
+        assertThat(userRepository.findByUsername("novikov")).isEmpty();
+    }
+
+    @Test
+    void updateUser_ChangesFieldsAndRoles() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+
+        UserAdminUpdateRequestDto request = updateRequest();
+        request.setFirstName("Иннокентий");
+        request.setEmail("new@stankin.ru");
+        request.setModerator(true);
+
+        ResponseEntity<UserAdminResponseDto> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId(), HttpMethod.PUT,
+                withToken(request, adminToken), UserAdminResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getFirstName()).isEqualTo("Иннокентий");
+        assertThat(response.getBody().isModerator()).isTrue();
+
+        User stored = userRepository.findById(ivanov.getId()).orElseThrow();
+        assertThat(stored.getEmail()).isEqualTo("new@stankin.ru");
+        assertThat(stored.isModerator()).isTrue();
+        assertThat(stored.getUsername()).isEqualTo("ivanov");
+    }
+
+    @Test
+    void updateUser_BlocksAccountAndCutsItsAccess() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+        String ivanovToken = login("ivanov");
+
+        UserAdminUpdateRequestDto request = updateRequest();
+        request.setActive(false);
+
+        ResponseEntity<UserAdminResponseDto> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId(), HttpMethod.PUT,
+                withToken(request, adminToken), UserAdminResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<ProblemDetail> afterBlock = restTemplate.exchange(
+                "/api/users/profile", HttpMethod.GET, withToken(ivanovToken), ProblemDetail.class);
+
+        assertThat(afterBlock.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void updateUser_RejectsSelfDemotion() {
+        Long adminId = userRepository.findByUsername("admin_user").orElseThrow().getId();
+
+        UserAdminUpdateRequestDto request = updateRequest();
+        request.setSuperuser(false);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + adminId, HttpMethod.PUT, withToken(request, adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(userRepository.findByUsername("admin_user").orElseThrow().isSuperuser()).isTrue();
+    }
+
+    @Test
+    void updateUser_RejectsSelfBlocking() {
+        Long adminId = userRepository.findByUsername("admin_user").orElseThrow().getId();
+
+        UserAdminUpdateRequestDto request = updateRequest();
+        request.setSuperuser(true);
+        request.setActive(false);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + adminId, HttpMethod.PUT, withToken(request, adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(userRepository.findByUsername("admin_user").orElseThrow().isActive()).isTrue();
+    }
+
+    @Test
+    void updateUser_RejectsBodyWithoutActive() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String body = "{\"superuser\": false, \"moderator\": false, \"teacher\": false}";
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId(), HttpMethod.PUT,
+                new HttpEntity<>(body, headers), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(userRepository.findById(ivanov.getId()).orElseThrow().isActive()).isTrue();
+    }
+
+    @Test
+    void updateUser_Returns404_WhenUserIsMissing() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + MISSING_ID, HttpMethod.PUT,
+                withToken(updateRequest(), adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    private UserCreateRequestDto createRequest(String username) {
+        UserCreateRequestDto request = new UserCreateRequestDto();
+        request.setUsername(username);
+        request.setPassword(TEST_PASSWORD);
+        request.setEmail(username + "@stankin.ru");
+        request.setFirstName("Иван");
+        request.setLastName("Новиков");
+
+        return request;
+    }
+
+    private UserAdminUpdateRequestDto updateRequest() {
+        UserAdminUpdateRequestDto request = new UserAdminUpdateRequestDto();
+        request.setSuperuser(false);
+        request.setModerator(false);
+        request.setTeacher(false);
+        request.setActive(true);
+
+        return request;
+    }
+
+    private <T> HttpEntity<T> withToken(T body, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        return new HttpEntity<>(body, headers);
     }
 
     private PageResponseDto<UserAdminResponseDto> getUsers(String url, Object... variables) {
