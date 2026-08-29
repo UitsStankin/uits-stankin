@@ -149,6 +149,7 @@ class ArchitectureTest {
                             "..module.achievements.entity..",
                             "..module.achievements.mapper..",
                             "..module.achievements.service..",
+                            "..module.schedule.entity..",
                             "..config.."
                     )
                     .because("Teacher — внутренняя модель модуля staff, "
@@ -211,6 +212,8 @@ class ArchitectureTest {
      *   <li>achievements → staff.entity и staff.service: достижение привязано
      *       к преподавателю. Сущность — ради FK и ФИО в ответе, сервис — потому
      *       что публичная граница модуля staff одна, и это он, а не репозиторий.</li>
+     *   <li>schedule → staff.entity: расписание принадлежит преподавателю
+     *       (FK на employee_teacher), связь того же рода, что у достижений.</li>
      * </ul>
      */
     @ArchTest
@@ -229,6 +232,9 @@ class ArchitectureTest {
                     .ignoreDependency(
                             resideInAPackage("..module.achievements.service.."),
                             resideInAPackage("..module.staff.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.schedule.."),
+                            resideInAPackage("..module.staff.entity.."))
                     .because("границы модулей — сервисы и DTO; прямой доступ к чужим "
                             + "внутренностям превращает модули обратно в один клубок");
 }
