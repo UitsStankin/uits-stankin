@@ -55,7 +55,7 @@
 | 7 | Преподаватели (ППС) | ✅ | — (T-26: карточка до паритета, CRUD, «моя карточка» `/api/teachers/me`) |
 | 8 | УВП (учебно-вспом. персонал) | ✅ | — (T-27: карточка, публичный список, модераторский CRUD) |
 | 9 | Дисциплины (Subject) | ✅ | — (T-26: сущность, M2M-связь, список и создание) |
-| 10 | Расписание преподавателя | 🟡 | парсер PDF готов и покрыт тестами (T-39, `schedule-service/`); осталась FastAPI-обёртка (T-40), модель Schedule/Lesson/Date и импорт (T-41) |
+| 10 | Расписание преподавателя | 🟡 | микросервис готов: парсер PDF (T-39) и HTTP-обёртка `POST /parse` в Docker (T-40); осталась модель Schedule/Lesson/Date и импорт на стороне Spring (T-41) |
 | 11 | Сводное расписание | ❌ | агрегация + фильтр по преподавателям |
 | 12 | Расписание экзаменов | ❌ | ссылки на PDF (выпускные/невыпускные курсы) + фильтр |
 | 13 | Студенты (guidance) | ❌ | сущность Student |
@@ -102,7 +102,7 @@
 Новый: тонкий клиент `RestClient` к Bot API (библиотека не нужна — ARCHITECTURE.md §4.3), `@PostMapping` webhook + проверка секрета, команды `/start /register /cancel`, отправка через outbox + `@Async`.
 
 ### 5.2 Расписание (микросервис)
-`schedule-service/` (FastAPI): эндпоинт `POST /parse` принимает PDF, возвращает JSON (дни → пары → даты). Переиспользуем `parse_schedule.py`. **Фиксы:** брать таблицы со всех страниц (не только последней); вернуть структурированную ошибку при незнакомом формате. Spring сохраняет результат в `Schedule/ScheduleLesson/ScheduleLessonDate`.
+`schedule-service/` (FastAPI): эндпоинт `POST /parse` принимает PDF, возвращает JSON. **Сделано в T-39/T-40**, контракт и разбор формата — в `schedule-service/README.md`; ответ — плоский список занятий (`{lessons: [...]}` с `week_day`/`class_time`), а не дерево дней. Фиксы старого парсера выполнены: таблицы берутся со всех страниц, незнакомый формат даёт структурированную `422`, подгруппы больше не затираются кабинетами вида `0804(КК)`. Осталось (T-41): Spring сохраняет результат в `Schedule/ScheduleLesson/ScheduleLessonDate`.
 
 ### 5.3 Напоминания
 `@Scheduled` (cron; Quartz не берём, состояние и так в БД — ARCHITECTURE.md §4.2): задачи выбирают события с `next_notification_at <= now` и шлют в Telegram назначенным через outbox. **Не** копировать баг `auto_now` на поле планирования.
@@ -153,7 +153,7 @@
 uits-stankin/
 ├── backend/            # Spring Boot (модули: auth, user, news, staff, schedule, events, telegram, publications, pages, ...)
 ├── frontend/           # React (public-зона + админка)
-├── schedule-service/   # Python FastAPI: парсинг расписания (новое)
+├── schedule-service/   # Python FastAPI: парсинг расписания
 ├── docs/MIGRATION.md   # этот файл
 └── docker-compose*.yml
 ```

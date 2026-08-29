@@ -234,8 +234,7 @@
 - Excel (фаза 5): `org.apache.poi:poi-ooxml`.
 - Telegram (если вариант B): `org.telegram:telegrambots-spring-boot-starter`.
 
-**schedule-service (`requirements.txt`)**
-- `fastapi`, `uvicorn[standard]`, `pdfplumber`, `pydantic`, `python-multipart`, `pytest`.
+**schedule-service** — зависимости разведены по двум файлам: `requirements.txt` (едет в образ) — `fastapi`, `uvicorn[standard]`, `pdfplumber`, `pydantic`, `python-multipart`; `requirements-dev.txt` (только для тестов) — `pytest`, `httpx2`, `pypdf`.
 
 **Frontend (`package.json`)**
 - `@tanstack/react-table`, `react-hook-form`, `zod`, `@tiptap/react` (+ starter-kit), `react-markdown` + `rehype-sanitize`, `@fullcalendar/react` (или `react-big-calendar`), `react-i18next` + `i18next`.

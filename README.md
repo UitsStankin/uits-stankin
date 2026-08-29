@@ -8,6 +8,7 @@
 # Портал кафедры УИТС
 
 [![CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml)
+[![schedule-service CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml)
 
 Сайт кафедры «Управление и информатика в технических системах» МГТУ «СТАНКИН»:
 новости и объявления, карточки преподавателей, расписания, научные публикации,
@@ -28,7 +29,7 @@
 | API | REST, документация — OpenAPI / Swagger UI |
 | Тесты | JUnit 5, Spring Security Test, Testcontainers |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Парсинг расписания | Python-микросервис (FastAPI + pdfplumber) — планируется |
+| Парсинг расписания | Python-микросервис: FastAPI, pdfplumber, pytest |
 | Инфраструктура | Docker Compose, GitHub Actions (CI + деплой) |
 
 ---
@@ -36,10 +37,11 @@
 ## Структура репозитория
 
 ```
-backend/    Spring Boot приложение — API портала
-frontend/   React SPA
-docs/       архитектура, план миграции, онбординг, бэклог
-.github/    CI (сборка + тесты) и деплой
+backend/           Spring Boot приложение — API портала
+frontend/          React SPA
+schedule-service/  Python-микросервис: разбор PDF-расписаний
+docs/              архитектура, план миграции, онбординг, бэклог
+.github/           CI (сборка + тесты) и деплой
 ```
 
 ---
@@ -56,8 +58,10 @@ docker compose up -d --wait
 ./gradlew bootRun
 ```
 
+Compose поднимает базу и `schedule-service` (первый запуск собирает его образ).
 Проверка: `GET http://localhost:8080/api/public/news` отдаёт две новости
-из сидера тестовых данных. Swagger UI — `http://localhost:8080/swagger-ui/index.html`.
+из сидера тестовых данных. Swagger UI — `http://localhost:8080/swagger-ui/index.html`,
+микросервис расписаний — `http://localhost:8000/docs`.
 
 Фронтенд поднимается отдельно из `frontend/` (`npm install && npm run dev`).
 
@@ -93,7 +97,10 @@ Markdown-страниц, загрузка файлов с фоновой убо�
 Фронтенд: собран каркас и работает вход против живого API; контентные страницы
 и админ-панель — в работе.
 
-Дальше по дорожной карте идут расписания и микросервис парсинга PDF. Карта фаз —
+Идёт Фаза 2 — расписания. Микросервис разбора PDF готов: парсер переиспользует
+`pdfplumber`-логику старого портала, проверен на реальных расписаниях кафедры
+и поднимается как HTTP-сервис в Docker. Следом — модель расписания и импорт
+на стороне Spring. Карта фаз —
 в [docs/MIGRATION.md](docs/MIGRATION.md#6-дорожная-карта-фазы), очередь задач
 бэкенда — в [docs/BACKLOG.md](docs/BACKLOG.md), фронтенда —
 в [docs/FRONTEND_BACKLOG.md](docs/FRONTEND_BACKLOG.md).
