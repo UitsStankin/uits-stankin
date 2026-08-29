@@ -188,6 +188,7 @@ docker compose up -d
 | `POSTGRES_PASSWORD` | его пароль | да | `localdevpass123` |
 | `POSTGRES_HOST_PORT` | порт на хост-машине | да; в шаблоне `.env.example` уже стоит `5433` | `5433` |
 | `SCHEDULE_SERVICE_HOST_PORT` | порт микросервиса расписаний на хост-машине | нет, по умолчанию `8000` | `8000` |
+| `SCHEDULE_SERVICE_URL` | адрес микросервиса расписаний для бэкенда | нет, по умолчанию `http://localhost:8000`; в докере — `http://schedule-service:8000` | `http://localhost:8000` |
 | `JWT_SECRET_KEY` | ключ подписи access-токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
 | `JWT_EXPIRATION` | время жизни access-токена в миллисекундах | нет, по умолчанию 15 минут | `900000` |
 | `CORS_ALLOWED_ORIGINS` | origin'ы фронтенда через запятую | локально нет, по умолчанию `http://localhost:5173`; в `docker-compose.prod.yml` да | `https://uits.example` |

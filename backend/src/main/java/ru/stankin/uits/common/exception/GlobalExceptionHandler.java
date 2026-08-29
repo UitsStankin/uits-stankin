@@ -101,6 +101,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(ScheduleServiceUnavailableException.class)
+    public ProblemDetail handleScheduleServiceUnavailable(ScheduleServiceUnavailableException ex) {
+        return problemDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidRequestException.class)
     public ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
