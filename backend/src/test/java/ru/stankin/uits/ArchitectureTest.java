@@ -150,6 +150,8 @@ class ArchitectureTest {
                             "..module.achievements.mapper..",
                             "..module.achievements.service..",
                             "..module.schedule.entity..",
+                            "..module.schedule.mapper..",
+                            "..module.schedule.service..",
                             "..config.."
                     )
                     .because("Teacher — внутренняя модель модуля staff, "
@@ -235,6 +237,9 @@ class ArchitectureTest {
                     .ignoreDependency(
                             resideInAPackage("..module.schedule.."),
                             resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.schedule.service.."),
+                            resideInAPackage("..module.staff.service.."))
                     .because("границы модулей — сервисы и DTO; прямой доступ к чужим "
                             + "внутренностям превращает модули обратно в один клубок");
 }

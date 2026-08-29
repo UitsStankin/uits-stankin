@@ -192,6 +192,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/teachers", EDITORS),
             controller(HttpMethod.PUT, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/teachers/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/{id}/schedule/import", EDITORS),
             controller(HttpMethod.GET, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/helpers", EDITORS),
@@ -367,8 +368,23 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/subjects" -> json(headers, subjectRequest());
             case "POST /api/helpers", "PUT /api/helpers/{id}" -> json(headers, helperRequest());
             case "POST /api/files" -> multipart(headers);
+            case "POST /api/teachers/{id}/schedule/import" -> schedulePdf(headers);
             default -> new HttpEntity<>(headers);
         };
+    }
+
+    private HttpEntity<?> schedulePdf(HttpHeaders headers) {
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource("%PDF-1.4 matrix".getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            @Override
+            public String getFilename() {
+                return "matrix.pdf";
+            }
+        });
+
+        return new HttpEntity<>(body, headers);
     }
 
     private HttpEntity<?> json(HttpHeaders headers, Object body) {
