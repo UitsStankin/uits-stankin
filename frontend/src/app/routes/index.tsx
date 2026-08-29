@@ -8,6 +8,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import Loader from '@shared/ui/Loader';
 import { LOGIN_ROUTE, NEWS_ROUTE, PERSONAL_ROUTE } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
+import HomePage from '@pages/HomePage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
@@ -30,9 +31,12 @@ export const routes: RouteObject[] = [
     ),
     children: [
       // === APP_LAYOUT_ROUTES (UitsModule) ===
+      // Главная. Собирается из трёх кусков: редактируемый блок `home-before`,
+      // лента новостей, редактируемый блок `home-after`.
       {
         index: true,
-        element: <Placeholder title="Главная — страница ещё не перенесена" />,
+        element: <HomePage />,
+        errorElement: <RouteError />,
       },
       // Новости. Публичные: ручка `GET /api/public/news` открыта всем,
       // и лента — то, ради чего на портал заходят без входа.
