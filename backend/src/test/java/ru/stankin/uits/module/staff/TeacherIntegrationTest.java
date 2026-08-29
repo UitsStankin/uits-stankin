@@ -375,6 +375,49 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void updateMyCard_WhenAvatarKeyResubmitted_KeepsPhotoAndFile() throws IOException {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        String key = storeFile("avatars");
+        card.setUser(teacherUser);
+        card.setAvatar(key);
+        teacherRepository.save(card);
+        String token = login("teacher_user");
+
+        ResponseEntity<TeacherDetailsResponseDto> stored = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(token)),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(stored.getBody()).isNotNull();
+        assertThat(stored.getBody().getAvatar()).isEqualTo(key);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .phoneNumber("+7 (499) 972-95-84")
+                .avatar(stored.getBody().getAvatar())
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(token)),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatar()).isEqualTo(key);
+        assertThat(response.getBody().getPhoneNumber()).isEqualTo("+7 (499) 972-95-84");
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isEqualTo(key);
+        assertThat(STORAGE_ROOT.resolve(key)).exists();
+    }
+
+    @Test
     void myCard_WhenNoCardLinked_Returns404() {
         createUser("teacher_user", TestRole.TEACHER);
 

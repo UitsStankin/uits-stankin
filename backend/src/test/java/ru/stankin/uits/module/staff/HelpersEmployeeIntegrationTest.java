@@ -186,6 +186,44 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void updateHelper_WhenAvatarKeyResubmitted_KeepsPhotoAndFile() throws IOException {
+        HelpersEmployee helper = createHelper("Белова", "Ирина");
+        String key = storeFile("avatars");
+        helper.setAvatar(key);
+        helpersEmployeeRepository.save(helper);
+
+        ResponseEntity<PageResponseDto<HelpersEmployeeResponseDto>> listed = restTemplate.exchange(
+                "/api/public/helpers",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(listed.getBody()).isNotNull();
+        assertThat(listed.getBody().content().getFirst().getAvatar()).isEqualTo(key);
+
+        HelpersEmployeeRequestDto request = HelpersEmployeeRequestDto.builder()
+                .lastName("Белова")
+                .firstName("Ирина")
+                .position("ведущий инженер")
+                .avatar(listed.getBody().content().getFirst().getAvatar())
+                .build();
+
+        ResponseEntity<HelpersEmployeeResponseDto> response = restTemplate.exchange(
+                "/api/helpers/" + helper.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                HelpersEmployeeResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatar()).isEqualTo(key);
+        assertThat(response.getBody().getPosition()).isEqualTo("ведущий инженер");
+        assertThat(helpersEmployeeRepository.findById(helper.getId()).orElseThrow().getAvatar()).isEqualTo(key);
+        assertThat(STORAGE_ROOT.resolve(key)).exists();
+    }
+
+    @Test
     void updateHelper_WhenUnknownId_Returns404() {
         HelpersEmployeeRequestDto request = HelpersEmployeeRequestDto.builder()
                 .lastName("Белова")

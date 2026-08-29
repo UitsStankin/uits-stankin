@@ -19,6 +19,7 @@ public class TeacherDetailsResponseDto {
     private String position;
     private String degree;
     private String rank;
+    private String avatar;
     private String avatarUrl;
     private String phoneNumber;
     private String email;

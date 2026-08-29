@@ -15,5 +15,6 @@ public class HelpersEmployeeResponseDto {
     private String firstName;
     private String patronymic;
     private String position;
+    private String avatar;
     private String avatarUrl;
 }
