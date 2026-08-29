@@ -36,6 +36,15 @@ public class ScheduleService {
         teacher(teacherId);
     }
 
+    @Transactional(readOnly = true)
+    public ScheduleResponseDto getByTeacherId(Long teacherId) {
+        Teacher teacher = teacher(teacherId);
+        Schedule schedule = scheduleRepository.findByTeacherId(teacherId)
+                .orElseGet(() -> Schedule.builder().teacher(teacher).build());
+
+        return scheduleMapper.toDto(schedule);
+    }
+
     @Transactional
     public ScheduleResponseDto replaceSchedule(Long teacherId, String fileName, ParsedScheduleDto parsed) {
         Teacher teacher = teacher(teacherId);
