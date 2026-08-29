@@ -37,3 +37,5 @@ databaseChangeLog:
       file: db/changelog/changesets/018-add-refresh-token-indexes.yml
   - include:
       file: db/changelog/changesets/019-add-user-tokens-not-before.yml
+  - include:
+      file: db/changelog/changesets/020-create-schedule-tables.yml
