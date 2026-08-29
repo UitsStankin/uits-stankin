@@ -2,6 +2,7 @@ package ru.stankin.uits.module.staff.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,8 @@ public class TeacherService {
 
     private static final String AVATAR_CATEGORY = "avatars";
 
+    private static final Sort EXAM_SCHEDULE_SORT = Sort.by("lastName", "firstName", "id");
+
     private final TeacherRepository teacherRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherMapper teacherMapper;
@@ -49,6 +52,11 @@ public class TeacherService {
         return teacherRepository.findById(id)
                 .map(teacherMapper::toDetailsDto)
                 .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Teacher> getWithExamSchedule() {
+        return teacherRepository.findWithExamSchedule(EXAM_SCHEDULE_SORT);
     }
 
     @Transactional(readOnly = true)
