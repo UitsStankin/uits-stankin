@@ -72,6 +72,7 @@ export const routes: RouteObject[] = [
                 <PersonalPage />
               </ProtectedRoute>
             ),
+            errorElement: <RouteError />,
           },
         ],
       },
