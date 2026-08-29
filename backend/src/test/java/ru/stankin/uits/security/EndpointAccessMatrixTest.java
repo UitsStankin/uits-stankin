@@ -32,6 +32,9 @@ import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
+import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
+import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
+import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
 
@@ -132,6 +135,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             EnumSet.of(Actor.USER, Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> EDITORS = EnumSet.of(Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> TEACHERS = EnumSet.of(Actor.TEACHER);
+    private static final Set<Actor> ADMINS = EnumSet.of(Actor.ADMIN);
 
     /**
      * Кто и куда имеет право. Третья колонка — те, кого ручка обязана пропустить
@@ -156,6 +160,13 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.PUT, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
+
+            controller(HttpMethod.GET, "/api/users", ADMINS),
+            controller(HttpMethod.GET, "/api/users/{id}", ADMINS),
+            controller(HttpMethod.POST, "/api/users", ADMINS),
+            controller(HttpMethod.PUT, "/api/users/{id}", ADMINS),
+            controller(HttpMethod.POST, "/api/users/{id}/reset-password", ADMINS),
+            controller(HttpMethod.POST, "/api/users/{id}/logout", ADMINS),
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
@@ -343,6 +354,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 yield new HttpEntity<>(null, headers);
             }
             case "PUT /api/users/profile" -> json(headers, profileRequest());
+            case "POST /api/users" -> json(headers, createUserRequest());
+            case "PUT /api/users/{id}" -> json(headers, adminUpdateRequest());
+            case "POST /api/users/{id}/reset-password" -> json(headers, passwordResetRequest());
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
@@ -382,6 +396,31 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         UserUpdateRequestDto request = new UserUpdateRequestDto();
         request.setFirstName("Матрица");
         request.setLastName("Доступа");
+
+        return request;
+    }
+
+    private PasswordResetRequestDto passwordResetRequest() {
+        PasswordResetRequestDto request = new PasswordResetRequestDto();
+        request.setNewPassword("matrix_password");
+
+        return request;
+    }
+
+    private UserCreateRequestDto createUserRequest() {
+        UserCreateRequestDto request = new UserCreateRequestDto();
+        request.setUsername("matrix_new_user");
+        request.setPassword("matrix_password");
+
+        return request;
+    }
+
+    private UserAdminUpdateRequestDto adminUpdateRequest() {
+        UserAdminUpdateRequestDto request = new UserAdminUpdateRequestDto();
+        request.setSuperuser(true);
+        request.setModerator(false);
+        request.setTeacher(false);
+        request.setActive(true);
 
         return request;
     }
