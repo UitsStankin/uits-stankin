@@ -69,8 +69,11 @@ export function useNewsItem() {
 /**
  * Идентификатор из адреса. `null` — всё, что не положительное целое:
  * `/about/news/abc`, `/about/news/-1`, `/about/news/1.5`.
+ *
+ * Экспортируется ради теста — по той же причине, что и `parsePage`
+ * в модели ленты.
  */
-function parseId(raw: string | undefined): number | null {
+export function parseId(raw: string | undefined): number | null {
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }

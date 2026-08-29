@@ -1,4 +1,7 @@
-import { defineConfig, loadEnv } from 'vite'
+import { loadEnv } from 'vite'
+// Не из 'vite': `defineConfig` из 'vitest/config' — тот же самый,
+// но знает про секцию `test` ниже и типизирует её.
+import { defineConfig } from 'vitest/config'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
@@ -64,6 +67,28 @@ export default defineConfig(({ mode }) => {
         '@features': path.resolve(__dirname, './src/features'),
         '@entities': path.resolve(__dirname, './src/entities'),
         '@shared': path.resolve(__dirname, './src/shared'),
+      },
+    },
+    /**
+     * Тесты. Конфиг общий со сборкой намеренно: алиасы FSD, плагины и разбор
+     * TypeScript описаны выше ровно один раз. Отдельный конфиг тест-раннера
+     * означал бы второй список тех же алиасов — и первый же добавленный
+     * пришлось бы чинить дважды, причём второй раз — после падения тестов.
+     */
+    test: {
+      // Страницы рендерятся в DOM, а запросы уходят через XHR: и то, и другое
+      // даёт jsdom. Чистым функциям он не мешает.
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      // `describe`/`it`/`expect` импортируются явно. Глобалы экономят строку
+      // импорта ценой того, что в файле не видно, откуда взялись имена,
+      // — и требуют отдельной записи в `types` tsconfig.
+      globals: false,
+      env: {
+        // То же, что на проде: фронт и API за общим origin. Пустая строка,
+        // а не отсутствие переменной, — иначе api-клиент на каждом тесте
+        // пишет в консоль предупреждение про незаданный адрес.
+        VITE_API_BASE_URL: '',
       },
     },
   };

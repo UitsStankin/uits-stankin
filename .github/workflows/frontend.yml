@@ -1,0 +1,87 @@
+name: frontend CI
+
+# Линт, тесты и сборка фронтенда.
+#
+# Фильтр по изменённым файлам живёт внутри job'а, а не в `on: pull_request`:
+# обязательный статус-чек ждёт результата на каждом PR, а нестартовавший
+# workflow результата не даёт и оставляет PR в «Waiting for status» навсегда.
+# То же решение и по той же причине — в ci.yml и schedule-service.yml.
+
+on:
+  pull_request:
+  push:
+    branches: [ dev ]
+    paths:
+      - "frontend/**"
+      - "!frontend/**.md"
+      - ".github/workflows/frontend.yml"
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    # Прогон укладывается в пару минут, почти всё из них — npm ci.
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      - name: Изменения во фронтенде
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          # predicate-quantifier: every и отдельный фильтр на workflow —
+          # пояснение в ci.yml
+          predicate-quantifier: every
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '!frontend/**.md'
+            workflow:
+              - '.github/workflows/frontend.yml'
+
+      - name: Нужен ли прогон
+        id: gate
+        run: echo "run=${{ github.event_name != 'pull_request' || steps.changes.outputs.frontend == 'true' || steps.changes.outputs.workflow == 'true' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Установка Node 24
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          # Не 22: часть зависимостей тестового стенда требует 22.22 и выше,
+          # а на «22» runner ставит последнюю 22.x — то есть версия менялась бы
+          # под ногами. Проще взять следующую LTS целиком.
+          node-version: '24'
+          # Встроенный кэш npm по хешу lock-файла. Ключ должен указывать
+          # на frontend/, иначе кэшируется пустота: в корне репозитория
+          # package-lock.json нет.
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Установка зависимостей
+        if: steps.gate.outputs.run == 'true'
+        # ci, а не install: ставит ровно то, что в lock-файле, и падает
+        # при расхождении с package.json вместо тихой правки lock'а.
+        run: npm ci
+        working-directory: frontend
+
+      - name: Линтер
+        if: steps.gate.outputs.run == 'true'
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Тесты
+        if: steps.gate.outputs.run == 'true'
+        run: npm test
+        working-directory: frontend
+
+      - name: Сборка
+        if: steps.gate.outputs.run == 'true'
+        # Здесь же проверка типов: `build` — это `tsc -b && vite build`.
+        run: npm run build
+        working-directory: frontend
