@@ -25,7 +25,15 @@ export type {
 export type { News, NewsRequest, NewsPage, PostType } from './news.types';
 
 // Преподаватели
-export type { Teacher, TeacherPage } from './staff.types';
+export type {
+  Teacher,
+  TeacherListItem,
+  TeacherPage,
+  TeacherDegree,
+  TeacherRank,
+  TeacherUpsertRequest,
+  Subject,
+} from './staff.types';
 
 // Навигация
 export type { NavItem } from './nav.types';

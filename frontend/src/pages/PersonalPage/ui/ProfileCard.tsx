@@ -1,5 +1,6 @@
-import { cn } from '@shared/lib';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
+
+import { DefinitionField, definitionLabelClass } from './DefinitionField';
 
 interface ProfileCardProps {
   /** Логин — единственное поле имени, которое гарантированно непустое. */
@@ -45,12 +46,12 @@ export function ProfileCard({ username, fullName, email, avatarUrl, roles }: Pro
         {/* Список определений, а не таблица: это пары «подпись — значение»,
             и диктор прочитает их парами. */}
         <dl className="flex min-w-0 flex-1 flex-col gap-4">
-          <Field label="Имя пользователя" value={username} />
-          <Field label="Фамилия Имя" value={fullName} />
-          <Field label="Электронная почта" value={email} />
+          <DefinitionField label="Имя пользователя" value={username} />
+          <DefinitionField label="Фамилия Имя" value={fullName} />
+          <DefinitionField label="Электронная почта" value={email} />
 
           <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
-            <dt className={labelClass}>Уровень доступа</dt>
+            <dt className={definitionLabelClass}>Уровень доступа</dt>
             <dd className="flex flex-wrap gap-1.5">
               {roles.map((role) => (
                 <span
@@ -65,22 +66,5 @@ export function ProfileCard({ username, fullName, email, avatarUrl, roles }: Pro
         </dl>
       </div>
     </section>
-  );
-}
-
-const labelClass = 'shrink-0 text-sm text-text-muted sm:w-44';
-
-/**
- * Одна пара «подпись — значение». Пустое значение показывается прочерком:
- * пропущенная строка выглядела бы как отсутствие такого поля вовсе.
- */
-function Field({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
-      <dt className={labelClass}>{label}</dt>
-      <dd className={cn('min-w-0 break-words text-base', value ? 'text-text-heading' : 'text-text-muted')}>
-        {value || '—'}
-      </dd>
-    </div>
   );
 }
