@@ -54,8 +54,8 @@
 ## 2. Парсинг расписания — микросервис `schedule-service`
 
 **Что реализовать**
-- Отдельный сервис на **Python + FastAPI**. Эндпоинты:
-  - `POST /parse` (multipart `file=<pdf>`) → `200 {days: {...пары/даты...}}` или `422 {error, detail}` при незнакомом формате.
+- Отдельный сервис на **Python + FastAPI**. Эндпоинты (сделано в T-39/T-40, контракт — `schedule-service/README.md`):
+  - `POST /parse` (multipart `file=<pdf>`) → `200 {lessons: [...]}` — плоский список занятий с `week_day` и `class_time`, а не вложенное дерево дней: разбор всё равно раскладывается по строкам таблиц `ScheduleLesson`/`ScheduleLessonDate`, и дерево пришлось бы разбирать обратно. Ошибки — единым телом `{error, detail}`: `400` (нет поля `file`), `413` (больше 5 МБ), `422` (незнакомый формат), `500` (без подробностей наружу).
   - `GET /health`.
 - Backend при импорте расписания преподавателя принимает PDF от админа → **проксирует** в `schedule-service` → получает JSON → сам сохраняет `Schedule / ScheduleLesson / ScheduleLessonDate`.
 
