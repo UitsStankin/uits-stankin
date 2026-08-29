@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 
 from fastapi import FastAPI, File, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -60,4 +61,4 @@ async def parse(file: Annotated[UploadFile, File()]) -> ParsedSchedule:
     content = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise UploadTooLargeError
-    return parse_schedule(content)
+    return await run_in_threadpool(parse_schedule, content)

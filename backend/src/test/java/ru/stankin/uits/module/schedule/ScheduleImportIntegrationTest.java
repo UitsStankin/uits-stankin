@@ -32,6 +32,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -221,6 +227,128 @@ class ScheduleImportIntegrationTest extends AbstractIntegrationTest {
                 HttpMethod.POST, pdfRequest(new byte[0]), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        then(scheduleServiceClient).should(never()).parse(any(), any());
+    }
+
+    @Test
+    void emptyParseResultIsRejectedAndLeavesScheduleIntact() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 1, "ИДБ-25-11", period("16.03", "27.04", true))));
+        importPdf(teacher.getId(), ScheduleResponseDto.class);
+
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith());
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("detail", "В файле не найдено ни одного занятия.");
+        assertThat(countRows("schedule_schedulelesson")).isEqualTo(1);
+        assertThat(groupOfSingleLesson()).isEqualTo("ИДБ-25-11");
+    }
+
+    @Test
+    void answerWithoutLessonsListBecomesServiceUnavailable() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(ParsedScheduleDto.builder().build());
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(countRows("schedule_schedule")).isZero();
+    }
+
+    @Test
+    void emptyAnswerBodyBecomesServiceUnavailable() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(null);
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void lessonBrokenInTheMiddleRollsBackPreviousSchedule() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 1, "ИДБ-25-11", period("16.03", "27.04", true))));
+        importPdf(teacher.getId(), ScheduleResponseDto.class);
+
+        ParsedLessonDto broken = ParsedLessonDto.builder()
+                .weekDay(2)
+                .classTime(2)
+                .group("ИДБ-24-01")
+                .type("Лекция")
+                .dates(List.of(period("01.09", "01.09", false)))
+                .build();
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(3, 3, "ИДБ-23-01", period("02.09", "02.09", false)), broken));
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(countRows("schedule_schedulelesson")).isEqualTo(1);
+        assertThat(groupOfSingleLesson()).isEqualTo("ИДБ-25-11");
+    }
+
+    @Test
+    void tooLongGroupIsRejectedWithFieldInMessage() {
+        ParsedLessonDto huge = ParsedLessonDto.builder()
+                .weekDay(1)
+                .classTime(4)
+                .group("ИДБ-25-11, ".repeat(12).trim())
+                .name("Технические средства информационных систем")
+                .type("Лекция")
+                .dates(List.of(period("16.03", "16.03", false)))
+                .build();
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(huge));
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().get("detail").toString())
+                .contains("день 1, пара 4")
+                .contains("перечень групп");
+        assertThat(countRows("schedule_schedule")).isZero();
+    }
+
+    @Test
+    void concurrentReimportsForSameTeacherStayConsistent() throws Exception {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 1, "ИДБ-25-11", period("16.03", "27.04", true))));
+        importPdf(teacher.getId(), ScheduleResponseDto.class);
+
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        given(scheduleServiceClient.parse(any(), any())).willAnswer(invocation -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            return parsedWith(lesson(2, 2, "ИДБ-24-11", period("17.03", "28.04", true)));
+        });
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Callable<ResponseEntity<Map>>> calls = List.of(
+                () -> importPdf(teacher.getId(), Map.class),
+                () -> importPdf(teacher.getId(), Map.class));
+
+        try {
+            for (Future<ResponseEntity<Map>> future : pool.invokeAll(calls)) {
+                assertThat(future.get().getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(countRows("schedule_schedule")).isEqualTo(1);
+        assertThat(countRows("schedule_schedulelesson")).isEqualTo(1);
+        assertThat(groupOfSingleLesson()).isEqualTo("ИДБ-24-11");
+    }
+
+    @Test
+    void oversizedFileIsRejectedBeforeParsing() {
+        byte[] huge = new byte[5 * 1024 * 1024 + 1];
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                "/api/teachers/" + teacher.getId() + "/schedule/import",
+                HttpMethod.POST, pdfRequest(huge), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("detail", "Файл расписания больше 5 МБ.");
         then(scheduleServiceClient).should(never()).parse(any(), any());
     }
 }

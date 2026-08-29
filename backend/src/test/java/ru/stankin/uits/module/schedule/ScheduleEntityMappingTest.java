@@ -128,6 +128,19 @@ class ScheduleEntityMappingTest extends AbstractIntegrationTest {
         assertThat(count("schedule_schedulelessondate")).isZero();
     }
 
+    @Test
+    void deletingTeacherDeletesScheduleByDatabaseCascade() {
+        persistScheduleWithLesson();
+        entityManager.flush();
+        entityManager.clear();
+
+        jdbc.update("delete from employee_teacher where id = ?", teacher.getId());
+
+        assertThat(count("schedule_schedule")).isZero();
+        assertThat(count("schedule_schedulelesson")).isZero();
+        assertThat(count("schedule_schedulelessondate")).isZero();
+    }
+
     private int count(String table) {
         return jdbc.queryForObject("select count(*) from " + table, Integer.class);
     }

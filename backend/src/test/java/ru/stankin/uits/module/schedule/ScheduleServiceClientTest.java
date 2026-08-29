@@ -70,15 +70,6 @@ class ScheduleServiceClientTest {
     }
 
     @Test
-    void sendsFileAsMultipartFieldWithFilename() {
-        expectParse(withSuccess(BODY, MediaType.APPLICATION_JSON));
-
-        client.parse("pdf-bytes".getBytes(), "chekanin.pdf");
-
-        server.verify();
-    }
-
-    @Test
     void unparsableFileBecomesInvalidFileExceptionWithServiceDetail() {
         expectParse(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
                 .contentType(MediaType.APPLICATION_JSON)

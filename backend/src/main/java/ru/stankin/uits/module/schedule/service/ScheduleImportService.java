@@ -15,12 +15,18 @@ import java.io.UncheckedIOException;
 @RequiredArgsConstructor
 public class ScheduleImportService {
 
+    private static final long MAX_PDF_BYTES = 5L * 1024 * 1024;
+
     private final ScheduleServiceClient scheduleServiceClient;
     private final ScheduleService scheduleService;
 
     public ScheduleResponseDto importFromPdf(Long teacherId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileException("Файл расписания не выбран.");
+        }
+        if (file.getSize() > MAX_PDF_BYTES) {
+            throw new InvalidFileException(
+                    "Файл расписания больше " + MAX_PDF_BYTES / (1024 * 1024) + " МБ.");
         }
         scheduleService.requireTeacherExists(teacherId);
 

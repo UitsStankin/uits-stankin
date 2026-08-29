@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.module.schedule.dto.ScheduleLessonDateResponseDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleLessonResponseDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleResponseDto;
 import ru.stankin.uits.module.schedule.entity.Schedule;
@@ -57,6 +58,10 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
                 .endDate("27.04")
                 .alternativelyPeriod(true)
                 .build());
+        lesson.addDate(ScheduleLessonDate.builder()
+                .startDate("18.04")
+                .alternativelyPeriod(false)
+                .build());
 
         return lesson;
     }
@@ -97,10 +102,14 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         assertThat(first.getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(first.getSubgroup()).isEqualTo("Б");
         assertThat(first.getCabinet()).isEqualTo("216");
-        assertThat(first.getDates()).hasSize(1);
-        assertThat(first.getDates().getFirst().getStartDate()).isEqualTo("16.03");
+        assertThat(first.getDates()).hasSize(2);
+        assertThat(first.getDates())
+                .extracting(ScheduleLessonDateResponseDto::getStartDate)
+                .containsExactly("16.03", "18.04");
+        assertThat(first.getDates().getFirst().getId()).isNotNull();
         assertThat(first.getDates().getFirst().getEndDate()).isEqualTo("27.04");
         assertThat(first.getDates().getFirst().isAlternativelyPeriod()).isTrue();
+        assertThat(first.getDates().getLast().getEndDate()).isNull();
     }
 
     @Test

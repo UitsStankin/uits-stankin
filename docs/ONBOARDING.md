@@ -67,10 +67,11 @@ Markdown-страницы (13 разделов, T-25), загрузка файл
 
 ```
 uits-stankin/
-├── backend/        Spring Boot, Java 21, Gradle (Kotlin DSL) — 31 java-файл, всё живое
-├── frontend/       React 19 + Vite 8 + Tailwind 4, раскладка FSD — каркас и вход, см. §9
-├── docs/           этот файл + ARCHITECTURE / MIGRATION / IMPLEMENTATION / BACKLOG
-└── .github/workflows/deploy.yml   CI: тесты → сборка → деплой по SSH на VPS
+├── backend/           Spring Boot, Java 21, Gradle (Kotlin DSL) — основной модульный монолит
+├── schedule-service/  Python 3.13 + FastAPI + pdfplumber: разбор PDF расписания, POST /parse
+├── frontend/          React 19 + Vite 8 + Tailwind 4, раскладка FSD — каркас и вход, см. §9
+├── docs/              этот файл + ARCHITECTURE / MIGRATION / IMPLEMENTATION / BACKLOG / API
+└── .github/workflows/ CI: тесты бэкенда, тесты микросервиса, сборка образа и деплой
 ```
 
 Backend внутри:
@@ -558,7 +559,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 
 | Файл | Что делает |
 |---|---|
-| `entity/Achievement.java` | Таблица `achievements_achievement` — имя из Django (приложение `achievements`, модель `Achievement`). Колонки при этом названы `preview_image` и `display`, хотя в Django они `image` и `is_published`: у трёх контент-таблиц проекта одно имя на один смысл, а перенос данных всё равно пишется скриптом с явным перечислением колонок. `display` по умолчанию `false` — в старом портале достижение тоже создавалось снятым с публикации. Обязательны `title` (100 символов, как в Django), `description`, `content` и `preview_image`. `@ManyToOne(fetch = LAZY)` на `Teacher` — единственная в проекте межмодульная связь помимо ссылок на `User`. |
+| `entity/Achievement.java` | Таблица `achievements_achievement` — имя из Django (приложение `achievements`, модель `Achievement`). Колонки при этом названы `preview_image` и `display`, хотя в Django они `image` и `is_published`: у трёх контент-таблиц проекта одно имя на один смысл, а перенос данных всё равно пишется скриптом с явным перечислением колонок. `display` по умолчанию `false` — в старом портале достижение тоже создавалось снятым с публикации. Обязательны `title` (100 символов, как в Django), `description`, `content` и `preview_image`. `@ManyToOne(fetch = LAZY)` на `Teacher` — одна из двух межмодульных связей помимо ссылок на `User`; вторая появилась в T-41a, это `Schedule.teacher` в модуле расписания. |
 | `repository/AchievementRepository.java` | Пять методов, и все помечены `@EntityGraph(attributePaths = {"teacher"})`, включая переопределённые `findAll` и `findById`: без этого страница из двадцати достижений давала бы двадцать лишних запросов за преподавателями. `findAllByTeacherIdAndDisplayTrue` обслуживает блок достижений в карточке ППС — фильтр по ссылке и по видимости закодирован в имени метода. |
 | `service/AchievementService.java` | Чтение, запись и уборка файлов. `prepare()` вызывается на обоих путях записи — `update` пишет dirty checking'ом, без `save()`, и зацепиться за «перед сохранением» там не за что (урок T-21). Содержание чистится `HtmlSanitizer`, и пустота после чистки ловится дважды: `@SafeHtmlNotBlank` на DTO отдаёт `400` со словарём `errors` по полю `content` (общий путь с новостями, T-35), а проверка в `prepare()` остаётся последней линией на случай вызова сервиса в обход `@Valid`. Преподаватель ищется через `TeacherService.getTeacherEntity`, а не через чужой репозиторий: публичная граница модуля — сервис. Файл обложки убирает `FileCleanup`, ключи перед удалением сравниваются. |
 | `controller/AchievementController.java` | Восемь ручек. Публичных три: список, детальная и `GET /api/public/teachers/{teacherId}/achievements` — последняя живёт здесь, а не в `TeacherController`, потому что отдаёт достижения, а не карточку. Остальные пять — CRUD под `hasAnyRole('ADMIN', 'MODERATOR')`. Сортировка по умолчанию — `createdAt`, `id` по убыванию: без второго ключа порядок строк с одинаковой датой Postgres не гарантирует. |

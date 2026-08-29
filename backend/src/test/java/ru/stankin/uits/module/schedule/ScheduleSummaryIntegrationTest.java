@@ -58,7 +58,20 @@ class ScheduleSummaryIntegrationTest extends AbstractIntegrationTest {
                 .importedFileName("schedule.pdf")
                 .build();
 
-        ScheduleLesson lesson = ScheduleLesson.builder()
+        ScheduleLesson first = lesson(weekNumber, classTime, group);
+        first.addDate(date("16.03", "27.04", true));
+
+        ScheduleLesson second = lesson(weekNumber, classTime + 1, group);
+        second.addDate(date("17.03", "28.04", true));
+        second.addDate(date("25.05", null, false));
+
+        schedule.addLesson(first);
+        schedule.addLesson(second);
+        scheduleRepository.save(schedule);
+    }
+
+    private static ScheduleLesson lesson(int weekNumber, int classTime, String group) {
+        return ScheduleLesson.builder()
                 .weekNumber(weekNumber)
                 .classTime(classTime)
                 .group(group)
@@ -66,14 +79,14 @@ class ScheduleSummaryIntegrationTest extends AbstractIntegrationTest {
                 .type("Лабораторная")
                 .cabinet("216")
                 .build();
-        lesson.addDate(ScheduleLessonDate.builder()
-                .startDate("16.03")
-                .endDate("27.04")
-                .alternativelyPeriod(true)
-                .build());
+    }
 
-        schedule.addLesson(lesson);
-        scheduleRepository.save(schedule);
+    private static ScheduleLessonDate date(String start, String end, boolean everyOtherWeek) {
+        return ScheduleLessonDate.builder()
+                .startDate(start)
+                .endDate(end)
+                .alternativelyPeriod(everyOtherWeek)
+                .build();
     }
 
     private ScheduleResponseDto[] summary(String query) {
@@ -112,8 +125,12 @@ class ScheduleSummaryIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(body).hasSize(1);
         assertThat(body[0].getTeacherId()).isEqualTo(chekanin.getId());
-        assertThat(body[0].getLessons()).hasSize(1);
+        assertThat(body[0].getLessons()).hasSize(2);
         assertThat(body[0].getLessons().getFirst().getGroup()).isEqualTo("ИДБ-25-11");
+        assertThat(body[0].getLessons().getFirst().getDates()).hasSize(1);
+        assertThat(body[0].getLessons().getLast().getDates())
+                .extracting(d -> d.getStartDate())
+                .containsExactly("17.03", "25.05");
     }
 
     @Test

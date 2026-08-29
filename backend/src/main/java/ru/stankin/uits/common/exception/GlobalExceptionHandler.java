@@ -2,6 +2,7 @@ package ru.stankin.uits.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.*;
@@ -67,6 +68,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         return problemDetail(HttpStatus.CONFLICT, "Конфликт данных.");
+    }
+
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ProblemDetail handleConcurrencyFailure(ConcurrencyFailureException ex) {
+        log.warn("Конкурентное изменение данных: {}", ex.getMessage());
+
+        return problemDetail(HttpStatus.CONFLICT, "Данные изменены другим запросом. Повторите попытку.");
     }
 
     @ExceptionHandler({BadCredentialsException.class, AccountStatusException.class})

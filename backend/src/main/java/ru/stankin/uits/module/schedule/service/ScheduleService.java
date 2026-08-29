@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.exception.ScheduleServiceUnavailableException;
@@ -28,6 +29,12 @@ import java.util.Objects;
 public class ScheduleService {
 
     private static final int FILE_NAME_LIMIT = 256;
+    private static final int GROUP_LIMIT = 128;
+    private static final int NAME_LIMIT = 256;
+    private static final int TYPE_LIMIT = 128;
+    private static final int CABINET_LIMIT = 128;
+    private static final int SUBGROUP_LIMIT = 128;
+
     private static final Sort SUMMARY_SORT = Sort.by("teacher.lastName", "teacher.firstName", "teacher.id");
 
     private final ScheduleRepository scheduleRepository;
@@ -59,13 +66,14 @@ public class ScheduleService {
 
     @Transactional
     public ScheduleResponseDto replaceSchedule(Long teacherId, String fileName, ParsedScheduleDto parsed) {
+        List<ParsedLessonDto> parsedLessons = requireLessons(parsed);
         Teacher teacher = teacher(teacherId);
-        Schedule schedule = scheduleRepository.findByTeacherId(teacherId)
+        Schedule schedule = scheduleRepository.findWithLockByTeacherId(teacherId)
                 .orElseGet(() -> Schedule.builder().teacher(teacher).build());
 
         schedule.setImportedFileName(trim(fileName));
         schedule.getLessons().clear();
-        parsed.getLessons().forEach(lesson -> schedule.addLesson(toLesson(lesson)));
+        parsedLessons.forEach(lesson -> schedule.addLesson(toLesson(lesson)));
 
         return scheduleMapper.toDto(scheduleRepository.save(schedule));
     }
@@ -78,8 +86,25 @@ public class ScheduleService {
         }
     }
 
+    private List<ParsedLessonDto> requireLessons(ParsedScheduleDto parsed) {
+        if (parsed == null || parsed.getLessons() == null) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул ответ без списка занятий.");
+        }
+        if (parsed.getLessons().isEmpty()) {
+            throw new InvalidFileException("В файле не найдено ни одного занятия.");
+        }
+
+        return parsed.getLessons();
+    }
+
     private ScheduleLesson toLesson(ParsedLessonDto parsed) {
         requireComplete(parsed);
+        requireFits(parsed.getGroup(), GROUP_LIMIT, "перечень групп", parsed);
+        requireFits(parsed.getName(), NAME_LIMIT, "название занятия", parsed);
+        requireFits(parsed.getType(), TYPE_LIMIT, "вид занятия", parsed);
+        requireFits(parsed.getCabinet(), CABINET_LIMIT, "аудитория", parsed);
+        requireFits(parsed.getSubgroup(), SUBGROUP_LIMIT, "подгруппа", parsed);
 
         ScheduleLesson lesson = ScheduleLesson.builder()
                 .weekNumber(parsed.getWeekDay())
@@ -90,12 +115,16 @@ public class ScheduleService {
                 .subgroup(parsed.getSubgroup())
                 .cabinet(parsed.getCabinet())
                 .build();
-        parsed.getDates().forEach(date -> lesson.addDate(toDate(date)));
+        parsed.getDates().forEach(date -> lesson.addDate(toDate(date, parsed)));
 
         return lesson;
     }
 
-    private ScheduleLessonDate toDate(ParsedLessonDateDto parsed) {
+    private ScheduleLessonDate toDate(ParsedLessonDateDto parsed, ParsedLessonDto lesson) {
+        if (parsed == null || parsed.getStart() == null) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул занятие с пустой датой: " + position(lesson) + ".");
+        }
         boolean singleDay = Objects.equals(parsed.getStart(), parsed.getEnd());
 
         return ScheduleLessonDate.builder()
@@ -106,6 +135,10 @@ public class ScheduleService {
     }
 
     private void requireComplete(ParsedLessonDto parsed) {
+        if (parsed == null) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул пустое занятие.");
+        }
         boolean complete = parsed.getWeekDay() != null
                 && parsed.getClassTime() != null
                 && parsed.getGroup() != null
@@ -117,6 +150,17 @@ public class ScheduleService {
             throw new ScheduleServiceUnavailableException(
                     "Сервис разбора расписания вернул занятие без обязательных полей.");
         }
+    }
+
+    private void requireFits(String value, int limit, String field, ParsedLessonDto lesson) {
+        if (value != null && value.length() > limit) {
+            throw new InvalidFileException("%s: поле «%s» длиннее %d символов."
+                    .formatted(position(lesson), field, limit));
+        }
+    }
+
+    private String position(ParsedLessonDto lesson) {
+        return "день %d, пара %d".formatted(lesson.getWeekDay(), lesson.getClassTime());
     }
 
     private boolean isEmpty(List<ParsedLessonDateDto> dates) {

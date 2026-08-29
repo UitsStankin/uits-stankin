@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ScheduleLessonDateResponseDto {
+    Long id;
     String startDate;
     String endDate;
     boolean alternativelyPeriod;
