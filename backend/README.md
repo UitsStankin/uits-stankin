@@ -49,13 +49,15 @@ openssl rand -base64 32
 
 Остальные переменные можно оставить как есть.
 
-### 2. База данных
+### 2. База данных и микросервис расписаний
 
 ```powershell
 docker compose up -d --wait
 ```
 
 `--wait` не отдаёт управление, пока healthcheck контейнера не подтвердит, что база принимает подключения по TCP. Без него можно попасть в момент, когда PostgreSQL ещё инициализируется, и получить `connection refused` на ровном месте.
+
+Кроме базы поднимается `schedule-service` — Python-микросервис разбора PDF-расписаний (`../schedule-service`, документация — в его README). Первый запуск собирает его образ, дальше берётся готовый. Порт на хост-машине задаёт `SCHEDULE_SERVICE_HOST_PORT` (по умолчанию 8000): бэкенд из IDE ходит в него через localhost. Поднять только базу, без микросервиса: `docker compose up -d --wait postgres`.
 
 ### 3. Приложение
 
@@ -185,6 +187,7 @@ docker compose up -d
 | `POSTGRES_USER` | пользователь базы | да | `uits_stankin_db` |
 | `POSTGRES_PASSWORD` | его пароль | да | `localdevpass123` |
 | `POSTGRES_HOST_PORT` | порт на хост-машине | да; в шаблоне `.env.example` уже стоит `5433` | `5433` |
+| `SCHEDULE_SERVICE_HOST_PORT` | порт микросервиса расписаний на хост-машине | нет, по умолчанию `8000` | `8000` |
 | `JWT_SECRET_KEY` | ключ подписи access-токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
 | `JWT_EXPIRATION` | время жизни access-токена в миллисекундах | нет, по умолчанию 15 минут | `900000` |
 | `CORS_ALLOWED_ORIGINS` | origin'ы фронтенда через запятую | локально нет, по умолчанию `http://localhost:5173`; в `docker-compose.prod.yml` да | `https://uits.example` |

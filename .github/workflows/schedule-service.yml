@@ -1,0 +1,42 @@
+name: schedule-service CI
+
+on:
+  pull_request:
+    paths:
+      - "schedule-service/**"
+      - "!schedule-service/**.md"
+      - ".github/workflows/schedule-service.yml"
+  push:
+    branches: [ dev ]
+    paths:
+      - "schedule-service/**"
+      - "!schedule-service/**.md"
+      - ".github/workflows/schedule-service.yml"
+
+concurrency:
+  group: schedule-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      - name: Установка Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: schedule-service/requirements-dev.txt
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+        working-directory: schedule-service
+
+      - name: Тесты
+        run: python -m pytest
+        working-directory: schedule-service
