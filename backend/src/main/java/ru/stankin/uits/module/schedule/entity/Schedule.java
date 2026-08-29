@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import ru.stankin.uits.module.staff.entity.Teacher;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "schedule_schedule")
@@ -29,7 +29,8 @@ public class Schedule {
 
     @Builder.Default
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScheduleLesson> lessons = new ArrayList<>();
+    @OrderBy("weekNumber, classTime, id")
+    private Set<ScheduleLesson> lessons = new LinkedHashSet<>();
 
     public void addLesson(ScheduleLesson lesson) {
         lessons.add(lesson);

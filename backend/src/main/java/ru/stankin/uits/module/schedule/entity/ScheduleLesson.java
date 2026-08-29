@@ -3,8 +3,8 @@ package ru.stankin.uits.module.schedule.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "schedule_schedulelesson")
@@ -46,7 +46,8 @@ public class ScheduleLesson {
 
     @Builder.Default
     @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScheduleLessonDate> dates = new ArrayList<>();
+    @OrderBy("id")
+    private Set<ScheduleLessonDate> dates = new LinkedHashSet<>();
 
     public void addDate(ScheduleLessonDate date) {
         dates.add(date);

@@ -83,7 +83,7 @@ class ScheduleEntityMappingTest extends AbstractIntegrationTest {
         assertThat(found.getTeacher().getLastName()).isEqualTo("Чеканин");
         assertThat(found.getLessons()).hasSize(1);
 
-        ScheduleLesson lesson = found.getLessons().getFirst();
+        ScheduleLesson lesson = found.getLessons().iterator().next();
         assertThat(lesson.getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(lesson.getWeekNumber()).isEqualTo(1);
         assertThat(lesson.getClassTime()).isEqualTo(1);
