@@ -1,3 +1,5 @@
+import { NewsCardSkeleton } from '@entities/news';
+
 /**
  * Заглушка на время первой загрузки.
  *
@@ -5,6 +7,9 @@
  * карточки, и страница не прыгает в момент ответа. Три карточки, а не двадцать
  * (размер страницы по контракту), — до первого экрана всё равно видно три,
  * а рисовать невидимое незачем.
+ *
+ * Сам силуэт карточки живёт в сущности, рядом с `NewsCard`: он повторяет
+ * её раскладку и обязан меняться вместе с ней.
  */
 export function NewsListSkeleton() {
   return (
@@ -14,15 +19,7 @@ export function NewsListSkeleton() {
       <span className="sr-only">Загрузка новостей</span>
 
       {[0, 1, 2].map((index) => (
-        <div key={index} aria-hidden className="flex flex-col gap-4 rounded bg-white p-5 shadow-sm sm:flex-row">
-          <div className="h-32 w-full shrink-0 rounded bg-gray-200 sm:w-56" />
-          <div className="flex flex-1 flex-col gap-3 py-1">
-            <div className="h-3 w-40 rounded bg-gray-200" />
-            <div className="h-5 w-3/4 rounded bg-gray-200" />
-            <div className="h-3 w-full rounded bg-gray-200" />
-            <div className="h-3 w-5/6 rounded bg-gray-200" />
-          </div>
-        </div>
+        <NewsCardSkeleton key={index} />
       ))}
     </div>
   );

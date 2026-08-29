@@ -16,3 +16,4 @@ export { newsListQuery, newsItemQuery } from './api/newsQueries';
 export { findCachedNews } from './lib/cachedNews';
 export { postTypeLabel, authorLabel } from './lib/newsPresenters';
 export { NewsCard } from './ui/NewsCard';
+export { NewsCardSkeleton } from './ui/NewsCardSkeleton';
