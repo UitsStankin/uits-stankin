@@ -1,5 +1,6 @@
 import io
 import re
+from datetime import date
 from typing import BinaryIO
 
 import pdfplumber
@@ -7,6 +8,8 @@ from pydantic import ValidationError
 
 from app.errors import ScheduleParseError
 from app.models import DatePeriod, Lesson, ParsedSchedule
+
+LEAP_YEAR = 2024
 
 TIMINGS = {
     "8:30 - 10:10": 1,
@@ -174,8 +177,8 @@ def _parse_dates(raw: str) -> list[DatePeriod]:
         if not chunk:
             continue
         if SINGLE_DATE_RE.match(chunk):
-            date = _check_date(chunk)
-            dates.append(DatePeriod(start=date, end=date, every_other_week=False))
+            single = _check_date(chunk)
+            dates.append(DatePeriod(start=single, end=single, every_other_week=False))
             continue
         period = PERIOD_RE.match(chunk)
         if not period:
@@ -194,8 +197,10 @@ def _parse_dates(raw: str) -> list[DatePeriod]:
 
 def _check_date(value: str) -> str:
     day, month = int(value[:2]), int(value[3:])
-    if not (1 <= day <= 31 and 1 <= month <= 12):
-        raise ScheduleParseError(f"дата занятия вне календаря: '{value}'")
+    try:
+        date(LEAP_YEAR, month, day)
+    except ValueError:
+        raise ScheduleParseError(f"дата занятия вне календаря: '{value}'") from None
     return value
 
 

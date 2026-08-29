@@ -258,6 +258,17 @@ class TestCellParsing:
         with pytest.raises(ScheduleParseError, match="вне календаря"):
             _parse_dates("45.13")
 
+    def test_day_missing_in_month_rejected(self):
+        with pytest.raises(ScheduleParseError, match="вне календаря"):
+            _parse_dates("30.02")
+
+    def test_day_31_in_30_day_month_rejected(self):
+        with pytest.raises(ScheduleParseError, match="вне календаря"):
+            _parse_dates("31.04")
+
+    def test_february_29_accepted(self):
+        assert _parse_dates("29.02")[0].start == "29.02"
+
     def test_single_digit_day_rejected(self):
         with pytest.raises(ScheduleParseError, match="не удалось разобрать дату"):
             _parse_dates("8.05")
