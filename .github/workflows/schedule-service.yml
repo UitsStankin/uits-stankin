@@ -31,14 +31,22 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@v3
         with:
+          # predicate-quantifier: every и отдельный фильтр на workflow —
+          # пояснение в ci.yml
+          predicate-quantifier: every
           filters: |
             schedule:
               - 'schedule-service/**'
               - '!schedule-service/**.md'
+            workflow:
               - '.github/workflows/schedule-service.yml'
 
+      - name: Нужны ли тесты
+        id: gate
+        run: echo "run=${{ github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true' || steps.changes.outputs.workflow == 'true' }}" >> "$GITHUB_OUTPUT"
+
       - name: Установка Python 3.13
-        if: github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true'
+        if: steps.gate.outputs.run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -46,11 +54,11 @@ jobs:
           cache-dependency-path: schedule-service/requirements-dev.txt
 
       - name: Установка зависимостей
-        if: github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true'
+        if: steps.gate.outputs.run == 'true'
         run: pip install -r requirements-dev.txt
         working-directory: schedule-service
 
       - name: Тесты
-        if: github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true'
+        if: steps.gate.outputs.run == 'true'
         run: python -m pytest
         working-directory: schedule-service
