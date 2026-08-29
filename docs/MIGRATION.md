@@ -72,6 +72,14 @@
 
 Список 13 Markdown-страниц (слаги): `fields-of-study`, `contacts`, `documents-department`, `documents-university`, `bachelor-edu-plans`, `bachelor-graduate`, `bachelor-practices`, `master-edu-plans`, `master-graduate`, `master-practices`, `scientific-activity-postgraduate`, `home-before`, `home-after`.
 
+Последние два — не страницы: собственного адреса у них нет, они рисуются
+на главной над и под лентой новостей. **Самой титульной страницы в матрице
+нет** — здесь перечислены модули, а главная модулем не считалась, и в план
+переноса она не попала вовсе. Пробел закрыт тикетом F-17 (фронт, 2026-08-29);
+из старого портала эти два слага не читались никогда, поэтому в базе они
+пустые, и содержимое главной ещё предстоит наполнить — заготовка лежит
+в [FRONTEND_BACKLOG.md](FRONTEND_BACKLOG.md), блок 2.
+
 ---
 
 ## 4. Карта данных (сущности к переносу)
