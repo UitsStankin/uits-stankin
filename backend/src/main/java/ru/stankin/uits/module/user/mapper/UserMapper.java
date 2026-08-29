@@ -6,6 +6,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.stankin.uits.common.storage.FileStorage;
+import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
@@ -18,6 +19,9 @@ public abstract class UserMapper {
 
     @Mapping(target = "avatarUrl", source = "avatar", qualifiedByName = "avatarUrl")
     public abstract UserResponseDto toDto(User user);
+
+    @Mapping(target = "avatarUrl", source = "avatar", qualifiedByName = "avatarUrl")
+    public abstract UserAdminResponseDto toAdminDto(User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "username", ignore = true)

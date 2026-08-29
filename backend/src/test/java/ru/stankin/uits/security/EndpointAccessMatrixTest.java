@@ -132,6 +132,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             EnumSet.of(Actor.USER, Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> EDITORS = EnumSet.of(Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> TEACHERS = EnumSet.of(Actor.TEACHER);
+    private static final Set<Actor> ADMINS = EnumSet.of(Actor.ADMIN);
 
     /**
      * Кто и куда имеет право. Третья колонка — те, кого ручка обязана пропустить
@@ -156,6 +157,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.PUT, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
+
+            controller(HttpMethod.GET, "/api/users", ADMINS),
+            controller(HttpMethod.GET, "/api/users/{id}", ADMINS),
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
