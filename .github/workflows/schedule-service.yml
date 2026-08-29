@@ -1,11 +1,11 @@
 name: schedule-service CI
 
+# Фильтр по изменённым файлам живёт внутри job'а, а не в `on: pull_request`:
+# обязательный статус-чек ждёт результата на каждом PR, а нестартовавший
+# workflow результата не даёт и оставляет PR в «Waiting for status» навсегда.
+
 on:
   pull_request:
-    paths:
-      - "schedule-service/**"
-      - "!schedule-service/**.md"
-      - ".github/workflows/schedule-service.yml"
   push:
     branches: [ dev ]
     paths:
@@ -26,7 +26,19 @@ jobs:
       - name: Checkout кода
         uses: actions/checkout@v4
 
+      - name: Изменения в schedule-service
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            schedule:
+              - 'schedule-service/**'
+              - '!schedule-service/**.md'
+              - '.github/workflows/schedule-service.yml'
+
       - name: Установка Python 3.13
+        if: github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -34,9 +46,11 @@ jobs:
           cache-dependency-path: schedule-service/requirements-dev.txt
 
       - name: Установка зависимостей
+        if: github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true'
         run: pip install -r requirements-dev.txt
         working-directory: schedule-service
 
       - name: Тесты
+        if: github.event_name != 'pull_request' || steps.changes.outputs.schedule == 'true'
         run: python -m pytest
         working-directory: schedule-service
