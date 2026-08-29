@@ -6,14 +6,15 @@ name: CI
 #  - по вызову из другого workflow (deploy.yml переиспользует этот job,
 #    чтобы деплой шёл только после зелёных тестов и логика сборки не дублировалась).
 #
+# Фильтр по изменённым файлам живёт внутри job'а, а не в `on: pull_request`.
+# Обязательный статус-чек ждёт результата на каждом PR: если workflow вовсе
+# не стартует, результата нет и PR остаётся в «Waiting for status» навсегда.
+# Возвращать paths в `on: pull_request` нельзя, пока чек обязателен.
+#
 # Markdown внутри backend/ из фильтра исключён: правка README поднимала
 # Testcontainers и гоняла весь набор тестов ради текста.
 on:
   pull_request:
-    paths:
-      - "backend/**"
-      - "!backend/**.md"
-      - ".github/workflows/**"
   push:
     branches: [ dev ]
     paths:
@@ -22,8 +23,9 @@ on:
       - ".github/workflows/**"
   workflow_call:
 
-# Новый push в PR отменяет ещё бегущий прогон по той же ветке —
-# экономит минуты Actions. Прогоны на dev не отменяются.
+# Новый push в PR отменяет ещё бегущий прогон по той же ветке: на публичном
+# репозитории минуты Actions бесплатны, экономится время ожидания и очередь
+# раннеров. Прогоны на dev не отменяются.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -39,7 +41,19 @@ jobs:
       - name: Checkout кода
         uses: actions/checkout@v4
 
+      - name: Изменения в backend
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '!backend/**.md'
+              - '.github/workflows/**'
+
       - name: Установка JDK 21
+        if: github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -48,10 +62,12 @@ jobs:
           cache: gradle
 
       - name: Права на gradlew
+        if: github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true'
         run: chmod +x ./gradlew
         working-directory: backend
 
       - name: Сборка и тесты
+        if: github.event_name != 'pull_request' || steps.changes.outputs.backend == 'true'
         # --no-daemon: в CI сборка одна, переиспользовать демон некому,
         # а лишний живущий JVM-процесс мешает шагу завершиться
         run: ./gradlew build --no-daemon
