@@ -12,7 +12,6 @@ import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
 import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
-import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.mapper.UserMapper;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
