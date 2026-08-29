@@ -27,8 +27,16 @@ export function pageRange(current: number, total: number, siblings = 1): PageSlo
 
   // Многоточие ставится, только когда оно прячет больше одной страницы:
   // иначе «1 … 3» занимает столько же места, сколько честное «1 2 3».
-  const hasLeftGap = left > 2;
-  const hasRightGap = right < total - 1;
+  //
+  // Пороги — это то же правило, записанное через границы окна: левое
+  // многоточие прячет страницы со второй по `left - 1`, то есть `left - 2`
+  // штук, правое — `total - 1 - right`. Обе величины должны быть не меньше
+  // двух. Раньше здесь стояли `left > 2` и `right < total - 1` — на единицу
+  // слабее, и на четвёртой странице от края многоточие вставало ровно
+  // вместо одного номера («1 … 3 4 5» вместо «1 2 3 4 5»), то есть ровно
+  // то, что абзац выше запрещает.
+  const hasLeftGap = left > 3;
+  const hasRightGap = right < total - 2;
 
   if (!hasLeftGap && hasRightGap) return [...range(1, maxSlots - 2), 'gap', total];
   if (hasLeftGap && !hasRightGap) return [1, 'gap', ...range(total - maxSlots + 3, total)];
