@@ -51,8 +51,14 @@ export type PageParams = {
   sort?: string;
 };
 
-/** Раздел хранилища, в который кладётся файл. По умолчанию `news`. */
-export type FileCategory = 'news' | 'avatars' | 'publications';
+/**
+ * Раздел хранилища, в который кладётся файл. По умолчанию `news`.
+ *
+ * Раздел решает и права, и применимость ключа: `avatars` открыт любому
+ * авторизованному, остальные — админу и модератору, а ключ принимается
+ * только полем своего раздела (docs/API.md, «Загрузка файлов»).
+ */
+export type FileCategory = 'news' | 'avatars' | 'publications' | 'achievements';
 
 /**
  * Ответ `POST /api/files`.
