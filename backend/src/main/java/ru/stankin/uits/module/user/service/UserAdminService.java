@@ -36,7 +36,7 @@ public class UserAdminService {
         RoleFilter filter = RoleFilter.of(role);
 
         return PageResponseDto.from(userRepository
-                .search(normalize(q), active, filter.superuser(), filter.moderator(), filter.teacher(), pageable)
+                .search(escapeLike(normalize(q)), active, filter.superuser(), filter.moderator(), filter.teacher(), pageable)
                 .map(userMapper::toAdminDto));
     }
 
@@ -101,6 +101,12 @@ public class UserAdminService {
 
     private static String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String escapeLike(String value) {
+        return value == null
+                ? null
+                : value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private record RoleFilter(Boolean superuser, Boolean moderator, Boolean teacher) {

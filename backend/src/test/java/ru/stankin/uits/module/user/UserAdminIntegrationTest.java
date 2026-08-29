@@ -95,6 +95,25 @@ public class UserAdminIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getUsers_TreatsPercentAsLiteralCharacter() {
+        saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+
+        PageResponseDto<UserAdminResponseDto> body = getUsers("/api/users?q={q}", "%");
+
+        assertThat(body.totalElements()).isZero();
+    }
+
+    @Test
+    void getUsers_TreatsUnderscoreAsLiteralCharacter() {
+        saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.USER);
+        saveUser("iva_nov", "Пётр", "Петров", "petrov@stankin.ru", true, TestRole.USER);
+
+        PageResponseDto<UserAdminResponseDto> body = getUsers("/api/users?q={q}", "_");
+
+        assertThat(usernames(body)).containsExactly("admin_user", "iva_nov");
+    }
+
+    @Test
     void getUsers_FiltersByActive() {
         saveUser("blocked", "Иван", "Иванов", "ivanov@stankin.ru", false, TestRole.USER);
         saveUser("petrov", "Пётр", "Петров", "petrov@stankin.ru", true, TestRole.USER);
