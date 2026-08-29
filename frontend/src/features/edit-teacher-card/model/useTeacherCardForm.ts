@@ -9,7 +9,6 @@ import { applyFieldErrors } from '@shared/lib';
 import type { FileUploadResponse, Teacher } from '@shared/types';
 
 import { updateMyTeacherCard } from '../api/teacherCardApi';
-import { avatarKeyFromUrl } from '../lib/avatarKey';
 import {
   TEACHER_CARD_FIELDS,
   teacherCardSchema,
@@ -82,22 +81,15 @@ export function useTeacherCardForm(card: Teacher, onSaved: () => void) {
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
-    // Ключ фото для полной замены: новый — из загрузки, прежний — из
-    // адреса (времянка, см. lib/avatarKey.ts). Не определился — не
-    // сохраняем: молча отправить null значило бы стереть фото с диска.
-    let avatar: string | null;
-    if (newAvatar) {
-      avatar = newAvatar.key;
-    } else if (card.avatarUrl === null) {
-      avatar = null;
-    } else {
-      const derived = avatarKeyFromUrl(card.avatarUrl);
-      if (derived === null) {
-        setFormError('Не удалось сохранить текущее фото. Выберите его заново и повторите.');
-        return;
-      }
-      avatar = derived;
-    }
+    // Ключ фото для полной замены: новый — из загрузки, иначе прежний
+    // из карточки. `PUT` полностью заменяет запись, и не прислать ключ
+    // значило бы стереть фото с диска физически.
+    //
+    // Раньше прежний ключ добывался разбором `avatarUrl`: в ответе его
+    // не было вовсе, и форма умела отказать — «выберите фото заново», —
+    // лишь бы не стереть молча. С T-44 ключ приходит полем, и вместе
+    // с разбором адреса исчез и этот отказ.
+    const avatar = newAvatar ? newAvatar.key : card.avatar;
 
     saveMutation.mutate(formValuesToRequest(values, avatar), {
       onSuccess: (fresh) => {
