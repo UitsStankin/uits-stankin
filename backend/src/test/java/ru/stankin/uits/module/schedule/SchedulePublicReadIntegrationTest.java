@@ -87,6 +87,7 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         ScheduleResponseDto body = response.getBody();
         assertThat(body.getTeacherId()).isEqualTo(teacher.getId());
+        assertThat(body.getTeacherName()).isEqualTo("Чеканин Владимир");
         assertThat(body.getImportedFileName()).isEqualTo("chekanin.pdf");
         assertThat(body.getLessons()).hasSize(1);
 

@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ScheduleResponseDto {
     Long teacherId;
+    String teacherName;
     String importedFileName;
     List<ScheduleLessonResponseDto> lessons;
 }

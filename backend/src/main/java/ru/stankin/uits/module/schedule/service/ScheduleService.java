@@ -1,6 +1,7 @@
 package ru.stankin.uits.module.schedule.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.exception.InvalidRequestException;
@@ -18,6 +19,7 @@ import ru.stankin.uits.module.schedule.repository.ScheduleRepository;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.service.TeacherService;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,6 +28,7 @@ import java.util.Objects;
 public class ScheduleService {
 
     private static final int FILE_NAME_LIMIT = 256;
+    private static final Sort SUMMARY_SORT = Sort.by("teacher.lastName", "teacher.firstName", "teacher.id");
 
     private final ScheduleRepository scheduleRepository;
     private final TeacherService teacherService;
@@ -43,6 +46,15 @@ public class ScheduleService {
                 .orElseGet(() -> Schedule.builder().teacher(teacher).build());
 
         return scheduleMapper.toDto(schedule);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleResponseDto> getSummary(Collection<Long> teacherIds) {
+        List<Schedule> schedules = teacherIds == null || teacherIds.isEmpty()
+                ? scheduleRepository.findAllBy(SUMMARY_SORT)
+                : scheduleRepository.findByTeacherIdIn(teacherIds, SUMMARY_SORT);
+
+        return schedules.stream().map(scheduleMapper::toDto).toList();
     }
 
     @Transactional
