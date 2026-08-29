@@ -8,6 +8,7 @@ import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.exception.ScheduleServiceUnavailableException;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.dto.ParsedLessonDateDto;
 import ru.stankin.uits.module.schedule.dto.ParsedLessonDto;
 import ru.stankin.uits.module.schedule.dto.ParsedScheduleDto;
@@ -62,6 +63,13 @@ public class ScheduleService {
                 : scheduleRepository.findByTeacherIdIn(teacherIds, SUMMARY_SORT);
 
         return schedules.stream().map(scheduleMapper::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExamScheduleResponseDto> getExamSchedules() {
+        return teacherService.getWithExamSchedule().stream()
+                .map(scheduleMapper::toExamDto)
+                .toList();
     }
 
     @Transactional

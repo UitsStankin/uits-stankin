@@ -196,6 +196,70 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void createTeacher_WithJavascriptExamScheduleLink_Returns400() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Тестов")
+                .firstName("Тест")
+                .position("доцент")
+                .examScheduleGraduation("javascript:alert(1)")
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(teacherRepository.count()).isZero();
+    }
+
+    @Test
+    void createTeacher_AcceptsHttpsAndRelativeExamScheduleLinks() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Тестов")
+                .firstName("Тест")
+                .position("доцент")
+                .examScheduleGraduation("https://stankin.ru/exams.pdf")
+                .examScheduleNonGraduation("/media/exams/testov.pdf")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getExamScheduleGraduation()).isEqualTo("https://stankin.ru/exams.pdf");
+        assertThat(response.getBody().getExamScheduleNonGraduation()).isEqualTo("/media/exams/testov.pdf");
+    }
+
+    @Test
+    void updateTeacher_WithProtocolRelativeExamScheduleLink_Returns400() {
+        Teacher card = createCard("Иванова", "Мария");
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .examScheduleNonGraduation("//evil.example.com/exams.pdf")
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getExamScheduleNonGraduation()).isNull();
+    }
+
+    @Test
     void updateTeacher_ReplacesFieldsAndSubjects() {
         Teacher card = createCard("Иванова", "Мария");
         card.getSubjects().add(createSubject("Базы данных"));

@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.stankin.uits.common.validation.SafeUrl;
 import ru.stankin.uits.module.staff.enums.TeacherDegree;
 import ru.stankin.uits.module.staff.enums.TeacherRank;
 
@@ -63,9 +64,11 @@ public class TeacherRequestDto {
     String bio;
 
     @Size(max = 200)
+    @SafeUrl
     String examScheduleGraduation;
 
     @Size(max = 200)
+    @SafeUrl
     String examScheduleNonGraduation;
 
     List<Long> subjectIds;

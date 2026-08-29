@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleResponseDto;
 import ru.stankin.uits.module.schedule.service.ScheduleImportService;
 import ru.stankin.uits.module.schedule.service.ScheduleService;
@@ -22,6 +23,11 @@ public class ScheduleController {
     public List<ScheduleResponseDto> getSummary(
             @RequestParam(name = "teacherId", required = false) List<Long> teacherIds) {
         return scheduleService.getSummary(teacherIds);
+    }
+
+    @GetMapping("/public/schedule/exams")
+    public List<ExamScheduleResponseDto> getExamSchedules() {
+        return scheduleService.getExamSchedules();
     }
 
     @GetMapping("/public/teachers/{id}/schedule")
