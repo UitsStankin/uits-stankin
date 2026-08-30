@@ -44,7 +44,7 @@ jobs:
       - name: Изменения в backend
         id: changes
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           # every: файл обязан совпасть со всеми паттернами фильтра. В режиме
           # по умолчанию хватает одного, а '!backend/**.md' означает «что угодно,

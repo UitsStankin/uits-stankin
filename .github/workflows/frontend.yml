@@ -33,7 +33,7 @@ jobs:
       - name: Изменения во фронтенде
         id: changes
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           # predicate-quantifier: every и отдельный фильтр на workflow —
           # пояснение в ci.yml
