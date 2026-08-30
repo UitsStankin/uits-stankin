@@ -1493,15 +1493,21 @@ GET /api/public/publications?tagId=4&author=Чеканин&year=2024
   "status": "NOT_STARTED",
   "notificationFrequency": "WEEKLY",
   "nextNotificationAt": null,
-  "owner": { "id": 3, "username": "chekanin", "firstName": "Владимир", "lastName": "Чеканин" },
+  "owner": { "id": 3, "firstName": "Владимир", "lastName": "Чеканин" },
   "assignedUsers": [
-    { "id": 5, "username": "abramova", "firstName": "Анна", "lastName": "Абрамова" }
+    { "id": 5, "firstName": "Анна", "lastName": "Абрамова" }
   ]
 }
 ```
 
 В выдачу попадают события, где пользователь владелец **или** назначенный.
 Одно событие приходит один раз, даже если он и владелец, и назначенный.
+
+**Логина в карточках владельца и назначенных нет** — только `id` и ФИО. Список
+учётных записей закрыт ролью администратора (`GET /api/users`), а календарь
+доступен любому преподавателю: с `username` в ответе перебор `assignedUserIds`
+выгружал бы логины всего портала в обход этой проверки (T-54b). Для подписи
+в интерфейсе достаточно имени, для формы правки — `id`.
 
 Фильтр `?status=` принимает `NOT_STARTED`, `IN_PROGRESS` или `COMPLETED`.
 Значение вне словаря — `400`; пустое (`?status=`) считается отсутствием фильтра.
