@@ -7,9 +7,12 @@ import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.module.news.entity.NewsPost;
 import ru.stankin.uits.module.news.repository.NewsRepository;
+import ru.stankin.uits.module.publications.entity.ScientificPublication;
+import ru.stankin.uits.module.publications.repository.PublicationRepository;
 import ru.stankin.uits.module.user.entity.User;
 
 import java.io.IOException;
+import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
@@ -28,6 +31,9 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private NewsRepository newsRepository;
+
+    @Autowired
+    private PublicationRepository publicationRepository;
 
     @Test
     @DisplayName("Старый файл без единой ссылки в БД удаляется")
@@ -89,12 +95,43 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Раздел без владельца не подметается: удалять то, чью занятость спросить не у кого, нельзя")
     void sweep_WhenCategoryHasNoOwner_KeepsFile() throws IOException {
-        String publicationKey = storeFile("publications");
-        makeOld(publicationKey);
+        String foreignKey = storeFile("reports");
+        makeOld(foreignKey);
 
         cleanupTask.sweep();
 
-        assertThat(fileStorage.exists(publicationKey)).isTrue();
+        assertThat(fileStorage.exists(foreignKey)).isTrue();
+    }
+
+    @Test
+    @DisplayName("PDF, привязанный к публикации, остаётся: раздел подметается, но файл занят")
+    void sweep_WhenPublicationReferencesFile_KeepsIt() throws IOException {
+        String pdfKey = storeFile("publications");
+        makeOld(pdfKey);
+
+        publicationRepository.save(ScientificPublication.builder()
+                .name("Работа с приложенным PDF")
+                .authors(List.of("Тестов Т.Т."))
+                .description("Описание")
+                .source("Сборник")
+                .year(2025)
+                .file(pdfKey)
+                .build());
+
+        cleanupTask.sweep();
+
+        assertThat(fileStorage.exists(pdfKey)).isTrue();
+    }
+
+    @Test
+    @DisplayName("PDF без карточки удаляется: раздел публикаций теперь подметается")
+    void sweep_WhenPublicationFileIsUnreferenced_DeletesIt() throws IOException {
+        String pdfKey = storeFile("publications");
+        makeOld(pdfKey);
+
+        cleanupTask.sweep();
+
+        assertThat(fileStorage.exists(pdfKey)).isFalse();
     }
 
     private void makeOld(String key) throws IOException {

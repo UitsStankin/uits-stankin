@@ -152,6 +152,76 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
         assertThat(ImageIO.read(new java.io.ByteArrayInputStream(served.getBody()))).isNotNull();
     }
 
+    @Test
+    void upload_WhenPdfGoesToPublications_Returns201() {
+        createUser("moderator_pdf", TestRole.MODERATOR);
+        String token = login("moderator_pdf");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(pdf(), "article.pdf", "publications", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        String key = response.getBody().key();
+        assertThat(key).startsWith("publications/").endsWith(".pdf");
+        assertThat(STORAGE_ROOT.resolve(key)).exists();
+    }
+
+    @Test
+    void upload_WhenFileInPublicationsIsNotPdf_Returns400() throws IOException {
+        createUser("moderator_img", TestRole.MODERATOR);
+        String token = login("moderator_img");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(300, 300), "photo.jpg", "publications", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void upload_WhenPdfExtensionButNotPdfContent_Returns400() {
+        createUser("moderator_fake", TestRole.MODERATOR);
+        String token = login("moderator_fake");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart("совсем не pdf".getBytes(StandardCharsets.UTF_8),
+                        "article.pdf", "publications", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void upload_WhenPdfGoesToNews_Returns400() {
+        createUser("moderator_news", TestRole.MODERATOR);
+        String token = login("moderator_news");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(pdf(), "article.pdf", "news", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void upload_WhenPlainUserUploadsPdf_Returns403() {
+        createUser("plain_pdf", TestRole.USER);
+        String token = login("plain_pdf");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(pdf(), "article.pdf", "publications", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    private byte[] pdf() {
+        return "%PDF-1.4 test document".getBytes(StandardCharsets.US_ASCII);
+    }
+
     private HttpEntity<MultiValueMap<String, Object>> multipart(byte[] content,
                                                                 String filename,
                                                                 String category,
