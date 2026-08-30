@@ -33,6 +33,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 3
 
+  # Базовые образы: патчи приходят как обычно (в них и едут исправления
+  # безопасности самого образа), а смена мажора или минора — нет. Версия языка
+  # живёт не только в Dockerfile: Java продублирована в toolchain сборки
+  # и в setup-java обоих workflow, Python — в setup-python. Поднять её
+  # в одном месте значит развести сборку с тем, что проверяет CI, поэтому
+  # такие переходы делаются руками и целиком (T-54f).
   - package-ecosystem: docker
     directories:
       - /backend
@@ -40,6 +46,19 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: postgres
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: github-actions
     directory: /
