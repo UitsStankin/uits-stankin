@@ -9,6 +9,7 @@
 
 [![CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml)
 [![schedule-service CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml)
+[![frontend CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/frontend.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/frontend.yml)
 
 Сайт кафедры «Управление и информатика в технических системах» МГТУ «СТАНКИН»:
 новости и объявления, карточки преподавателей, расписания, научные публикации,
@@ -24,7 +25,7 @@
 
 | Слой | Технологии |
 |---|---|
-| Backend | Spring Boot 4, Java 21, Spring Security (access + refresh JWT), Spring Data JPA |
+| Backend | Spring Boot 4.1, Java 21, Spring Security (access + refresh JWT), Spring Data JPA |
 | БД | PostgreSQL 17, миграции — Liquibase |
 | API | REST, документация — OpenAPI / Swagger UI |
 | Тесты | JUnit 5, Spring Security Test, Testcontainers |
@@ -87,22 +88,27 @@ Compose поднимает базу и `schedule-service` (первый запу
 
 ## Статус
 
-Проект в активной разработке; паритет со старым порталом — **17 модулей из 23**.
+Проект в активной разработке; паритет со старым порталом — **18 модулей из 23**.
 
 Фаза 1 бэкенда закрыта: аутентификация (пара access/refresh, роли, блокировка
 учёток, ограничение попыток входа), профиль и смена пароля, новости и объявления,
 конференции, достижения кафедры, карточки ППС и УВП, дисциплины, 13 редактируемых
 Markdown-страниц, загрузка файлов с фоновой уборкой неиспользованных.
 
-Фронтенд: собран каркас и работает вход против живого API; контентные страницы
-и админ-панель — в работе.
+Фаза 2 закрыта целиком: расписание преподавателя и сводное (разбор PDF живёт
+в отдельном Python-микросервисе, Spring хранит разобранные пары, модератор
+загружает файл) и расписание экзаменов. Следом перенесены аспирантура, научные
+публикации с тегами и PDF, календарь событий с назначением коллег.
 
-Идёт Фаза 2 — расписания. Расписание преподавателя перенесено целиком: разбор PDF
-живёт в отдельном Python-микросервисе, Spring хранит разобранные пары, модератор
-загружает файл, а публичные ручки отдают расписание одного преподавателя
-и сводное по нескольким. Следом — расписание экзаменов. Карта фаз —
+Фронтенд: работают вход, профиль со сменой пароля, лента новостей и страница
+новости; остальные контентные страницы и админ-панель — в работе.
+
+Свежий большой кусок — **аудит перенесённого кода** (шесть проходов по классам
+дыр: XSS вне rich-text, владение объектом против роли, состав ответов, стоимость
+запроса, транзакции против внешних эффектов, версии зависимостей). Разбор находок
+и решений — в [docs/BACKLOG.md](docs/BACKLOG.md), раздел T-54. Карта фаз —
 в [docs/MIGRATION.md](docs/MIGRATION.md#6-дорожная-карта-фазы), очередь задач
-бэкенда — в [docs/BACKLOG.md](docs/BACKLOG.md), фронтенда —
+бэкенда — там же в бэклоге, фронтенда —
 в [docs/FRONTEND_BACKLOG.md](docs/FRONTEND_BACKLOG.md).
 
 ---
