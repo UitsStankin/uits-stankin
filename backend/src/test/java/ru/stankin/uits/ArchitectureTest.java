@@ -9,6 +9,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 /**
@@ -271,4 +272,22 @@ class ArchitectureTest {
                             resideInAPackage("..module.staff.service.."))
                     .because("границы модулей — сервисы и DTO; прямой доступ к чужим "
                             + "внутренностям превращает модули обратно в один клубок");
+
+    /**
+     * Правило 7. Секреты учётной записи не попадают в DTO ответов.
+     *
+     * <p>Пароль, код привязки Telegram, хеш refresh-токена и граница живых сессий
+     * наружу не отдаются ни в каком виде. Проверка глазами работает ровно до
+     * следующего модуля: поля Telegram появятся вместе с модулем 20, и вспомнить
+     * про них будет некому. Request-DTO исключены: пароль как раз принимают форма
+     * создания учётной записи и смена пароля (T-54c).
+     */
+    @ArchTest
+    static final ArchRule dtosDoNotCarryAccountSecrets =
+            noFields().that().areDeclaredInClassesThat().resideInAPackage("..dto..")
+                    .and().areDeclaredInClassesThat().haveSimpleNameNotEndingWith("Request")
+                    .and().areDeclaredInClassesThat().haveSimpleNameNotEndingWith("RequestDto")
+                    .should().haveNameMatching("password|telegramCode|tokenHash|tokensNotBefore")
+                    .because("это секреты учётной записи: в ответ они не уходят, "
+                            + "а правило ловит это на сборке, а не на ревью новой ручки");
 }

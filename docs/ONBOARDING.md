@@ -668,7 +668,7 @@ Python-микросервис `schedule-service/` — решение зафик�
 | `controller/ScheduleController.java` | Четыре ручки: импорт для модератора и три публичных чтения — одно расписание, сводное с повторяемым `?teacherId=` и экзамены с фильтром `?type=`. |
 | `mapper/ScheduleMapper.java` | `toDto` для расписания и `toExamDto` для строки экзаменов. ФИО собирает `common/FullName`, общий на три модуля. |
 | `dto/ParsedScheduleDto.java`, `ParsedLessonDto.java`, `ParsedLessonDateDto.java` | Контракт ответа микросервиса — отдельные DTO, не сущности: чужая схема не должна протекать в модель. |
-| `dto/ScheduleResponseDto.java`, `ScheduleLessonResponseDto.java`, `ScheduleLessonDateResponseDto.java` | Одна схема ответа на импорт, чтение одного и сводную выборку. `teacherName` лежит в корне, чтобы фронт не ходил за списком ППС ради подписи. |
+| `dto/ScheduleResponseDto.java`, `ScheduleLessonResponseDto.java`, `ScheduleLessonDateResponseDto.java` | Одна схема ответа на импорт, чтение одного и сводную выборку. `teacherName` лежит в корне, чтобы фронт не ходил за списком ППС ради подписи. Имени импортированного файла в схеме нет: колонка в базе есть, но две из трёх ручек публичные, и имя файла с машины модератора уходило бы анониму — в оригинале его тоже не отдавали (T-54c). |
 | `dto/ExamScheduleResponseDto.java` | Строка расписания экзаменов: преподаватель и две ссылки на PDF. |
 | `enums/…` | Тип экзаменов (`GRADUATION` / `NON_GRADUATION`) лежит в `module/staff/enums` — он описывает поля карточки ППС, и обратная зависимость сломала бы границы модулей. |
 

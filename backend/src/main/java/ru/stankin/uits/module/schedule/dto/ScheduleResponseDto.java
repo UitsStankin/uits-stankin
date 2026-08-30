@@ -14,6 +14,5 @@ import java.util.List;
 public class ScheduleResponseDto {
     Long teacherId;
     String teacherName;
-    String importedFileName;
     List<ScheduleLessonResponseDto> lessons;
 }

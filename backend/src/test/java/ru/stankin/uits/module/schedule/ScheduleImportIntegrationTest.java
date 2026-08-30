@@ -139,7 +139,8 @@ class ScheduleImportIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         ScheduleResponseDto body = response.getBody();
         assertThat(body.getTeacherId()).isEqualTo(teacher.getId());
-        assertThat(body.getImportedFileName()).isEqualTo("chekanin.pdf");
+        assertThat(scheduleRepository.findByTeacherId(teacher.getId()).orElseThrow().getImportedFileName())
+                .isEqualTo("chekanin.pdf");
         assertThat(body.getLessons()).hasSize(2);
         assertThat(body.getLessons().getFirst().getWeekNumber()).isEqualTo(1);
         assertThat(body.getLessons().getFirst().getGroup()).isEqualTo("ИДБ-25-11");
