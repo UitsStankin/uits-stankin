@@ -306,6 +306,26 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void createNews_WhenShortDescriptionContainsMarkup_KeepsItVerbatim() {
+        String token = createAdminAndLogin();
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .shortDescription("Защиты <b>ВКР</b> и 5 < 7")
+                .postType("news")
+                .content("<p>Текст</p>")
+                .display(true)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.postForEntity(
+                "/api/news", withToken(request, token), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(newsRepository.findAll().getFirst().getShortDescription())
+                .isEqualTo("Защиты <b>ВКР</b> и 5 < 7");
+    }
+
+    @Test
     void createNews_WhenContentHasRelativeImage_KeepsImage() {
         String token = createAdminAndLogin();
 

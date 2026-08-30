@@ -13,6 +13,7 @@ import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
+import ru.stankin.uits.common.validation.HtmlSanitizer;
 import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherResponseDto;
@@ -75,7 +76,7 @@ public class TeacherService {
 
     @Transactional
     public TeacherDetailsResponseDto createTeacher(TeacherRequestDto request) {
-        validateAvatar(request);
+        prepare(request);
         Teacher teacher = teacherMapper.toEntity(request);
         teacher.getSubjects().addAll(resolveSubjects(request.getSubjectIds()));
 
@@ -121,13 +122,29 @@ public class TeacherService {
     }
 
     private void applyUpdate(Teacher teacher, TeacherRequestDto request) {
-        validateAvatar(request);
+        prepare(request);
         String oldAvatarKey = teacher.getAvatar();
         teacherMapper.updateEntity(teacher, request);
 
         if (oldAvatarKey != null && !oldAvatarKey.equals(teacher.getAvatar())) {
             fileCleanup.deleteAfterCommit(oldAvatarKey);
         }
+    }
+
+    private void prepare(TeacherRequestDto request) {
+        validateAvatar(request);
+        request.setEducation(sanitizeRichText(request.getEducation()));
+        request.setQualification(sanitizeRichText(request.getQualification()));
+    }
+
+    private String sanitizeRichText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = HtmlSanitizer.sanitize(value);
+
+        return cleaned.isBlank() ? null : cleaned;
     }
 
     private Teacher findMyCard() {
