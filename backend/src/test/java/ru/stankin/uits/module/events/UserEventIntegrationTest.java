@@ -191,7 +191,7 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
         assertThat(card.getStatus()).isEqualTo(EventStatus.IN_PROGRESS);
         assertThat(card.getNotificationFrequency()).isEqualTo(NotificationFrequency.WEEKLY);
         assertThat(card.getNextNotificationAt()).isNull();
-        assertThat(card.getOwner().getUsername()).isEqualTo("calendar_teacher");
+        assertThat(card.getOwner().getLastName()).isEqualTo("Чеканин");
         assertThat(card.getAssignedUsers())
                 .extracting(EventUserDto::getLastName)
                 .containsExactly("Абрамова", "Чеканин");
@@ -250,8 +250,8 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
                 EventStatus.NOT_STARTED, colleague).getId();
 
         assertThat(getCard(id, teacherToken).getName()).isEqualTo("Общее");
-        assertThat(getCard(id, login("calendar_colleague")).getOwner().getUsername())
-                .isEqualTo("calendar_teacher");
+        assertThat(getCard(id, login("calendar_colleague")).getOwner().getLastName())
+                .isEqualTo("Чеканин");
     }
 
     @Test
@@ -358,10 +358,22 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
         UserEventResponseDto card = created(
                 request().assignedUserIds(List.of(teacher.getId(), colleague.getId())).build(), teacherToken);
 
-        assertThat(card.getOwner().getUsername()).isEqualTo("calendar_teacher");
+        assertThat(card.getOwner().getLastName()).isEqualTo("Чеканин");
         assertThat(card.getAssignedUsers())
-                .extracting(EventUserDto::getUsername)
-                .containsExactlyInAnyOrder("calendar_teacher", "calendar_colleague");
+                .extracting(EventUserDto::getLastName)
+                .containsExactlyInAnyOrder("Чеканин", "Абрамова");
+    }
+
+    @Test
+    void createdEventDoesNotCarryLogins() {
+        ResponseEntity<String> response = post(
+                request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody())
+                .contains("Абрамова")
+                .doesNotContain("calendar_colleague")
+                .doesNotContain("calendar_teacher");
     }
 
     @Test
@@ -470,8 +482,8 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
         assertThat(card.getName()).isEqualTo("Перенесённое заседание");
         assertThat(card.getStatus()).isEqualTo(EventStatus.IN_PROGRESS);
         assertThat(card.getAssignedUsers())
-                .extracting(EventUserDto::getUsername)
-                .containsExactly("calendar_colleague");
+                .extracting(EventUserDto::getLastName)
+                .containsExactly("Абрамова");
     }
 
     @Test

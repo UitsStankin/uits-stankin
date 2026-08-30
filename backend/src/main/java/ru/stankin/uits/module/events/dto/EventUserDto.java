@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EventUserDto {
     Long id;
-    String username;
     String firstName;
     String lastName;
 }
