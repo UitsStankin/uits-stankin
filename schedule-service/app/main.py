@@ -7,7 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.errors import ScheduleParseError
-from app.models import ParsedSchedule
+from app.exams import parse_exams
+from app.models import ParsedExams, ParsedSchedule
 from app.parser import parse_schedule
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -56,9 +57,18 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/parse", response_model=ParsedSchedule)
-async def parse(file: Annotated[UploadFile, File()]) -> ParsedSchedule:
+async def _read_upload(file: UploadFile) -> bytes:
     content = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise UploadTooLargeError
-    return await run_in_threadpool(parse_schedule, content)
+    return content
+
+
+@app.post("/parse", response_model=ParsedSchedule)
+async def parse(file: Annotated[UploadFile, File()]) -> ParsedSchedule:
+    return await run_in_threadpool(parse_schedule, await _read_upload(file))
+
+
+@app.post("/parse-exams", response_model=ParsedExams)
+async def exams(file: Annotated[UploadFile, File()]) -> ParsedExams:
+    return await run_in_threadpool(parse_exams, await _read_upload(file))

@@ -77,7 +77,7 @@ rich-text, владение объектом против роли, состав
 ```
 uits-stankin/
 ├── backend/           Spring Boot, Java 21, Gradle (Kotlin DSL) — основной модульный монолит
-├── schedule-service/  Python 3.13 + FastAPI + pdfplumber: разбор PDF расписания, POST /parse
+├── schedule-service/  Python 3.13 + FastAPI + pdfplumber: разбор PDF расписаний, POST /parse и /parse-exams
 ├── frontend/          React 19 + Vite 8 + Tailwind 4, раскладка FSD — каркас и вход, см. §9
 ├── docs/              этот файл + ARCHITECTURE / MIGRATION / IMPLEMENTATION / BACKLOG / API
 └── .github/           workflows: тесты бэкенда, микросервиса и фронтенда, сборка
