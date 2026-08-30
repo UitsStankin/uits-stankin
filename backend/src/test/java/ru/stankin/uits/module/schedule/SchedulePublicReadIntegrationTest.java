@@ -93,7 +93,6 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         ScheduleResponseDto body = response.getBody();
         assertThat(body.getTeacherId()).isEqualTo(teacher.getId());
         assertThat(body.getTeacherName()).isEqualTo("Чеканин Владимир");
-        assertThat(body.getImportedFileName()).isEqualTo("chekanin.pdf");
         assertThat(body.getLessons()).hasSize(1);
 
         ScheduleLessonResponseDto first = body.getLessons().getFirst();
@@ -110,6 +109,19 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         assertThat(first.getDates().getFirst().getEndDate()).isEqualTo("27.04");
         assertThat(first.getDates().getFirst().isAlternativelyPeriod()).isTrue();
         assertThat(first.getDates().getLast().getEndDate()).isNull();
+    }
+
+    @Test
+    void publicScheduleDoesNotCarryImportedFileName() {
+        saveSchedule(lesson(1, 1, "ИДБ-25-11"));
+
+        ResponseEntity<String> response = getSchedule(teacher.getId(), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .contains("ИДБ-25-11")
+                .doesNotContain("chekanin.pdf")
+                .doesNotContain("importedFileName");
     }
 
     @Test
@@ -133,7 +145,6 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         ScheduleResponseDto body = response.getBody();
         assertThat(body.getTeacherId()).isEqualTo(teacher.getId());
-        assertThat(body.getImportedFileName()).isNull();
         assertThat(body.getLessons()).isEmpty();
     }
 
