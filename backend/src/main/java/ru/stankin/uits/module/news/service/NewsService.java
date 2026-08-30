@@ -28,6 +28,8 @@ public class NewsService {
 
     private static final String NEWS_CATEGORY = "news";
 
+    private static final String THUMBNAIL_SUFFIX = "_thumb";
+
     private final NewsRepository newsRepository;
     private final NewsMapper newsMapper;
     private final FileStorage fileStorage;
@@ -40,9 +42,25 @@ public class NewsService {
         validatePreviewImage(request);
         NewsPost newsPost = newsMapper.toEntity(request);
         newsPost.setAuthor(currentUser);
+        newsPost.setPreviewThumbnail(thumbnailFor(newsPost.getPreviewImage()));
         NewsPost saved = newsRepository.save(newsPost);
 
         return newsMapper.toDto(saved);
+    }
+
+    /**
+     * Ключ миниатюры для обложки. Он выводится из основного ключа, но проверяется
+     * на диске один раз здесь, при записи: у новостей, загруженных до появления
+     * миниатюр, второго файла нет, и список не должен отдавать адрес в пустоту.
+     */
+    private String thumbnailFor(String previewImage) {
+        if (previewImage == null) {
+            return null;
+        }
+
+        String key = fileStorage.variantKey(previewImage, THUMBNAIL_SUFFIX);
+
+        return fileStorage.exists(key) ? key : null;
     }
 
     private User getCurrentUser() {
@@ -118,10 +136,16 @@ public class NewsService {
         validatePreviewImage(request);
 
         String oldKey = newsPost.getPreviewImage();
+        String oldThumbnail = newsPost.getPreviewThumbnail();
         newsMapper.updateEntity(newsPost, request);
 
         if (oldKey != null && !oldKey.equals(newsPost.getPreviewImage())) {
+            newsPost.setPreviewThumbnail(thumbnailFor(newsPost.getPreviewImage()));
             fileCleanup.deleteAfterCommit(oldKey);
+
+            if (oldThumbnail != null) {
+                fileCleanup.deleteAfterCommit(oldThumbnail);
+            }
         }
 
         return newsMapper.toDto(newsPost);
@@ -132,11 +156,15 @@ public class NewsService {
         NewsPost newsPost = newsRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
         String key = newsPost.getPreviewImage();
+        String thumbnail = newsPost.getPreviewThumbnail();
 
         newsRepository.delete(newsPost);
 
         if (key != null) {
             fileCleanup.deleteAfterCommit(key);
+        }
+        if (thumbnail != null) {
+            fileCleanup.deleteAfterCommit(thumbnail);
         }
     }
 

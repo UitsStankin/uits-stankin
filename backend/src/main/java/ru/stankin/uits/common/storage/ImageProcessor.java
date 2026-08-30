@@ -19,6 +19,7 @@ import java.util.Map;
 public class ImageProcessor {
     private static final long MAX_SIZE_BYTES = 15L * 1024 * 1024;
     private static final int MAX_WIDTH = 1600;
+    private static final int THUMBNAIL_SIZE = 240;
     private static final int MAX_HEIGHT = 1600;
     private static final Map<String, String> ALLOWED_FORMATS = Map.of("jpeg", "jpg", "png", "png");
 
@@ -36,6 +37,30 @@ public class ImageProcessor {
             Thumbnails.of(original)
                     .size(Math.min(original.getWidth(), MAX_WIDTH),
                           Math.min(original.getHeight(), MAX_HEIGHT))
+                    .keepAspectRatio(true)
+                    .outputFormat(format)
+                    .toOutputStream(out);
+
+            return new ProcessedImage(out.toByteArray(), ALLOWED_FORMATS.get(format));
+        } catch (IOException e) {
+            throw new InvalidFileException("Не удалось обработать изображение");
+        }
+    }
+
+    /**
+     * Уменьшенная копия для списков. Формат и расширение — как у основной
+     * версии, чтобы ключ варианта отличался только суффиксом.
+     */
+    public ProcessedImage thumbnail(byte[] data) {
+        String format = detectFormat(data);
+
+        try {
+            BufferedImage original = ImageIO.read(new ByteArrayInputStream(data));
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+            Thumbnails.of(original)
+                    .size(Math.min(original.getWidth(), THUMBNAIL_SIZE),
+                          Math.min(original.getHeight(), THUMBNAIL_SIZE))
                     .keepAspectRatio(true)
                     .outputFormat(format)
                     .toOutputStream(out);

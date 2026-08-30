@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-add-news-preview-thumbnail
+      author: eeffeecct
+      changes:
+        - addColumn:
+            tableName: news_post
+            columns:
+              - column:
+                  name: preview_thumbnail
+                  type: VARCHAR(100)

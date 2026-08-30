@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleResponseDto;
+import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.schedule.service.ScheduleImportService;
 import ru.stankin.uits.module.schedule.service.ScheduleService;
 
@@ -26,8 +27,9 @@ public class ScheduleController {
     }
 
     @GetMapping("/public/schedule/exams")
-    public List<ExamScheduleResponseDto> getExamSchedules() {
-        return scheduleService.getExamSchedules();
+    public List<ExamScheduleResponseDto> getExamSchedules(
+            @RequestParam(name = "type", required = false) ExamScheduleType type) {
+        return scheduleService.getExamSchedules(type);
     }
 
     @GetMapping("/public/teachers/{id}/schedule")

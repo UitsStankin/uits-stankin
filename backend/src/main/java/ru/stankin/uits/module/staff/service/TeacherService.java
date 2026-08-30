@@ -18,6 +18,7 @@ import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherResponseDto;
 import ru.stankin.uits.module.staff.entity.Subject;
 import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.staff.mapper.TeacherMapper;
 import ru.stankin.uits.module.staff.repository.SubjectRepository;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
@@ -55,7 +56,14 @@ public class TeacherService {
     }
 
     @Transactional(readOnly = true)
-    public List<Teacher> getWithExamSchedule() {
+    public List<Teacher> getWithExamSchedule(ExamScheduleType type) {
+        if (type == ExamScheduleType.GRADUATION) {
+            return teacherRepository.findWithGraduationExamSchedule(EXAM_SCHEDULE_SORT);
+        }
+        if (type == ExamScheduleType.NON_GRADUATION) {
+            return teacherRepository.findWithNonGraduationExamSchedule(EXAM_SCHEDULE_SORT);
+        }
+
         return teacherRepository.findWithExamSchedule(EXAM_SCHEDULE_SORT);
     }
 

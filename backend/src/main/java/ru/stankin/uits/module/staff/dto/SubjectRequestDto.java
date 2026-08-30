@@ -15,4 +15,6 @@ public class SubjectRequestDto {
     @NotBlank(message = "Название дисциплины обязательно")
     @Size(max = 100, message = "Название дисциплины не длиннее 100 символов")
     String name;
+
+    String description;
 }

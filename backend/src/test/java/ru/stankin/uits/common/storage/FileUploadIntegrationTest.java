@@ -218,6 +218,40 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
+    @Test
+    void upload_WhenImageGoesToNews_AlsoWritesThumbnail() throws IOException {
+        createUser("moderator_thumb", TestRole.MODERATOR);
+        String token = login("moderator_thumb");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(1200, 900), "photo.jpg", "news", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        String key = response.getBody().key();
+        Path thumbnail = STORAGE_ROOT.resolve(key.replace(".jpg", "_thumb.jpg"));
+
+        assertThat(thumbnail).exists();
+        assertThat(Files.size(thumbnail)).isLessThan(Files.size(STORAGE_ROOT.resolve(key)));
+    }
+
+    @Test
+    void upload_WhenAvatar_HasNoThumbnail() throws IOException {
+        createUser("user_thumb", TestRole.USER);
+        String token = login("user_thumb");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(600, 600), "photo.jpg", "avatars", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key().replace(".jpg", "_thumb.jpg")))
+                .doesNotExist();
+    }
+
     private byte[] pdf() {
         return "%PDF-1.4 test document".getBytes(StandardCharsets.US_ASCII);
     }

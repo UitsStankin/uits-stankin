@@ -19,6 +19,7 @@ import ru.stankin.uits.module.schedule.entity.ScheduleLessonDate;
 import ru.stankin.uits.module.schedule.mapper.ScheduleMapper;
 import ru.stankin.uits.module.schedule.repository.ScheduleRepository;
 import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.staff.service.TeacherService;
 
 import java.util.Collection;
@@ -66,8 +67,8 @@ public class ScheduleService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExamScheduleResponseDto> getExamSchedules() {
-        return teacherService.getWithExamSchedule().stream()
+    public List<ExamScheduleResponseDto> getExamSchedules(ExamScheduleType type) {
+        return teacherService.getWithExamSchedule(type).stream()
                 .map(scheduleMapper::toExamDto)
                 .toList();
     }

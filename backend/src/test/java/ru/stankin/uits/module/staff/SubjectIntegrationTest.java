@@ -75,6 +75,40 @@ public class SubjectIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void createSubject_StoresAndReturnsDescription() {
+        ResponseEntity<SubjectDto> response = restTemplate.exchange(
+                "/api/subjects",
+                HttpMethod.POST,
+                new HttpEntity<>(SubjectRequestDto.builder()
+                        .name("Базы данных")
+                        .description("Реляционная модель, SQL, транзакции")
+                        .build(), authJson(moderatorToken())),
+                SubjectDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDescription()).isEqualTo("Реляционная модель, SQL, транзакции");
+        assertThat(subjectRepository.findById(response.getBody().getId()).orElseThrow().getDescription())
+                .isEqualTo("Реляционная модель, SQL, транзакции");
+    }
+
+    @Test
+    void createSubject_WithoutDescription_KeepsItNull() {
+        ResponseEntity<SubjectDto> response = restTemplate.exchange(
+                "/api/subjects",
+                HttpMethod.POST,
+                new HttpEntity<>(SubjectRequestDto.builder().name("Алгоритмы").build(),
+                        authJson(moderatorToken())),
+                SubjectDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDescription()).isNull();
+    }
+
+    @Test
     void createSubject_WhenNameAlreadyExists_Returns409() {
         subjectRepository.save(Subject.builder().name("Базы данных").build());
 

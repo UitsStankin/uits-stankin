@@ -28,6 +28,7 @@ public class SubjectService {
     public SubjectDto createSubject(SubjectRequestDto request) {
         Subject subject = Subject.builder()
                 .name(request.getName())
+                .description(request.getDescription())
                 .build();
 
         return subjectMapper.toDto(subjectRepository.save(subject));
