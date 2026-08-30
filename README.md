@@ -7,7 +7,7 @@
 
 # Портал кафедры УИТС
 
-[![CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml)
+[![backend CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml)
 [![schedule-service CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml)
 [![frontend CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/frontend.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/frontend.yml)
 
