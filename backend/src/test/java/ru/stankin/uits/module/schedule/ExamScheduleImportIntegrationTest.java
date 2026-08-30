@@ -22,7 +22,7 @@ import ru.stankin.uits.module.schedule.client.ScheduleServiceClient;
 import ru.stankin.uits.module.schedule.dto.ParsedConsultationDto;
 import ru.stankin.uits.module.schedule.dto.ParsedExamDto;
 import ru.stankin.uits.module.schedule.dto.ParsedExamsDto;
-import ru.stankin.uits.module.schedule.dto.TeacherExamsResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.entity.Exam;
 import ru.stankin.uits.module.schedule.repository.ExamScheduleRepository;
 import ru.stankin.uits.module.staff.entity.Teacher;
@@ -110,7 +110,7 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
     }
 
     private <T> ResponseEntity<T> importExams(Long teacherId, Class<T> responseType) {
-        return restTemplate.exchange("/api/teachers/" + teacherId + "/schedule/exams/import",
+        return restTemplate.exchange("/api/teachers/" + teacherId + "/exams/import",
                 HttpMethod.POST, pdfRequest(adminToken), responseType);
     }
 
@@ -129,11 +129,11 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
                 exam("2025-05-15", "ИДБ-21-11", consultation("2025-05-14")),
                 exam("2025-05-21", "ИДБ-21-09", consultation("2025-05-20"))));
 
-        ResponseEntity<TeacherExamsResponseDto> response =
-                importExams(teacher.getId(), TeacherExamsResponseDto.class);
+        ResponseEntity<ExamScheduleResponseDto> response =
+                importExams(teacher.getId(), ExamScheduleResponseDto.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        TeacherExamsResponseDto body = response.getBody();
+        ExamScheduleResponseDto body = response.getBody();
         assertThat(body.getTeacherId()).isEqualTo(teacher.getId());
         assertThat(body.getTeacherName()).contains("Ибатулин");
         assertThat(body.getExams()).hasSize(2);
@@ -152,8 +152,8 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
         given(scheduleServiceClient.parseExams(any(), any()))
                 .willReturn(parsedWith(exam("2025-05-15", "ИДБ-21-11", null)));
 
-        ResponseEntity<TeacherExamsResponseDto> response =
-                importExams(teacher.getId(), TeacherExamsResponseDto.class);
+        ResponseEntity<ExamScheduleResponseDto> response =
+                importExams(teacher.getId(), ExamScheduleResponseDto.class);
 
         assertThat(response.getBody().getExams().getFirst().getConsultation()).isNull();
         assertThat(singleExam().getConsultation()).isNull();
@@ -164,11 +164,11 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
         given(scheduleServiceClient.parseExams(any(), any())).willReturn(parsedWith(
                 exam("2025-05-15", "ИДБ-21-11", consultation("2025-05-14")),
                 exam("2025-05-21", "ИДБ-21-09", consultation("2025-05-20"))));
-        importExams(teacher.getId(), TeacherExamsResponseDto.class);
+        importExams(teacher.getId(), ExamScheduleResponseDto.class);
 
         given(scheduleServiceClient.parseExams(any(), any()))
                 .willReturn(parsedWith(exam("2026-01-13", "ИДБ-22-10", null)));
-        importExams(teacher.getId(), TeacherExamsResponseDto.class);
+        importExams(teacher.getId(), ExamScheduleResponseDto.class);
 
         assertThat(countRows("schedule_examschedule")).isEqualTo(1);
         assertThat(countRows("schedule_exam")).isEqualTo(1);
@@ -180,7 +180,7 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
         given(scheduleServiceClient.parseExams(any(), any()))
                 .willReturn(parsedWith(exam("2025-05-15", "ИДБ-21-11", null)));
 
-        importExams(teacher.getId(), TeacherExamsResponseDto.class);
+        importExams(teacher.getId(), ExamScheduleResponseDto.class);
 
         assertThat(countRows("schedule_schedule")).isZero();
         then(scheduleServiceClient).should(never()).parse(any(), any());
@@ -272,7 +272,7 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
     void failedImportLeavesPreviousExamsIntact() {
         given(scheduleServiceClient.parseExams(any(), any()))
                 .willReturn(parsedWith(exam("2025-05-15", "ИДБ-21-11", consultation("2025-05-14"))));
-        importExams(teacher.getId(), TeacherExamsResponseDto.class);
+        importExams(teacher.getId(), ExamScheduleResponseDto.class);
 
         given(scheduleServiceClient.parseExams(any(), any()))
                 .willThrow(new InvalidFileException("в PDF не найдено ни одной таблицы экзаменов"));
@@ -285,7 +285,7 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
     @Test
     void anonymousCannotImport() {
         ResponseEntity<Map> response = restTemplate.exchange(
-                "/api/teachers/" + teacher.getId() + "/schedule/exams/import",
+                "/api/teachers/" + teacher.getId() + "/exams/import",
                 HttpMethod.POST, pdfRequest(null), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -297,7 +297,7 @@ class ExamScheduleImportIntegrationTest extends AbstractIntegrationTest {
         createUser("exams-teacher", TestRole.TEACHER);
 
         ResponseEntity<Map> response = restTemplate.exchange(
-                "/api/teachers/" + teacher.getId() + "/schedule/exams/import",
+                "/api/teachers/" + teacher.getId() + "/exams/import",
                 HttpMethod.POST, pdfRequest(login("exams-teacher")), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);

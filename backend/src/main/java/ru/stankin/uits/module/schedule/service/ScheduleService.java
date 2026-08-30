@@ -8,7 +8,7 @@ import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.exception.ScheduleServiceUnavailableException;
-import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleFilesResponseDto;
 import ru.stankin.uits.module.schedule.dto.ParsedLessonDateDto;
 import ru.stankin.uits.module.schedule.dto.ParsedLessonDto;
 import ru.stankin.uits.module.schedule.dto.ParsedScheduleDto;
@@ -67,9 +67,9 @@ public class ScheduleService {
     }
 
     @Transactional(readOnly = true)
-    public List<ExamScheduleResponseDto> getExamSchedules(ExamScheduleType type) {
+    public List<ExamScheduleFilesResponseDto> getExamScheduleFiles(ExamScheduleType type) {
         return teacherService.getWithExamSchedule(type).stream()
-                .map(scheduleMapper::toExamDto)
+                .map(scheduleMapper::toExamFilesDto)
                 .toList();
     }
 

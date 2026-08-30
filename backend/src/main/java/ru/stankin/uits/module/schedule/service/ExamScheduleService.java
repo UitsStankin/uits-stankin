@@ -1,6 +1,7 @@
 package ru.stankin.uits.module.schedule.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.exception.InvalidFileException;
@@ -10,7 +11,7 @@ import ru.stankin.uits.common.exception.ScheduleServiceUnavailableException;
 import ru.stankin.uits.module.schedule.dto.ParsedConsultationDto;
 import ru.stankin.uits.module.schedule.dto.ParsedExamDto;
 import ru.stankin.uits.module.schedule.dto.ParsedExamsDto;
-import ru.stankin.uits.module.schedule.dto.TeacherExamsResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.entity.Consultation;
 import ru.stankin.uits.module.schedule.entity.Exam;
 import ru.stankin.uits.module.schedule.entity.ExamSchedule;
@@ -22,6 +23,8 @@ import ru.stankin.uits.module.staff.service.TeacherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -33,6 +36,9 @@ public class ExamScheduleService {
     private static final int NAME_LIMIT = 256;
     private static final int CABINET_LIMIT = 128;
 
+    private static final Sort SUMMARY_SORT =
+            Sort.by("teacher.lastName", "teacher.firstName", "teacher.id");
+
     private final ExamScheduleRepository examScheduleRepository;
     private final TeacherService teacherService;
     private final ScheduleMapper scheduleMapper;
@@ -42,8 +48,51 @@ public class ExamScheduleService {
         teacher(teacherId);
     }
 
+    @Transactional(readOnly = true)
+    public ExamScheduleResponseDto getByTeacherId(Long teacherId) {
+        Teacher teacher = teacher(teacherId);
+        ExamSchedule schedule = examScheduleRepository.findByTeacherId(teacherId)
+                .orElseGet(() -> ExamSchedule.builder().teacher(teacher).build());
+
+        return scheduleMapper.toDto(schedule);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExamScheduleResponseDto> getSummary(Collection<Long> teacherIds, String group) {
+        List<ExamSchedule> schedules = teacherIds == null || teacherIds.isEmpty()
+                ? examScheduleRepository.findAllBy(SUMMARY_SORT)
+                : examScheduleRepository.findByTeacherIdIn(teacherIds, SUMMARY_SORT);
+
+        return schedules.stream()
+                .map(scheduleMapper::toDto)
+                .map(dto -> keepOnly(dto, group))
+                .filter(dto -> !dto.getExams().isEmpty())
+                .toList();
+    }
+
+    private ExamScheduleResponseDto keepOnly(ExamScheduleResponseDto dto, String group) {
+        if (group == null || group.isBlank()) {
+            return dto;
+        }
+        dto.setExams(dto.getExams().stream()
+                .filter(exam -> mentions(exam.getGroup(), group))
+                .toList());
+
+        return dto;
+    }
+
+    private boolean mentions(String groups, String group) {
+        if (groups == null) {
+            return false;
+        }
+
+        return Arrays.stream(groups.split(","))
+                .map(String::trim)
+                .anyMatch(token -> token.equalsIgnoreCase(group.trim()));
+    }
+
     @Transactional
-    public TeacherExamsResponseDto replaceExamSchedule(Long teacherId, String fileName, ParsedExamsDto parsed) {
+    public ExamScheduleResponseDto replaceExamSchedule(Long teacherId, String fileName, ParsedExamsDto parsed) {
         List<ParsedExamDto> parsedExams = requireExams(parsed);
         Teacher teacher = teacher(teacherId);
         ExamSchedule schedule = examScheduleRepository.findWithLockByTeacherId(teacherId)
@@ -53,7 +102,7 @@ public class ExamScheduleService {
         schedule.getExams().clear();
         parsedExams.forEach(exam -> schedule.addExam(toExam(exam)));
 
-        return scheduleMapper.toExamsDto(examScheduleRepository.save(schedule));
+        return scheduleMapper.toDto(examScheduleRepository.save(schedule));
     }
 
     private Teacher teacher(Long teacherId) {

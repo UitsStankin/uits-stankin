@@ -159,6 +159,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/teachers/{id}/exams", ANYONE),
+            controller(HttpMethod.GET, "/api/public/exams", ANYONE),
             controller(HttpMethod.GET, "/api/public/helpers", ANYONE),
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences", ANYONE),
@@ -168,7 +170,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/teachers/{teacherId}/achievements", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers/{id}/schedule", ANYONE),
             controller(HttpMethod.GET, "/api/public/schedule", ANYONE),
-            controller(HttpMethod.GET, "/api/public/schedule/exams", ANYONE),
+            controller(HttpMethod.GET, "/api/public/exams/files", ANYONE),
             controller(HttpMethod.GET, "/api/public/postgraduates", ANYONE),
             controller(HttpMethod.GET, "/api/public/tags", ANYONE),
             controller(HttpMethod.GET, "/api/public/publications", ANYONE),
@@ -225,7 +227,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.PUT, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.POST, "/api/teachers/{id}/schedule/import", EDITORS),
-            controller(HttpMethod.POST, "/api/teachers/{id}/schedule/exams/import", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/{id}/exams/import", EDITORS),
             controller(HttpMethod.GET, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/helpers", EDITORS),
@@ -408,7 +410,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/helpers", "PUT /api/helpers/{id}" -> json(headers, helperRequest());
             case "POST /api/files" -> multipart(headers);
             case "POST /api/teachers/{id}/schedule/import",
-                 "POST /api/teachers/{id}/schedule/exams/import" -> schedulePdf(headers);
+                 "POST /api/teachers/{id}/exams/import" -> schedulePdf(headers);
             default -> new HttpEntity<>(headers);
         };
     }

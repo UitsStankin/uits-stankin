@@ -4,10 +4,10 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import ru.stankin.uits.common.FullName;
-import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.dto.ExamResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleFilesResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleResponseDto;
-import ru.stankin.uits.module.schedule.dto.TeacherExamsResponseDto;
 import ru.stankin.uits.module.schedule.entity.Exam;
 import ru.stankin.uits.module.schedule.entity.ExamSchedule;
 import ru.stankin.uits.module.schedule.entity.Schedule;
@@ -22,14 +22,14 @@ public interface ScheduleMapper {
 
     @Mapping(source = "teacher.id", target = "teacherId")
     @Mapping(source = "teacher", target = "teacherName", qualifiedByName = "teacherName")
-    TeacherExamsResponseDto toExamsDto(ExamSchedule examSchedule);
+    ExamScheduleResponseDto toDto(ExamSchedule examSchedule);
 
     @Mapping(source = "examDate", target = "date")
     ExamResponseDto toDto(Exam exam);
 
     @Mapping(target = "teacherId", source = "id")
     @Mapping(target = "teacherName", expression = "java(teacherName(teacher))")
-    ExamScheduleResponseDto toExamDto(Teacher teacher);
+    ExamScheduleFilesResponseDto toExamFilesDto(Teacher teacher);
 
     @Named("teacherName")
     default String teacherName(Teacher teacher) {

@@ -8,7 +8,7 @@ import ru.stankin.uits.module.schedule.client.ScheduleServiceClient;
 import ru.stankin.uits.module.schedule.dto.ParsedExamsDto;
 import ru.stankin.uits.module.schedule.dto.ParsedScheduleDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleResponseDto;
-import ru.stankin.uits.module.schedule.dto.TeacherExamsResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -32,7 +32,7 @@ public class ScheduleImportService {
         return scheduleService.replaceSchedule(teacherId, file.getOriginalFilename(), parsed);
     }
 
-    public TeacherExamsResponseDto importExamsFromPdf(Long teacherId, MultipartFile file) {
+    public ExamScheduleResponseDto importExamsFromPdf(Long teacherId, MultipartFile file) {
         requireUsable(file);
         examScheduleService.requireTeacherExists(teacherId);
 
