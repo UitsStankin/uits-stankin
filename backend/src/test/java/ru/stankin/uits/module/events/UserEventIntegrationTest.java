@@ -11,12 +11,14 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.events.dto.EventUserDto;
+import ru.stankin.uits.module.events.dto.UserEventRequestDto;
 import ru.stankin.uits.module.events.dto.UserEventResponseDto;
 import ru.stankin.uits.module.events.entity.UserEvent;
 import ru.stankin.uits.module.events.enums.EventStatus;
@@ -26,6 +28,7 @@ import ru.stankin.uits.module.user.entity.User;
 
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,6 +98,52 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
 
     private ResponseEntity<String> get(Long id, String token) {
         return restTemplate.exchange("/api/events/" + id, HttpMethod.GET, auth(token), String.class);
+    }
+
+    private UserEventRequestDto.UserEventRequestDtoBuilder request() {
+        return UserEventRequestDto.builder()
+                .name("Заседание кафедры")
+                .description("Обсуждение нагрузки")
+                .startedAt(OffsetDateTime.parse("2026-09-01T10:00:00+03:00"))
+                .endedAt(OffsetDateTime.parse("2026-09-01T11:30:00+03:00"))
+                .allDay(false)
+                .color("#3F51B5")
+                .status(EventStatus.NOT_STARTED)
+                .notificationFrequency(NotificationFrequency.WEEKLY);
+    }
+
+    private HttpHeaders authJson(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        return headers;
+    }
+
+    private ResponseEntity<String> post(Object body, String token) {
+        return restTemplate.exchange("/api/events", HttpMethod.POST,
+                new HttpEntity<>(body, authJson(token)), String.class);
+    }
+
+    private ResponseEntity<String> put(Long id, Object body, String token) {
+        return restTemplate.exchange("/api/events/" + id, HttpMethod.PUT,
+                new HttpEntity<>(body, authJson(token)), String.class);
+    }
+
+    private ResponseEntity<String> delete(Long id, String token) {
+        return restTemplate.exchange("/api/events/" + id, HttpMethod.DELETE,
+                auth(token), String.class);
+    }
+
+    private UserEventResponseDto created(UserEventRequestDto body, String token) {
+        ResponseEntity<UserEventResponseDto> response = restTemplate.exchange(
+                "/api/events", HttpMethod.POST,
+                new HttpEntity<>(body, authJson(token)), UserEventResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        return response.getBody();
     }
 
     private UserEventResponseDto getCard(Long id, String token) {
@@ -263,5 +312,221 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
                 "/api/events", HttpMethod.GET, null, ProblemDetail.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void createStoresEventAndReturnsLocation() {
+        ResponseEntity<String> response = post(
+                request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getHeaders().getLocation()).isNotNull();
+        assertThat(response.getHeaders().getLocation().getPath()).startsWith("/api/events/");
+
+        UserEvent stored = eventRepository.findAll().getFirst();
+
+        assertThat(stored.getName()).isEqualTo("Заседание кафедры");
+        assertThat(stored.getColor()).isEqualTo("#3F51B5");
+        assertThat(stored.getStatus()).isEqualTo(EventStatus.NOT_STARTED);
+        assertThat(stored.getNotificationFrequency()).isEqualTo(NotificationFrequency.WEEKLY);
+        assertThat(stored.getNextNotificationAt()).isNull();
+        assertThat(stored.isStartNotified()).isFalse();
+    }
+
+    @Test
+    void ownerComesFromTokenNotFromBody() {
+        String body = """
+                {
+                  "name": "Подмена владельца",
+                  "startedAt": "2026-09-01T10:00:00+03:00",
+                  "endedAt": "2026-09-01T11:00:00+03:00",
+                  "allDay": false,
+                  "color": "#3F51B5",
+                  "status": "NOT_STARTED",
+                  "notificationFrequency": "NONE",
+                  "user": %d,
+                  "owner": { "id": %d, "username": "calendar_colleague" }
+                }
+                """.formatted(colleague.getId(), colleague.getId());
+
+        assertThat(post(body, teacherToken).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(eventRepository.findAll().getFirst().getOwner().getId()).isEqualTo(teacher.getId());
+    }
+
+    @Test
+    void createdEventCarriesAssignedUsers() {
+        UserEventResponseDto card = created(
+                request().assignedUserIds(List.of(teacher.getId(), colleague.getId())).build(), teacherToken);
+
+        assertThat(card.getOwner().getUsername()).isEqualTo("calendar_teacher");
+        assertThat(card.getAssignedUsers())
+                .extracting(EventUserDto::getUsername)
+                .containsExactlyInAnyOrder("calendar_teacher", "calendar_colleague");
+    }
+
+    @Test
+    void repeatedAssignedIdIsStoredOnce() {
+        UserEventResponseDto card = created(
+                request().assignedUserIds(List.of(colleague.getId(), colleague.getId())).build(), teacherToken);
+
+        assertThat(card.getAssignedUsers()).hasSize(1);
+    }
+
+    @Test
+    void eventWithoutAssignedUsersIsAllowed() {
+        assertThat(created(request().build(), teacherToken).getAssignedUsers()).isEmpty();
+    }
+
+    @Test
+    void endBeforeStartGives400() {
+        ResponseEntity<String> response = post(request()
+                .startedAt(OffsetDateTime.parse("2026-09-01T12:00:00+03:00"))
+                .endedAt(OffsetDateTime.parse("2026-09-01T10:00:00+03:00"))
+                .build(), teacherToken);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("раньше даты начала");
+    }
+
+    @Test
+    void endEqualToStartIsAllowed() {
+        OffsetDateTime moment = OffsetDateTime.parse("2026-09-01T10:00:00+03:00");
+
+        assertThat(post(request().startedAt(moment).endedAt(moment).build(), teacherToken)
+                .getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void colorWithoutHashGives400() {
+        assertThat(post(request().color("3F51B5").build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void colorOfWrongLengthGives400() {
+        assertThat(post(request().color("#3F51B").build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(post(request().color("#3F51B5A").build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void colorOutsideHexGives400() {
+        assertThat(post(request().color("#ZZZZZZ").build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void unknownAssignedUserGives400() {
+        ResponseEntity<String> response = post(
+                request().assignedUserIds(List.of(colleague.getId(), 9999L)).build(), teacherToken);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("несуществующие");
+        assertThat(eventRepository.count()).isZero();
+    }
+
+    @Test
+    void bodyWithoutRequiredFieldsGives400() {
+        assertThat(post(request().name(null).build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(post(request().status(null).build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(post(request().allDay(null).build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(post(request().notificationFrequency(null).build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void unknownStatusInBodyGives400() {
+        String body = """
+                {
+                  "name": "Событие",
+                  "startedAt": "2026-09-01T10:00:00+03:00",
+                  "endedAt": "2026-09-01T11:00:00+03:00",
+                  "allDay": false,
+                  "color": "#3F51B5",
+                  "status": "POSTPONED",
+                  "notificationFrequency": "NONE"
+                }
+                """;
+
+        assertThat(post(body, teacherToken).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void updateReplacesAssignedUsersEntirely() {
+        Long id = created(request().assignedUserIds(List.of(teacher.getId(), colleague.getId())).build(),
+                teacherToken).getId();
+
+        assertThat(put(id, request().name("Перенесённое заседание")
+                .assignedUserIds(List.of(colleague.getId()))
+                .status(EventStatus.IN_PROGRESS)
+                .build(), teacherToken).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        UserEventResponseDto card = getCard(id, teacherToken);
+
+        assertThat(card.getName()).isEqualTo("Перенесённое заседание");
+        assertThat(card.getStatus()).isEqualTo(EventStatus.IN_PROGRESS);
+        assertThat(card.getAssignedUsers())
+                .extracting(EventUserDto::getUsername)
+                .containsExactly("calendar_colleague");
+    }
+
+    @Test
+    void updateKeepsOwnerAndSchedulerColumns() {
+        Long id = created(request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken).getId();
+
+        put(id, request().name("Правка от назначенного").assignedUserIds(List.of(colleague.getId())).build(),
+                login("calendar_colleague"));
+
+        UserEvent stored = eventRepository.findById(id).orElseThrow();
+
+        assertThat(stored.getName()).isEqualTo("Правка от назначенного");
+        assertThat(stored.getOwner().getId()).isEqualTo(teacher.getId());
+        assertThat(stored.getNextNotificationAt()).isNull();
+        assertThat(stored.isStartNotified()).isFalse();
+    }
+
+    @Test
+    void updateOfStrangersEventGives404() {
+        Long id = event("Чужое", "2026-09-01T10:00:00+03:00", colleague, EventStatus.NOT_STARTED).getId();
+
+        assertThat(put(id, request().build(), teacherToken).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteRemovesEvent() {
+        Long id = created(request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken).getId();
+
+        assertThat(delete(id, teacherToken).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(eventRepository.existsById(id)).isFalse();
+        assertThat(get(id, teacherToken).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void assigneeCanDelete() {
+        Long id = created(request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken).getId();
+
+        assertThat(delete(id, login("calendar_colleague")).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    void deleteOfStrangersEventGives404() {
+        Long id = event("Чужое", "2026-09-01T10:00:00+03:00", colleague, EventStatus.NOT_STARTED).getId();
+
+        assertThat(delete(id, teacherToken).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(eventRepository.existsById(id)).isTrue();
+    }
+
+    @Test
+    void plainUserCannotCreate() {
+        createUser("calendar_writer");
+
+        assertThat(post(request().build(), login("calendar_writer")).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
     }
 }

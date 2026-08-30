@@ -230,6 +230,9 @@ class ArchitectureTest {
      *       студента с руководителем (FK на employee_teacher), ФИО руководителя
      *       едет в ответ, а существование преподавателя проверяется через
      *       TeacherService — как у достижений и расписания.</li>
+     *   <li>events → user.service: назначенные на событие приходят списком id,
+     *       и существование учёток проверяется через UserService — как модуль
+     *       достижений проверяет преподавателя через TeacherService.</li>
      * </ul>
      */
     @ArchTest
@@ -238,6 +241,9 @@ class ArchitectureTest {
                     .should().notDependOnEachOther()
                     .ignoreDependency(
                             resideInAPackage("..module.auth.."),
+                            resideInAPackage("..module.user.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.events.service.."),
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
                             DescribedPredicate.alwaysTrue(),
