@@ -217,8 +217,10 @@ class ArchitectureTest {
      *   <li>achievements → staff.entity и staff.service: достижение привязано
      *       к преподавателю. Сущность — ради FK и ФИО в ответе, сервис — потому
      *       что публичная граница модуля staff одна, и это он, а не репозиторий.</li>
-     *   <li>schedule → staff.entity: расписание принадлежит преподавателю
-     *       (FK на employee_teacher), связь того же рода, что у достижений.</li>
+     *   <li>schedule → staff.entity и staff.enums: расписание принадлежит преподавателю
+     *       (FK на employee_teacher), связь того же рода, что у достижений; enum
+     *       ExamScheduleType описывает поля карточки ППС и потому живёт в staff,
+     *       а ручка расписания экзаменов принимает его параметром запроса.</li>
      *   <li>student → staff.entity и staff.service: запись аспирантуры связывает
      *       студента с руководителем (FK на employee_teacher), ФИО руководителя
      *       едет в ответ, а существование преподавателя проверяется через
@@ -244,6 +246,9 @@ class ArchitectureTest {
                     .ignoreDependency(
                             resideInAPackage("..module.schedule.."),
                             resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.schedule.."),
+                            resideInAPackage("..module.staff.enums.."))
                     .ignoreDependency(
                             resideInAPackage("..module.schedule.service.."),
                             resideInAPackage("..module.staff.service.."))

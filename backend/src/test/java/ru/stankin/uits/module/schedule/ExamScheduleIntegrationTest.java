@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
@@ -44,8 +45,12 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
     }
 
     private ExamScheduleResponseDto[] exams() {
+        return exams("");
+    }
+
+    private ExamScheduleResponseDto[] exams(String query) {
         ResponseEntity<ExamScheduleResponseDto[]> response =
-                restTemplate.getForEntity("/api/public/schedule/exams", ExamScheduleResponseDto[].class);
+                restTemplate.getForEntity("/api/public/schedule/exams" + query, ExamScheduleResponseDto[].class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -58,6 +63,33 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
                 .extracting(ExamScheduleResponseDto::getTeacherId)
                 .containsExactlyInAnyOrder(bothLinks.getId(), graduationOnly.getId())
                 .doesNotContain(blankLinks.getId(), withoutLinks.getId());
+    }
+
+    @Test
+    void graduationTypeSelectsOnlyTeachersWithThatLink() {
+        assertThat(exams("?type=GRADUATION"))
+                .extracting(ExamScheduleResponseDto::getTeacherId)
+                .containsExactlyInAnyOrder(bothLinks.getId(), graduationOnly.getId());
+    }
+
+    @Test
+    void nonGraduationTypeSelectsOnlyTeachersWithThatLink() {
+        assertThat(exams("?type=NON_GRADUATION"))
+                .extracting(ExamScheduleResponseDto::getTeacherId)
+                .containsExactly(bothLinks.getId());
+    }
+
+    @Test
+    void unknownTypeGives400() {
+        ResponseEntity<ProblemDetail> response =
+                restTemplate.getForEntity("/api/public/schedule/exams?type=DIPLOMA", ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void blankTypeIsTreatedAsNoFilter() {
+        assertThat(exams("?type=")).hasSize(2);
     }
 
     @Test

@@ -21,4 +21,16 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
                or length(coalesce(t.examScheduleNonGraduation, '')) > 0
             """)
     List<Teacher> findWithExamSchedule(Sort sort);
+
+    @Query("""
+            select t from Teacher t
+            where length(coalesce(t.examScheduleGraduation, '')) > 0
+            """)
+    List<Teacher> findWithGraduationExamSchedule(Sort sort);
+
+    @Query("""
+            select t from Teacher t
+            where length(coalesce(t.examScheduleNonGraduation, '')) > 0
+            """)
+    List<Teacher> findWithNonGraduationExamSchedule(Sort sort);
 }
