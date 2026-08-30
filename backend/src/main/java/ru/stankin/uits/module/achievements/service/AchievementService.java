@@ -101,6 +101,10 @@ public class AchievementService {
     }
 
     private void prepare(AchievementRequestDto request) {
+        if (request.getContent() == null) {
+            throw new InvalidRequestException("Содержание обязательно");
+        }
+
         String cleaned = HtmlSanitizer.sanitize(request.getContent());
 
         if (cleaned.isBlank()) {
