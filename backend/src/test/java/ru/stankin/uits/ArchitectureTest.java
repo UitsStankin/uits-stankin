@@ -100,9 +100,12 @@ class ArchitectureTest {
                             // (зависимость появляется в сгенерированных MapStruct-реализациях)
                             "..module.news.mapper..",
                             "..module.staff.mapper..",
+                            "..module.events.mapper..",
                             // NewsService достаёт текущего пользователя из SecurityContext,
                             // чтобы проставить автора создаваемой новости
                             "..module.news.service..",
+                            // владелец и назначенные приезжают в сервис календаря учётными записями
+                            "..module.events.service..",
                             // логин достаёт id пользователя для обновления last_login
                             "..module.auth.controller..",
                             // сессия принадлежит пользователю: FK refresh_token.user_id
