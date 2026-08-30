@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-add-student-indexes
+      author: eeffeecct
+      changes:
+        - createIndex:
+            tableName: guidance_student
+            indexName: idx_student_last_name
+            columns:
+              - column:
+                  name: last_name
+        - createIndex:
+            tableName: postgraduate_postgraduate
+            indexName: idx_postgraduate_student
+            columns:
+              - column:
+                  name: student_id
+        - createIndex:
+            tableName: postgraduate_postgraduate
+            indexName: idx_postgraduate_teacher
+            columns:
+              - column:
+                  name: teacher_id

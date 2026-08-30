@@ -79,7 +79,8 @@ public abstract class AbstractIntegrationTest {
     @BeforeEach
     void cleanDatabase() {
         jdbcTemplate.execute("TRUNCATE TABLE refresh_token, news_post, news_conferenceannouncement, "
-                + "achievements_achievement, employee_teacher, subject_subject, "
+                + "achievements_achievement, postgraduate_postgraduate, guidance_student, "
+                + "employee_teacher, subject_subject, "
                 + "employee_helpersemployee, users_user RESTART IDENTITY CASCADE");
     }
 

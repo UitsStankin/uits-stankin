@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-create-student-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: guidance_student
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: last_name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: patronymic
+                  type: VARCHAR(50)
+              - column:
+                  name: group
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: education_level
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: speciality
+                  type: VARCHAR(100)
+              - column:
+                  name: diploma_theme
+                  type: TEXT
+              - column:
+                  name: admission_year
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: postgraduate_postgraduate
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: student_id
+                  type: BIGINT
+              - column:
+                  name: teacher_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: postgraduate_postgraduate
+            baseColumnNames: student_id
+            constraintName: fk_postgraduate_student
+            referencedTableName: guidance_student
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: postgraduate_postgraduate
+            baseColumnNames: teacher_id
+            constraintName: fk_postgraduate_teacher
+            referencedTableName: employee_teacher
+            referencedColumnNames: id
+            onDelete: SET NULL
