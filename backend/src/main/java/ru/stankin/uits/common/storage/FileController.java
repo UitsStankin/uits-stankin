@@ -24,6 +24,10 @@ public class FileController {
 
     private static final String PDF_EXTENSION = "pdf";
 
+    private static final Set<String> THUMBNAIL_CATEGORIES = Set.of("news");
+
+    private static final String THUMBNAIL_SUFFIX = "_thumb";
+
     private final FileStorage fileStorage;
     private final ImageProcessor imageProcessor;
     private final PdfValidator pdfValidator;
@@ -65,7 +69,14 @@ public class FileController {
 
     private String storeImage(byte[] content, String category) {
         ProcessedImage processed = imageProcessor.process(content);
+        String key = fileStorage.store(new ByteArrayInputStream(processed.data()),
+                processed.extension(), category);
 
-        return fileStorage.store(new ByteArrayInputStream(processed.data()), processed.extension(), category);
+        if (THUMBNAIL_CATEGORIES.contains(category)) {
+            ProcessedImage thumbnail = imageProcessor.thumbnail(content);
+            fileStorage.storeVariant(key, THUMBNAIL_SUFFIX, new ByteArrayInputStream(thumbnail.data()));
+        }
+
+        return key;
     }
 }

@@ -12,6 +12,8 @@ public interface NewsRepository extends JpaRepository<NewsPost, Long> {
 
     boolean existsByPreviewImage(String previewImage);
 
+    boolean existsByPreviewThumbnail(String previewThumbnail);
+
     boolean existsByContentContaining(String key);
     @EntityGraph(attributePaths = {"author"})
     Page<NewsPost> findAllByDisplayTrue(Pageable pageable);
