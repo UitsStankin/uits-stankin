@@ -5,6 +5,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import ru.stankin.uits.common.storage.FileStorage;
 
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
@@ -290,4 +291,21 @@ class ArchitectureTest {
                     .should().haveNameMatching("password|telegramCode|tokenHash|tokensNotBefore")
                     .because("это секреты учётной записи: в ответ они не уходят, "
                             + "а правило ловит это на сборке, а не на ревью новой ручки");
+
+    /**
+     * Правило 8. Файлы удаляются только через common.storage.
+     *
+     * <p>Диск транзакцию не откатывает: файл, стёртый до коммита, оставляет живую
+     * запись со ссылкой в никуда. Поэтому уборка идёт через
+     * {@code FileCleanup.deleteAfterCommit}, а прямой {@code FileStorage.delete}
+     * остаётся внутри пакета хранилища — там его зовут сама уборка и ночной
+     * сборщик сирот. Тест на откат есть у новостей, но он один, а сервисов
+     * с файлами пять (T-54e).
+     */
+    @ArchTest
+    static final ArchRule fileDeletionGoesThroughCleanup =
+            noClasses().that().resideOutsideOfPackage("..common.storage..")
+                    .should().callMethod(FileStorage.class, "delete", String.class)
+                    .because("удаление до коммита не откатывается вместе с транзакцией — "
+                            + "файлы убирает FileCleanup после успешного коммита");
 }
