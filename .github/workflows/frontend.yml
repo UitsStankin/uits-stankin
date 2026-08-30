@@ -51,7 +51,7 @@ jobs:
 
       - name: Установка Node 24
         if: steps.gate.outputs.run == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           # Не 22: часть зависимостей тестового стенда требует 22.22 и выше,
           # а на «22» runner ставит последнюю 22.x — то есть версия менялась бы
