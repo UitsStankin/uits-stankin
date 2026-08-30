@@ -306,6 +306,17 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void publicNews_WhenPageSizeAboveLimit_CapsAtHundred() {
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                "/api/public/news?size=500", HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().size()).isEqualTo(100);
+    }
+
+    @Test
     void createNews_WhenShortDescriptionContainsMarkup_KeepsItVerbatim() {
         String token = createAdminAndLogin();
 

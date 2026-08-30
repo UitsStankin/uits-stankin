@@ -18,6 +18,7 @@ import java.util.Map;
 @Component
 public class ImageProcessor {
     private static final long MAX_SIZE_BYTES = 15L * 1024 * 1024;
+    private static final long MAX_PIXELS = 25_000_000L;
     private static final int MAX_WIDTH = 1600;
     private static final int THUMBNAIL_SIZE = 240;
     private static final int MAX_HEIGHT = 1600;
@@ -28,7 +29,7 @@ public class ImageProcessor {
             throw new InvalidFileException("Размер файла превышает " + MAX_SIZE_BYTES / 1024 / 1024 + " МБ");
         }
 
-        String format = detectFormat(data);
+        String format = inspect(data);
 
         try {
             BufferedImage original = ImageIO.read(new ByteArrayInputStream(data));
@@ -52,7 +53,7 @@ public class ImageProcessor {
      * версии, чтобы ключ варианта отличался только суффиксом.
      */
     public ProcessedImage thumbnail(byte[] data) {
-        String format = detectFormat(data);
+        String format = inspect(data);
 
         try {
             BufferedImage original = ImageIO.read(new ByteArrayInputStream(data));
@@ -71,7 +72,7 @@ public class ImageProcessor {
         }
     }
 
-    private String detectFormat(byte[] data) {
+    private String inspect(byte[] data) {
         try (ImageInputStream stream = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
 
@@ -79,13 +80,27 @@ public class ImageProcessor {
                 throw new InvalidFileException("Файл не является изображением");
             }
 
-            String format = readers.next().getFormatName().toLowerCase(Locale.ROOT);
+            ImageReader reader = readers.next();
 
-            if (!ALLOWED_FORMATS.containsKey(format)) {
-                throw new InvalidFileException("Формат " + format + " не поддерживается");
+            try {
+                reader.setInput(stream);
+                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
+
+                if (!ALLOWED_FORMATS.containsKey(format)) {
+                    throw new InvalidFileException("Формат " + format + " не поддерживается");
+                }
+
+                long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
+
+                if (pixels > MAX_PIXELS) {
+                    throw new InvalidFileException(
+                            "Изображение больше " + MAX_PIXELS / 1_000_000 + " мегапикселей");
+                }
+
+                return format;
+            } finally {
+                reader.dispose();
             }
-
-            return format;
         } catch (IOException e) {
             throw new InvalidFileException("Не удалось прочитать файл");
         }
