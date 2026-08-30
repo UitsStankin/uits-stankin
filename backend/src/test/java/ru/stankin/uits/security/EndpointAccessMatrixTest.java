@@ -31,6 +31,9 @@ import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
 import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
+import ru.stankin.uits.module.students.dto.PostgraduateRequestDto;
+import ru.stankin.uits.module.students.dto.StudentRequestDto;
+import ru.stankin.uits.module.students.enums.EducationLevel;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
@@ -159,6 +162,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/teachers/{id}/schedule", ANYONE),
             controller(HttpMethod.GET, "/api/public/schedule", ANYONE),
             controller(HttpMethod.GET, "/api/public/schedule/exams", ANYONE),
+            controller(HttpMethod.GET, "/api/public/postgraduates", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.PUT, "/api/users/profile", AUTHENTICATED),
@@ -189,6 +193,9 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/achievements", EDITORS),
             controller(HttpMethod.PUT, "/api/achievements/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/achievements/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/postgraduates", EDITORS),
+            controller(HttpMethod.PUT, "/api/postgraduates/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/postgraduates/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
@@ -365,6 +372,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
             case "POST /api/achievements", "PUT /api/achievements/{id}" -> json(headers, achievementRequest());
+            case "POST /api/postgraduates", "PUT /api/postgraduates/{id}" ->
+                    json(headers, postgraduateRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
@@ -476,6 +485,18 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .content("Содержимое")
                 .previewImage(MEDIA_KEY)
                 .display(true)
+                .build();
+    }
+
+    private PostgraduateRequestDto postgraduateRequest() {
+        return PostgraduateRequestDto.builder()
+                .student(StudentRequestDto.builder()
+                        .lastName("Аспирантов")
+                        .firstName("Пётр")
+                        .group("ИДМ-24-01")
+                        .educationLevel(EducationLevel.POSTGRADUATE)
+                        .admissionYear(2024)
+                        .build())
                 .build();
     }
 
