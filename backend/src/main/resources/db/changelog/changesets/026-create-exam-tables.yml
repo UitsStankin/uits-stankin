@@ -1,0 +1,112 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-create-exam-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: schedule_examschedule
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: imported_file_name
+                  type: VARCHAR(256)
+              - column:
+                  name: teacher_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_exam_schedule_teacher
+        - addForeignKeyConstraint:
+            baseTableName: schedule_examschedule
+            baseColumnNames: teacher_id
+            constraintName: fk_exam_schedule_teacher
+            referencedTableName: employee_teacher
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createTable:
+            tableName: schedule_exam
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: exam_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_start
+                  type: TIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_end
+                  type: TIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cabinet
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: consultation_date
+                  type: DATE
+              - column:
+                  name: consultation_time
+                  type: TIME
+              - column:
+                  name: consultation_cabinet
+                  type: VARCHAR(128)
+              - column:
+                  name: exam_schedule_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: schedule_exam
+            baseColumnNames: exam_schedule_id
+            constraintName: fk_exam_exam_schedule
+            referencedTableName: schedule_examschedule
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - sql:
+            comment: >-
+              Консультация необязательна, но частичной не бывает: три её колонки
+              заполнены либо все, либо ни одна.
+            sql: >-
+              ALTER TABLE schedule_exam
+              ADD CONSTRAINT ck_exam_consultation_all_or_none
+              CHECK (
+                (consultation_date IS NULL
+                  AND consultation_time IS NULL
+                  AND consultation_cabinet IS NULL)
+                OR (consultation_date IS NOT NULL
+                  AND consultation_time IS NOT NULL
+                  AND consultation_cabinet IS NOT NULL)
+              )
+        - createIndex:
+            tableName: schedule_exam
+            indexName: idx_exam_exam_schedule_id
+            columns:
+              - column:
+                  name: exam_schedule_id
