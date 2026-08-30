@@ -47,7 +47,7 @@ jobs:
           target: "/opt/uits/"
 
       - name: Запуск на сервере
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         env:
           IMAGE_TAG: ${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
