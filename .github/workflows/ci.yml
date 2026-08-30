@@ -91,7 +91,7 @@ jobs:
       # артефактом — иначе причину падения видно только в сыром логе Gradle
       - name: Отчёты тестов при падении
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
