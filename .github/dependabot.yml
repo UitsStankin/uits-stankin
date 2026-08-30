@@ -1,0 +1,48 @@
+version: 2
+
+# Обновления зависимостей и — что важнее — присутствие манифестов в графе
+# зависимостей репозитория. До T-54f файла не было вовсе, и Java-часть проекта
+# в граф не попадала: алерты приходили только по npm, pip и github-actions,
+# то есть по бэкенду их не приходило никогда.
+#
+# npm фронтенда здесь сознательно не объявлен: это зона фронтендера,
+# и поток PR-ов к нему заводит он сам.
+updates:
+  # Gradle: Dependabot разбирает build.gradle.kts сам. Граф зависимостей
+  # при этом наполняет не он, а сабмишен из dependency-graph.yml — там
+  # резолвится настоящее дерево, включая транзитивные версии из BOM.
+  - package-ecosystem: gradle
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Spring обновляется согласованно: BOM тянет за собой framework, security,
+    # data и десяток прочих модулей. Отдельные PR-ы на каждый бессмысленны.
+    groups:
+      spring:
+        patterns:
+          - "org.springframework*"
+      test-tooling:
+        patterns:
+          - "org.testcontainers*"
+          - "com.tngtech.archunit*"
+
+  - package-ecosystem: pip
+    directory: /schedule-service
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /schedule-service
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

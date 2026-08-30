@@ -1,6 +1,6 @@
 # UITS Backend
 
-Бэкенд портала УИТС: Spring Boot 4, Java 21, PostgreSQL 15.
+Бэкенд портала УИТС: Spring Boot 4, Java 21, PostgreSQL 17.
 Схема базы — миграции Liquibase, аутентификация — JWT.
 
 Фронтенд лежит в соседней папке `frontend/` и поднимается отдельно.
