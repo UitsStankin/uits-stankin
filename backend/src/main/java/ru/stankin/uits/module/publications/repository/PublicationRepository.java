@@ -32,5 +32,13 @@ public interface PublicationRepository extends JpaRepository<ScientificPublicati
     @EntityGraph(attributePaths = "tags")
     List<ScientificPublication> findWithTagsByIdIn(Collection<Long> ids);
 
+    @Query(value = """
+            select distinct author.value
+            from scientific_publications_scientificpublication p,
+                 lateral jsonb_array_elements_text(p.author) as author(value)
+            order by author.value
+            """, nativeQuery = true)
+    List<String> findDistinctAuthors();
+
     boolean existsByFile(String file);
 }

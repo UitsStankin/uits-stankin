@@ -15,6 +15,7 @@ import ru.stankin.uits.module.publications.dto.PublicationResponseDto;
 import ru.stankin.uits.module.publications.service.PublicationService;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -31,6 +32,11 @@ public class PublicationController {
             @PageableDefault(size = 20, sort = {"year", "id"}, direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return publicationService.getPublications(tagId, author, year, pageable);
+    }
+
+    @GetMapping("/public/publications/authors")
+    public List<String> getAuthors() {
+        return publicationService.getAuthors();
     }
 
     @GetMapping("/public/publications/{id}")

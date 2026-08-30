@@ -196,6 +196,48 @@ class PublicationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void authorsAreListedWithoutDuplicates() {
+        publication("Третья работа", List.of("Чеканин В.А.", "Новиков П.П."), 2019, Set.of());
+
+        ResponseEntity<List<String>> response = restTemplate.exchange(
+                "/api/public/publications/authors",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                }
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsExactly("Новиков П.П.", "Разумовский А.И.", "Чеканин А.В.", "Чеканин В.А.");
+    }
+
+    @Test
+    void authorsPathIsNotShadowedByIdPath() {
+        ResponseEntity<String> response = restTemplate.getForEntity(
+                "/api/public/publications/authors", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).startsWith("[");
+    }
+
+    @Test
+    void authorsOfEmptyDatabaseAreEmpty() {
+        publicationRepository.deleteAll();
+
+        ResponseEntity<List<String>> response = restTemplate.exchange(
+                "/api/public/publications/authors",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                }
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEmpty();
+    }
+
+    @Test
     void unknownPublicationGives404() {
         ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
                 "/api/public/publications/999999", ProblemDetail.class);

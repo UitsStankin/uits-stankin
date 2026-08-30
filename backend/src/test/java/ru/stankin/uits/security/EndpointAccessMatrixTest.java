@@ -168,6 +168,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/tags", ANYONE),
             controller(HttpMethod.GET, "/api/public/publications", ANYONE),
             controller(HttpMethod.GET, "/api/public/publications/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/publications/authors", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.PUT, "/api/users/profile", AUTHENTICATED),

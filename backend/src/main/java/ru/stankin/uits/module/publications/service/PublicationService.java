@@ -48,6 +48,11 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<String> getAuthors() {
+        return publicationRepository.findDistinctAuthors();
+    }
+
+    @Transactional(readOnly = true)
     public PublicationResponseDto getPublication(Long id) {
         return publicationRepository.findById(id)
                 .map(publicationMapper::toDto)
