@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/changesets/021-create-student-tables.yml
   - include:
       file: db/changelog/changesets/022-add-student-indexes.yml
+  - include:
+      file: db/changelog/changesets/023-create-publication-tables.yml

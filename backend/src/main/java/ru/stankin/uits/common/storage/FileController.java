@@ -20,8 +20,13 @@ public class FileController {
     private static final Set<String> ALLOWED_CATEGORIES =
             Set.of("news", "avatars", "publications", "achievements");
 
+    private static final Set<String> PDF_CATEGORIES = Set.of("publications");
+
+    private static final String PDF_EXTENSION = "pdf";
+
     private final FileStorage fileStorage;
     private final ImageProcessor imageProcessor;
+    private final PdfValidator pdfValidator;
 
     @PostMapping
     @PreAuthorize("#category == 'avatars' or hasAnyRole('ADMIN', 'MODERATOR')")
@@ -37,17 +42,30 @@ public class FileController {
             throw new InvalidFileException("Неизвестный раздел хранилища: " + category);
         }
 
-        ProcessedImage processed;
+        byte[] content;
 
         try (InputStream in = file.getInputStream()) {
-            processed = imageProcessor.process(in.readAllBytes());
+            content = in.readAllBytes();
         } catch (IOException e) {
             throw new InvalidFileException("Не удалось прочитать файл");
         }
 
-        String key = fileStorage.store(new ByteArrayInputStream(processed.data()),
-                processed.extension(), category);
+        String key = PDF_CATEGORIES.contains(category)
+                ? storePdf(content, category)
+                : storeImage(content, category);
 
         return ResponseEntity.status(201).body(new FileUploadResponseDto(key, fileStorage.url(key)));
+    }
+
+    private String storePdf(byte[] content, String category) {
+        pdfValidator.validate(content);
+
+        return fileStorage.store(new ByteArrayInputStream(content), PDF_EXTENSION, category);
+    }
+
+    private String storeImage(byte[] content, String category) {
+        ProcessedImage processed = imageProcessor.process(content);
+
+        return fileStorage.store(new ByteArrayInputStream(processed.data()), processed.extension(), category);
     }
 }
