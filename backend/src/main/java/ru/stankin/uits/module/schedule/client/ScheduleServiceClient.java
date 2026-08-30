@@ -13,6 +13,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.ScheduleServiceUnavailableException;
+import ru.stankin.uits.module.schedule.dto.ParsedExamsDto;
 import ru.stankin.uits.module.schedule.dto.ParsedScheduleDto;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -36,14 +37,22 @@ public class ScheduleServiceClient {
     }
 
     public ParsedScheduleDto parse(byte[] pdf, String filename) {
+        return send("/parse", pdf, filename, ParsedScheduleDto.class);
+    }
+
+    public ParsedExamsDto parseExams(byte[] pdf, String filename) {
+        return send("/parse-exams", pdf, filename, ParsedExamsDto.class);
+    }
+
+    private <T> T send(String uri, byte[] pdf, String filename, Class<T> responseType) {
         try {
             return restClient.post()
-                    .uri("/parse")
+                    .uri(uri)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(multipartBody(pdf, filename))
                     .retrieve()
                     .onStatus(status -> status.isError(), (request, response) -> translate(response))
-                    .body(ParsedScheduleDto.class);
+                    .body(responseType);
         } catch (ResourceAccessException e) {
             throw new ScheduleServiceUnavailableException("Сервис разбора расписания не отвечает.", e);
         }

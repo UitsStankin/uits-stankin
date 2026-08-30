@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
 import ru.stankin.uits.module.schedule.dto.ScheduleResponseDto;
+import ru.stankin.uits.module.schedule.dto.TeacherExamsResponseDto;
 import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.schedule.service.ScheduleImportService;
 import ru.stankin.uits.module.schedule.service.ScheduleService;
@@ -35,6 +36,13 @@ public class ScheduleController {
     @GetMapping("/public/teachers/{id}/schedule")
     public ScheduleResponseDto getSchedule(@PathVariable Long id) {
         return scheduleService.getByTeacherId(id);
+    }
+
+    @PostMapping("/teachers/{id}/schedule/exams/import")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public TeacherExamsResponseDto importExamSchedule(@PathVariable Long id,
+                                                      @RequestParam("file") MultipartFile file) {
+        return scheduleImportService.importExamsFromPdf(id, file);
     }
 
     @PostMapping("/teachers/{id}/schedule/import")
