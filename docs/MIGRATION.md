@@ -12,7 +12,7 @@
 
 | Слой | Действующий (Django) | Новый (Spring/React) |
 |---|---|---|
-| Backend | Django 4.2.5 + DRF 3.14 | Spring Boot 4.0.3, Java 21 |
+| Backend | Django 4.2.5 + DRF 3.14 | Spring Boot 4.1.1, Java 21 |
 | Auth | dj-rest-auth + allauth (**token**) | **JWT** (jjwt) |
 | Async / напоминания | Celery 5.4 + Redis | **Spring `@Scheduled` + outbox в Postgres** (без Redis/Quartz — [ARCHITECTURE.md](ARCHITECTURE.md) §4.2) |
 | Telegram | pyTelegramBotAPI (webhook) | **тонкий клиент `RestClient` → Bot API** (webhook — [ARCHITECTURE.md](ARCHITECTURE.md) §4.3) |
