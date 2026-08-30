@@ -94,6 +94,8 @@ class ArchitectureTest {
                             // FK-связи: у новости есть автор, у преподавателя — учётная запись
                             "..module.news.entity..",
                             "..module.staff.entity..",
+                            // событие календаря принадлежит владельцу и назначено участникам
+                            "..module.events.entity..",
                             // мапперы собирают authorName и ФИО преподавателя из полей User
                             // (зависимость появляется в сгенерированных MapStruct-реализациях)
                             "..module.news.mapper..",
