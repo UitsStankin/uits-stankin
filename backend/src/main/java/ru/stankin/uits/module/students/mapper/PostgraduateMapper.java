@@ -3,14 +3,12 @@ package ru.stankin.uits.module.students.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import ru.stankin.uits.common.FullName;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.students.dto.PostgraduateResponseDto;
 import ru.stankin.uits.module.students.dto.StudentRequestDto;
 import ru.stankin.uits.module.students.entity.Postgraduate;
 import ru.stankin.uits.module.students.entity.Student;
-
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Mapper(componentModel = "spring")
 public interface PostgraduateMapper {
@@ -35,7 +33,7 @@ public interface PostgraduateMapper {
             return null;
         }
 
-        return fullName(student.getLastName(), student.getFirstName(), student.getPatronymic());
+        return FullName.of(student.getLastName(), student.getFirstName(), student.getPatronymic());
     }
 
     default String teacherName(Teacher teacher) {
@@ -43,12 +41,6 @@ public interface PostgraduateMapper {
             return null;
         }
 
-        return fullName(teacher.getLastName(), teacher.getFirstName(), teacher.getPatronymic());
-    }
-
-    private String fullName(String lastName, String firstName, String patronymic) {
-        return Stream.of(lastName, firstName, patronymic)
-                .filter(part -> part != null && !part.isBlank())
-                .collect(Collectors.joining(" "));
+        return FullName.of(teacher.getLastName(), teacher.getFirstName(), teacher.getPatronymic());
     }
 }
