@@ -17,6 +17,8 @@ import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +64,11 @@ public class UserService {
 
         managedUser.setPassword(passwordEncoder.encode(newPassword));
         managedUser.setTokensNotBefore(OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusSeconds(1));
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getUsersByIds(Collection<Long> ids) {
+        return userRepository.findAllById(ids);
     }
 
     @Transactional

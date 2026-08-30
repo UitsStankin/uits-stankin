@@ -23,6 +23,9 @@ import ru.stankin.uits.TestRole;
 import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.auth.service.RefreshCookieFactory;
+import ru.stankin.uits.module.events.dto.UserEventRequestDto;
+import ru.stankin.uits.module.events.enums.EventStatus;
+import ru.stankin.uits.module.events.enums.NotificationFrequency;
 import ru.stankin.uits.module.news.dto.ConferenceRequestDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -51,6 +54,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -140,6 +144,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             EnumSet.of(Actor.USER, Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> EDITORS = EnumSet.of(Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> TEACHERS = EnumSet.of(Actor.TEACHER);
+    private static final Set<Actor> TEACHERS_AND_ADMINS = EnumSet.of(Actor.TEACHER, Actor.ADMIN);
     private static final Set<Actor> ADMINS = EnumSet.of(Actor.ADMIN);
 
     /**
@@ -183,6 +188,12 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
+
+            controller(HttpMethod.GET, "/api/events", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.GET, "/api/events/{id}", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.POST, "/api/events", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.PUT, "/api/events/{id}", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.DELETE, "/api/events/{id}", TEACHERS_AND_ADMINS),
 
             controller(HttpMethod.GET, "/api/news", EDITORS),
             controller(HttpMethod.GET, "/api/news/{id}", EDITORS),
@@ -385,6 +396,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/achievements", "PUT /api/achievements/{id}" -> json(headers, achievementRequest());
             case "POST /api/postgraduates", "PUT /api/postgraduates/{id}" ->
                     json(headers, postgraduateRequest());
+            case "POST /api/events", "PUT /api/events/{id}" -> json(headers, eventRequest());
             case "POST /api/tags" -> json(headers, tagRequest());
             case "POST /api/publications", "PUT /api/publications/{id}" ->
                     json(headers, publicationRequest());
@@ -521,6 +533,18 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .description("Описание")
                 .source("Сборник")
                 .year(2025)
+                .build();
+    }
+
+    private UserEventRequestDto eventRequest() {
+        return UserEventRequestDto.builder()
+                .name("Событие из матрицы")
+                .startedAt(OffsetDateTime.parse("2026-09-01T10:00:00+03:00"))
+                .endedAt(OffsetDateTime.parse("2026-09-01T11:00:00+03:00"))
+                .allDay(false)
+                .color("#3F51B5")
+                .status(EventStatus.NOT_STARTED)
+                .notificationFrequency(NotificationFrequency.NONE)
                 .build();
     }
 

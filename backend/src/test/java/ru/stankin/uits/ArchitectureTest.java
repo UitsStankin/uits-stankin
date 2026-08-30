@@ -94,13 +94,18 @@ class ArchitectureTest {
                             // FK-связи: у новости есть автор, у преподавателя — учётная запись
                             "..module.news.entity..",
                             "..module.staff.entity..",
+                            // событие календаря принадлежит владельцу и назначено участникам
+                            "..module.events.entity..",
                             // мапперы собирают authorName и ФИО преподавателя из полей User
                             // (зависимость появляется в сгенерированных MapStruct-реализациях)
                             "..module.news.mapper..",
                             "..module.staff.mapper..",
+                            "..module.events.mapper..",
                             // NewsService достаёт текущего пользователя из SecurityContext,
                             // чтобы проставить автора создаваемой новости
                             "..module.news.service..",
+                            // владелец и назначенные приезжают в сервис календаря учётными записями
+                            "..module.events.service..",
                             // логин достаёт id пользователя для обновления last_login
                             "..module.auth.controller..",
                             // сессия принадлежит пользователю: FK refresh_token.user_id
@@ -225,6 +230,9 @@ class ArchitectureTest {
      *       студента с руководителем (FK на employee_teacher), ФИО руководителя
      *       едет в ответ, а существование преподавателя проверяется через
      *       TeacherService — как у достижений и расписания.</li>
+     *   <li>events → user.service: назначенные на событие приходят списком id,
+     *       и существование учёток проверяется через UserService — как модуль
+     *       достижений проверяет преподавателя через TeacherService.</li>
      * </ul>
      */
     @ArchTest
@@ -233,6 +241,9 @@ class ArchitectureTest {
                     .should().notDependOnEachOther()
                     .ignoreDependency(
                             resideInAPackage("..module.auth.."),
+                            resideInAPackage("..module.user.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.events.service.."),
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
                             DescribedPredicate.alwaysTrue(),

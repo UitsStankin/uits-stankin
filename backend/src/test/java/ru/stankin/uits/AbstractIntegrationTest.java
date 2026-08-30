@@ -82,6 +82,7 @@ public abstract class AbstractIntegrationTest {
                 + "achievements_achievement, postgraduate_postgraduate, guidance_student, "
                 + "scientific_publications_scientificpublication_tags, "
                 + "scientific_publications_scientificpublication, scientific_publications_tag, "
+                + "events_userevent_assigned_users, events_userevent, "
                 + "employee_teacher, subject_subject, "
                 + "employee_helpersemployee, users_user RESTART IDENTITY CASCADE");
     }

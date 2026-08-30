@@ -47,3 +47,5 @@ databaseChangeLog:
       file: db/changelog/changesets/023-create-publication-tables.yml
   - include:
       file: db/changelog/changesets/024-add-news-preview-thumbnail.yml
+  - include:
+      file: db/changelog/changesets/025-create-event-tables.yml
