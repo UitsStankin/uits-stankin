@@ -8,4 +8,5 @@
 export { handlers } from './handlers';
 export { editablePageHandlers } from './editablePages';
 export { makeNews, newsFixture, newsHandlers, newsPage } from './news';
+export { makeTeacher, teacherHandlers } from './teachers';
 export { problemResponse } from './problemResponse';
