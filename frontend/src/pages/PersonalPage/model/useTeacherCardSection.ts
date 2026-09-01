@@ -26,8 +26,25 @@ export function useTeacherCardSection(isTeacher: boolean) {
   const [justSaved, setJustSaved] = useState(false);
 
   const notFound = isApiError(query.error) && query.error.status === 404;
-  const isOffline = isApiError(query.error) && query.error.status === 0;
-  const failure = query.error !== null && !notFound && !isOffline;
+  /**
+   * Запрос **приостановлен**, и показать пока нечего.
+   *
+   * Считается по `isPaused`, а не по `error.status === 0`, и это не мелочь:
+   * при паузе ошибки нет вовсе (`error === null`), а `isLoading` уже снят —
+   * то есть по статусу ошибки пауза не ловится ничем. Пока ветка считалась
+   * так, преподаватель без сети открывал личный кабинет и не находил в нём
+   * своей карточки: не выставлялось ни одно состояние, `card` оставался
+   * `null`, и секция возвращала `null` целиком, вместе с объяснением
+   * (D-F11). Подробный разбор самой паузы — в
+   * `widgets/NewsFeed/model/useNewsList.ts`.
+   *
+   * Оборванная сеть при живом браузере (`status === 0`) сюда намеренно
+   * не попадает: у неё есть текст, и показывает её общая ветка сбоя — ровно
+   * так же, как на ленте новостей и на детальной. Два разных состояния
+   * с одной подписью разошлись бы по порталу в третий раз.
+   */
+  const isOffline = query.isPaused && query.data === undefined;
+  const failure = query.error !== null && !notFound;
 
   return {
     card: query.data ?? null,
