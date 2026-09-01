@@ -1,7 +1,8 @@
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
-import { editablePageHandlers, newsHandlers } from '@shared/api/mocks';
+import { editablePageHandlers, newsHandlers, problemResponse } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
 
@@ -99,6 +100,45 @@ describe('HomePage', () => {
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Кафедра ИТ-6');
     expect(screen.getByText('Текст под лентой')).toBeInTheDocument();
+  });
+
+  /**
+   * Сбой показан в каждой секции своими словами и со своей кнопкой.
+   * Ветка отдельная от такой же у ленты: разметку главная не заимствует —
+   * у секции нет пагинации, зато есть ссылка «ко всем», и состояния сбоя
+   * у неё свои.
+   */
+  it('на 500 показывает сбой в обеих секциях и чинится «Повторить»', async () => {
+    server.use(
+      http.get('*/api/public/news', () =>
+        problemResponse(500, {
+          title: 'Internal Server Error',
+          detail: 'Что-то пошло не так на сервере',
+          instance: '/api/public/news',
+        }),
+      ),
+    );
+
+    renderWithProviders(<HomePage />);
+
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts).toHaveLength(2);
+    expect(within(alerts[0]).getByText('Не удалось загрузить новости')).toBeInTheDocument();
+    expect(within(alerts[1]).getByText('Не удалось загрузить объявления')).toBeInTheDocument();
+
+    // `detail` пятисотки — внутренняя диагностика, посетителю портала
+    // из неё ничего не следует.
+    expect(screen.queryByText('Что-то пошло не так на сервере')).not.toBeInTheDocument();
+
+    // Бэкенд «починился»: следующий запрос уходит уже в исходные хендлеры.
+    server.resetHandlers();
+    fireEvent.click(within(alerts[0]).getByRole('button', { name: 'Повторить' }));
+
+    expect(await screen.findByText('Новость 1')).toBeInTheDocument();
+
+    // Вторая секция чинится своей кнопкой: «Повторить» перезапрашивает
+    // свою ленту, а не обе разом.
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 
   /**
