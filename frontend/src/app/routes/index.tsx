@@ -6,13 +6,14 @@ import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
 import Loader from '@shared/ui/Loader';
-import { LOGIN_ROUTE, NEWS_ROUTE, PERSONAL_ROUTE } from '@shared/config/routes';
+import { ANNOUNCEMENTS_ROUTE, LOGIN_ROUTE, NEWS_ROUTE, PERSONAL_ROUTE } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
 import NewsDetailPage from '@pages/NewsDetailPage';
+import AnnouncementsPage from '@pages/AnnouncementsPage';
 import ProtectedRoute from './protectedRoute';
 import RouteError from './RouteError';
 
@@ -54,6 +55,14 @@ export const routes: RouteObject[] = [
           { index: true, element: <NewsPage />, errorElement: <RouteError /> },
           { path: ':id', element: <NewsDetailPage />, errorElement: <RouteError /> },
         ],
+      },
+      // Объявления. Та же лента с другим `postType`; детальной страницы
+      // у раздела нет намеренно — адрес записи один на оба раздела
+      // (`shared/config/routes.ts`).
+      {
+        path: ANNOUNCEMENTS_ROUTE,
+        element: <AnnouncementsPage />,
+        errorElement: <RouteError />,
       },
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
       // у /corp было боковое меню на два пункта, но второй из них —
