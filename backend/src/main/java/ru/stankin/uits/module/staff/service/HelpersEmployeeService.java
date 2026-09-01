@@ -32,6 +32,12 @@ public class HelpersEmployeeService {
                 .map(helpersEmployeeMapper::toDto));
     }
 
+    @Transactional(readOnly = true)
+    public HelpersEmployeeResponseDto getHelper(Long id) {
+        return helpersEmployeeMapper.toDto(helpersEmployeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Сотрудник УВП id=" + id + " не найден")));
+    }
+
     @Transactional
     public HelpersEmployeeResponseDto createHelper(HelpersEmployeeRequestDto request) {
         validateAvatar(request);

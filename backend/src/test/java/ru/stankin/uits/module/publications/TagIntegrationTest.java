@@ -132,6 +132,65 @@ class TagIntegrationTest extends AbstractIntegrationTest {
         assertThat(tagRepository.count()).isZero();
     }
 
+    private ResponseEntity<TagDto> rename(Long id, String name, String token) {
+        return restTemplate.exchange(
+                "/api/tags/" + id,
+                HttpMethod.PUT,
+                new HttpEntity<>(new TagRequestDto(name), authJson(token)),
+                TagDto.class
+        );
+    }
+
+    @Test
+    void moderatorRenamesTag() {
+        Tag stored = tag("машиное обучение");
+
+        ResponseEntity<TagDto> response = rename(stored.getId(), "машинное обучение", moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(stored.getId());
+        assertThat(tagRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("машинное обучение");
+    }
+
+    @Test
+    void renameToNameTakenByAnotherTagReturns400() {
+        tag("машинное обучение");
+        Tag stored = tag("оптимизация");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/tags/" + stored.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(new TagRequestDto("Машинное Обучение"), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(tagRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("оптимизация");
+    }
+
+    @Test
+    void renameChangingOnlyCaseIsAllowed() {
+        Tag stored = tag("machine learning");
+
+        ResponseEntity<TagDto> response = rename(stored.getId(), "Machine Learning", moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(tagRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("Machine Learning");
+    }
+
+    @Test
+    void renamingUnknownTagReturns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/tags/999999",
+                HttpMethod.PUT,
+                new HttpEntity<>(new TagRequestDto("что угодно"), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     @Test
     void moderatorDeletesTag() {
         Tag stored = tag("Алгоритмы");

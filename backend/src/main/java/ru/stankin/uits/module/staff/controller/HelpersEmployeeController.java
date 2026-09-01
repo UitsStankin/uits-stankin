@@ -29,6 +29,11 @@ public class HelpersEmployeeController {
         return helpersEmployeeService.getAllHelpers(pageable);
     }
 
+    @GetMapping("/public/helpers/{id}")
+    public HelpersEmployeeResponseDto getHelper(@PathVariable Long id) {
+        return helpersEmployeeService.getHelper(id);
+    }
+
     @PostMapping("/helpers")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<HelpersEmployeeResponseDto> createHelper(

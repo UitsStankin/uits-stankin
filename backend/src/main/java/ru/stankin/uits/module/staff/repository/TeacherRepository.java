@@ -16,6 +16,8 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     Optional<Teacher> findByUserUsername(String username);
     Optional<Teacher> findByUserId(Long userId);
 
+    long countBySubjectsId(Long subjectId);
+
     @Query("""
             select t from Teacher t
             where length(coalesce(t.examScheduleGraduation, '')) > 0

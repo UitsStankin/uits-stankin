@@ -164,6 +164,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/teachers/{id}/exams", ANYONE),
             controller(HttpMethod.GET, "/api/public/exams", ANYONE),
             controller(HttpMethod.GET, "/api/public/helpers", ANYONE),
+            controller(HttpMethod.GET, "/api/public/helpers/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences/{id}", ANYONE),
@@ -220,6 +221,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.PUT, "/api/postgraduates/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/postgraduates/{id}", EDITORS),
             controller(HttpMethod.POST, "/api/tags", EDITORS),
+            controller(HttpMethod.PUT, "/api/tags/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/tags/{id}", EDITORS),
             controller(HttpMethod.POST, "/api/publications", EDITORS),
             controller(HttpMethod.PUT, "/api/publications/{id}", EDITORS),
@@ -234,6 +236,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/teachers/{id}/exams/import", EDITORS),
             controller(HttpMethod.GET, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/subjects", EDITORS),
+            controller(HttpMethod.PUT, "/api/subjects/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/subjects/{id}", EDITORS),
             controller(HttpMethod.POST, "/api/helpers", EDITORS),
             controller(HttpMethod.PUT, "/api/helpers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/helpers/{id}", EDITORS),
@@ -404,13 +408,13 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/postgraduates", "PUT /api/postgraduates/{id}" ->
                     json(headers, postgraduateRequest());
             case "POST /api/events", "PUT /api/events/{id}" -> json(headers, eventRequest());
-            case "POST /api/tags" -> json(headers, tagRequest());
+            case "POST /api/tags", "PUT /api/tags/{id}" -> json(headers, tagRequest());
             case "POST /api/publications", "PUT /api/publications/{id}" ->
                     json(headers, publicationRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
-            case "POST /api/subjects" -> json(headers, subjectRequest());
+            case "POST /api/subjects", "PUT /api/subjects/{id}" -> json(headers, subjectRequest());
             case "POST /api/helpers", "PUT /api/helpers/{id}" -> json(headers, helperRequest());
             case "POST /api/files" -> multipart(headers);
             case "POST /api/teachers/{id}/schedule/import",
