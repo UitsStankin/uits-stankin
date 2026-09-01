@@ -32,7 +32,7 @@ export function makeTeacher(overrides: Partial<Teacher> = {}): Teacher {
     bio: null,
     examScheduleGraduation: null,
     examScheduleNonGraduation: null,
-    subjects: [{ id: 1, name: 'Базы данных' }],
+    subjects: [{ id: 1, name: 'Базы данных', description: 'Реляционная модель, SQL' }],
     ...overrides,
   };
 }
