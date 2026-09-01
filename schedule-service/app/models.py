@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 
 DATE_PATTERN = r"^\d{2}\.\d{2}$"
+ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+TIME_PATTERN = r"^\d{2}:\d{2}$"
 
 
 class DatePeriod(BaseModel):
@@ -22,3 +24,24 @@ class Lesson(BaseModel):
 
 class ParsedSchedule(BaseModel):
     lessons: list[Lesson]
+
+
+class Consultation(BaseModel):
+    date: str = Field(pattern=ISO_DATE_PATTERN)
+    time: str = Field(pattern=TIME_PATTERN)
+    cabinet: str = Field(min_length=1)
+
+
+class Exam(BaseModel):
+    date: str = Field(pattern=ISO_DATE_PATTERN)
+    week_day: int = Field(ge=1, le=6)
+    time_start: str = Field(pattern=TIME_PATTERN)
+    time_end: str = Field(pattern=TIME_PATTERN)
+    cabinet: str = Field(min_length=1)
+    group: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    consultation: Consultation | None = None
+
+
+class ParsedExams(BaseModel):
+    exams: list[Exam]

@@ -5,14 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExamScheduleResponseDto {
-    Long teacherId;
-    String teacherName;
-    List<ExamResponseDto> exams;
+public class ConsultationResponseDto {
+    LocalDate date;
+    LocalTime time;
+    String cabinet;
 }

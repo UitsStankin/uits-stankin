@@ -11,8 +11,6 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExamScheduleResponseDto {
-    Long teacherId;
-    String teacherName;
-    List<ExamResponseDto> exams;
+public class ParsedExamsDto {
+    List<ParsedExamDto> exams;
 }

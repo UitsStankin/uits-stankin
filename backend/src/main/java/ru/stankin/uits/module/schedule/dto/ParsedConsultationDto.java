@@ -5,14 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExamScheduleResponseDto {
-    Long teacherId;
-    String teacherName;
-    List<ExamResponseDto> exams;
+public class ParsedConsultationDto {
+    String date;
+    String time;
+    String cabinet;
 }

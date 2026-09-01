@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
-import ru.stankin.uits.module.schedule.dto.ExamScheduleResponseDto;
+import ru.stankin.uits.module.schedule.dto.ExamScheduleFilesResponseDto;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
 
@@ -44,13 +44,13 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
                 .build());
     }
 
-    private ExamScheduleResponseDto[] exams() {
+    private ExamScheduleFilesResponseDto[] exams() {
         return exams("");
     }
 
-    private ExamScheduleResponseDto[] exams(String query) {
-        ResponseEntity<ExamScheduleResponseDto[]> response =
-                restTemplate.getForEntity("/api/public/schedule/exams" + query, ExamScheduleResponseDto[].class);
+    private ExamScheduleFilesResponseDto[] exams(String query) {
+        ResponseEntity<ExamScheduleFilesResponseDto[]> response =
+                restTemplate.getForEntity("/api/public/exams/files" + query, ExamScheduleFilesResponseDto[].class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -60,7 +60,7 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
     @Test
     void returnsOnlyTeachersWithAtLeastOneLink() {
         assertThat(exams())
-                .extracting(ExamScheduleResponseDto::getTeacherId)
+                .extracting(ExamScheduleFilesResponseDto::getTeacherId)
                 .containsExactlyInAnyOrder(bothLinks.getId(), graduationOnly.getId())
                 .doesNotContain(blankLinks.getId(), withoutLinks.getId());
     }
@@ -68,21 +68,21 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
     @Test
     void graduationTypeSelectsOnlyTeachersWithThatLink() {
         assertThat(exams("?type=GRADUATION"))
-                .extracting(ExamScheduleResponseDto::getTeacherId)
+                .extracting(ExamScheduleFilesResponseDto::getTeacherId)
                 .containsExactlyInAnyOrder(bothLinks.getId(), graduationOnly.getId());
     }
 
     @Test
     void nonGraduationTypeSelectsOnlyTeachersWithThatLink() {
         assertThat(exams("?type=NON_GRADUATION"))
-                .extracting(ExamScheduleResponseDto::getTeacherId)
+                .extracting(ExamScheduleFilesResponseDto::getTeacherId)
                 .containsExactly(bothLinks.getId());
     }
 
     @Test
     void unknownTypeGives400() {
         ResponseEntity<ProblemDetail> response =
-                restTemplate.getForEntity("/api/public/schedule/exams?type=DIPLOMA", ProblemDetail.class);
+                restTemplate.getForEntity("/api/public/exams/files?type=DIPLOMA", ProblemDetail.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
@@ -95,13 +95,13 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
     @Test
     void teachersAreOrderedByLastName() {
         assertThat(exams())
-                .extracting(ExamScheduleResponseDto::getTeacherName)
+                .extracting(ExamScheduleFilesResponseDto::getTeacherName)
                 .containsExactly("Абрамов Пётр", "Чеканин Владимир Алексеевич");
     }
 
     @Test
     void bothLinksAreReturnedAsStored() {
-        ExamScheduleResponseDto card = exams()[1];
+        ExamScheduleFilesResponseDto card = exams()[1];
 
         assertThat(card.getTeacherId()).isEqualTo(bothLinks.getId());
         assertThat(card.getExamScheduleGraduation()).isEqualTo("https://stankin.ru/exams-graduation.pdf");
@@ -110,7 +110,7 @@ class ExamScheduleIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void missingLinkComesAsNull() {
-        ExamScheduleResponseDto card = exams()[0];
+        ExamScheduleFilesResponseDto card = exams()[0];
 
         assertThat(card.getTeacherId()).isEqualTo(graduationOnly.getId());
         assertThat(card.getExamScheduleNonGraduation()).isNull();
