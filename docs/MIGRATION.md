@@ -101,6 +101,264 @@
 
 > В новом репозитории имена таблиц повторяют Django (`users_user`, `news_post`, `employee_teacher`) — сохраняем конвенцию для совместимости миграции данных.
 
+### 4.1 Карта колонок «Django → новая схема»
+
+Составлена 2026-09-01 (T-55a) по исходникам старого портала — репозиторий
+`stankinUits/uits_portal`, ветка `master` — и по сущностям нового (`@Table`,
+`@Column`). **Дампа старого прода на момент составления нет**, поэтому карта
+описывает схемы, а не данные: объёмы, грязь, кодировки, значения
+последовательностей и форма JSON-полей сверяются отдельно, первым шагом T-55b.
+Возможное расхождение прода с репозиторием (накатили не всё) — тоже вопрос
+к дампу.
+
+**Имена таблиц сходятся полностью.** Django собирает имя как
+`<app_label>_<model>`, и все шестнадцать переносимых таблиц совпадают
+с `@Table` нового портала буква в букву. Проверено отдельно: `db_table`
+и `db_column` не переопределены ни в одной модели переносимых приложений,
+`RenameField` и `RenameModel` в 22 файлах миграций не встречаются. Единственное
+исключение — `parcing_data_from_excel` (модуль 22), который не переносится.
+
+#### Что переносится
+
+Девятнадцать таблиц: шестнадцать обычных и три связочные (M2M) — у каждой
+связочной, как и в Django, собственная колонка `id`.
+
+| Новая таблица | Модель старого портала |
+|---|---|
+| `users_user` | `users.User` (AbstractUser + четыре своих поля) |
+| `employee_teacher` | `department/employee.Teacher` |
+| `employee_helpersemployee` | `department/employee.HelpersEmployee` |
+| `subject_subject` | `department/employee/subject.Subject` |
+| `employee_teacher_subjects` | M2M `Teacher.subjects` |
+| `guidance_student` | `department/employee/guidance.Student` |
+| `postgraduate_postgraduate` | `department/employee/postgraduate.Postgraduate` |
+| `schedule_schedule` | `department/employee/schedule.Schedule` |
+| `schedule_schedulelesson` | `…schedule.ScheduleLesson` |
+| `schedule_schedulelessondate` | `…schedule.ScheduleLessonDate` |
+| `news_post` | `department/news.Post` |
+| `news_conferenceannouncement` | `department/news.ConferenceAnnouncement` |
+| `achievements_achievement` | `department/achievements.Achievement` |
+| `scientific_publications_tag` | `department/scientific_publications.Tag` |
+| `scientific_publications_scientificpublication` | `…ScientificPublication` |
+| `scientific_publications_scientificpublication_tags` | M2M `ScientificPublication.tags` |
+| `editable_pages_editablepage` | `editable_pages.EditablePage` |
+| `events_userevent` | `events.UserEvent` |
+| `events_userevent_assigned_users` | M2M `UserEvent.assigned_users` |
+
+**Наши таблицы без источника** — заполнять нечем и не нужно: `refresh_token`
+(сессии, сущность нового портала), `schedule_exam` и `schedule_examschedule`
+(T-48, разобранные PDF; в старом портале лежали только ссылки на файлы).
+
+**Таблицы старого портала, которые не переносятся:** `tg_bot_*` (модуль 20),
+`excel_export_*` и `parcing_data_from_excel_*` (модуль 22), `news_announcement`
+(модель `Announcement` — два поля, ни одного соответствия в новой схеме;
+по дампу проверить, есть ли в ней строки вообще), `users_user_groups`
+и `users_user_user_permissions`, `auth_*` и служебные `django_*`.
+
+#### Пять общих правил
+
+Действуют на все таблицы, дальше в разборе на них ссылки по номеру.
+
+1. **Пустая строка вместо NULL.** Django избегает NULL в строковых полях:
+   `blank=True` без `null=True` даёт NOT NULL со значением `''`. Так устроены
+   `first_name`, `last_name` и `email` в `AbstractUser`. Новая схема на их месте
+   ждёт `null`, и код проекта различает «не заполнено» и «пустая строка»
+   (в API пустые строки нормализуются в `null` отдельным десериализатором).
+   Все необязательные строковые колонки переносить через `nullif(col, '')`.
+2. **Медиа: путь и раздел.** Django хранит путь относительно `MEDIA_ROOT`,
+   новый портал — ключ вида `<раздел>/<год>/<месяц>/<uuid>.<расширение>`,
+   и разделов всего четыре: `avatars`, `news`, `achievements`, `publications`.
+   Принадлежность ключа разделу проверяется при **записи** карточки: форма
+   правки отправляет ключ обратно (правило T-44), и ключ не из своего раздела
+   даёт `400`. То есть неверный префикс ломается не при переносе, а при первой
+   же правке карточки. Соответствие префиксов — в таблице ниже.
+3. **Quill.** Содержимое `content` у новостей, конференций и достижений лежит
+   JSON-строкой `{"delta": …, "html": …}`. В новую колонку идёт только `html`
+   и обязательно через санитайзер: старой базе не доверяем. Маппинг 1:1 покажет
+   посетителю JSON целиком.
+4. **Значения enum'ов.** В Django они строковые, в нижнем регистре или
+   по-русски, в новой схеме — латиница в верхнем. Раскладываются `case`-ом
+   при переносе, списки — в разборе соответствующих таблиц.
+5. **Ширины только росли.** Ни одна колонка новой схемы не уже старой
+   (`email` карточки ППС 50 → 254, `organizer` конференции 100 → 255,
+   `contact_phone` 20 → 32, ФИО УВП 50 → 150). Усечения при переносе не будет,
+   проверять нечего.
+
+**Медиа-префиксы:**
+
+| Старый `upload_to` | Что там лежит | Новый раздел | Действие |
+|---|---|---|---|
+| `avatars/%Y/%m/%d` | фото ППС и УВП | `avatars` | ключ переносится как есть: префикс уже совпадает, лишний сегмент дня проверке раздела не мешает |
+| `photos/avatars/%Y/%m/%d` | аватары учётных записей | `avatars` | файлы перенести в `avatars/…`, колонку переписать |
+| `photos/%Y/%m/%d` | превью новостей **и** картинки достижений | `news` и `achievements` | один префикс на две сущности: раскладывать по разделам **по ссылающейся таблице**, а не пакетным переименованием префикса |
+| `conference_images/%Y/%m/%d` | превью конференций | `news` | конференции в новом портале хранят файлы в разделе `news` |
+
+#### Таблица за таблицей
+
+Перечислены все колонки: 1:1 списком, остальные — построчно с указанием, что
+делать. Числовая сверка (`information_schema.columns` против этой карты)
+делается на живой базе первым шагом T-55b.
+
+**`users_user`**
+
+1:1: `id`, `password` (проверка старого хеша и перехеширование — T-55c, сделано),
+`last_login`, `is_superuser`, `username`, `is_staff`, `is_active`, `date_joined`,
+`is_moderator`, `is_teacher`.
+
+| Колонка | Что делать |
+|---|---|
+| `first_name`, `last_name`, `email` | правило 1 |
+| `avatar` | правило 2, префикс `photos/avatars/` |
+| `telegram_code` | переносить `NULL`: значение бессмысленно, старый `save()` перегенерировал код при каждом сохранении (§7, п. 1), а модуль 20 не перенесён |
+| `teacher_id` | **в `users_user` не переносится**, см. следующий абзац |
+| — → `tokens_not_before` | колонки в старом портале нет, при переносе `NULL` — «сессии не отзывались» |
+
+**Связь учётки и карточки ППС развёрнута.** В Django `OneToOneField` объявлен
+на пользователе (`users_user.teacher_id`), в новой схеме — на карточке
+(`employee_teacher.user_id`). Перенос делается после обеих таблиц:
+
+```sql
+update employee_teacher t set user_id = u.id
+from users_user u where u.teacher_id = t.id;
+```
+
+Роли в старом портале лежат и булевыми флагами, и в `users_user_groups` →
+`auth_group`. Новая схема знает только флаги. Перед переносом проверить
+по дампу, что в группах нет прав, которых нет во флагах; если есть — это
+находка, а не деталь переноса.
+
+**`employee_teacher`**
+
+1:1: `id`, `last_name`, `first_name`, `patronymic`, `phone_number`, `messenger`,
+`degree`, `rank`, `position`, `experience`, `professional_experience`, `bio`,
+`exam_schedule_graduation`, `exam_schedule_non_graduation`.
+
+| Колонка | Что делать |
+|---|---|
+| `email` | правило 1 |
+| `avatar` | правило 2, префикс совпадает |
+| `education`, `qualification` | rich-text HTML, но не Quill: переносятся как есть и через санитайзер (правило 3, без разбора JSON) |
+| — → `user_id` | заполняется из `users_user.teacher_id`, см. выше |
+
+Коды `degree` и `rank` совпадают буква в букву, включая `READER` вместо
+`DOCENT` — ради этого они и сохранены.
+
+**`employee_helpersemployee`** — 1:1 целиком: `id`, `last_name`, `first_name`,
+`patronymic`, `position`, `avatar` (правило 2, префикс совпадает).
+
+**`subject_subject`** — 1:1 целиком: `id`, `name`, `description`.
+
+**`employee_teacher_subjects`** — 1:1 целиком: `id`, `teacher_id`, `subject_id`.
+
+**`guidance_student`**
+
+1:1: `id`, `last_name`, `first_name`, `group`, `admission_year`.
+
+| Колонка | Что делать |
+|---|---|
+| `education_level` | правило 4, значения по-русски: `Бакалавриат` → `BACHELOR`, `Магистратура` → `MASTER`, `Аспирантура` → `POSTGRADUATE`, `Специалитет` → `SPECIALIST` |
+| `patronymic`, `speciality`, `diploma_theme` | правило 1 |
+
+**`postgraduate_postgraduate`** — 1:1 целиком: `id`, `student_id`, `teacher_id`.
+
+**`schedule_schedule`** — 1:1 целиком: `id`, `teacher_id`, `imported_file_name`.
+
+**`schedule_schedulelesson`** — 1:1 целиком: `id`, `schedule_id`, `class_time`,
+`week_number`, `group`, `name`, `type`, `cabinet`, `subgroup`.
+
+**`schedule_schedulelessondate`** — 1:1 целиком: `id`, `lesson_id`, `start_date`,
+`end_date`, `alternatively_period`. Строковые даты `ДД.ММ` переносятся как есть:
+года в исходном PDF нет и восстановить его нечем (T-41a).
+
+**`news_post`**
+
+1:1: `id`, `title`, `short_description`, `preview_image_description`,
+`created_at`, `display`, `author_id`.
+
+| Колонка | Что делать |
+|---|---|
+| `post_type` | правило 4, но **не простым нижним регистром**: старые значения `NEWS` и `ANNOUNCEMENT`, новые — `news` и `announcements`. Наивный `lower()` даст `announcement`, которого нет в словаре `PostType`: запись перестанет открываться в форме правки (`400` по `@Pattern`) и выпадет из фильтра `?postType=` |
+| `content` | правило 3 |
+| `preview_image` | правило 2, префикс `photos/` → раздел `news` |
+| — → `preview_thumbnail` | **источника нет**: в старом портале миниатюра — `ImageSpecField`, вычисляемое поле imagekit, колонки под неё в базе не существует. При импорте либо генерировать миниатюру самим, как это делает загрузка новости (T-52c), либо оставить `NULL` — фронт умеет без неё |
+
+**`news_conferenceannouncement`**
+
+1:1: `id`, `title`, `description`, `start_date`, `end_date`, `time`,
+`created_at`, `preview_image_description`.
+
+| Колонка | Что делать |
+|---|---|
+| `is_hidden` → `display` | переименование **с инверсией**: `display = not is_hidden`. Скопировать значение как есть — значит спрятать всё опубликованное и показать всё скрытое |
+| `content` | правило 3 |
+| `preview_image` | правило 2, префикс `conference_images/` → раздел `news` |
+| `organizer`, `contact_email`, `contact_phone` | правило 1 |
+
+**`achievements_achievement`**
+
+1:1: `id`, `title`, `description`, `created_at`, `teacher_id`.
+
+| Колонка | Что делать |
+|---|---|
+| `image` → `preview_image` | переименование плюс правило 2: префикс `photos/` → раздел `achievements` |
+| `is_published` → `display` | переименование, полярность та же |
+| `content` | правило 3 |
+
+**`scientific_publications_tag`** — 1:1 целиком: `id`, `name`.
+
+**`scientific_publications_scientificpublication`**
+
+1:1: `id`, `name`, `description`, `year`, `source`.
+
+| Колонка | Что делать |
+|---|---|
+| `author` | колонка `jsonb` оставлена под перенос специально (T-50b). Форму массива — строки или объекты — проверить по дампу: в модели это `JSONField` без схемы |
+| `file` | в старой базе PDF лежит **base64-строкой в TEXT**. Декодировать в файл раздела `publications`, в колонку класть ключ: новая колонка — 100 символов, целый base64 туда не влезет физически |
+| `id_for_unique_identify_component` | в новой схеме колонки нет. В моделях старого портала на неё никто не ссылается; перед тем как выбросить, проверить, не ходит ли по ней фронт старого сайта |
+| `url`, `pages`, `vol_n`, `isbn` | правило 1 |
+
+**`scientific_publications_scientificpublication_tags`** — 1:1 целиком:
+`id`, `scientificpublication_id`, `tag_id`.
+
+**`editable_pages_editablepage`**
+
+1:1: `title`, `text`, `page`, `created_at`, `modified_at`.
+
+| Колонка | Что делать |
+|---|---|
+| `id` | **не переносится**, см. ниже |
+
+Единственная таблица, куда нельзя вставлять. Тринадцать разделов уже созданы
+ченджсетом Liquibase, `page` уникален, и `INSERT` упадёт на конфликте. Импорт
+делается `UPDATE … WHERE page = <слаг>`. Слаги сверить поимённо (решение T-25),
+а не полагаться на порядок строк; слаг старого портала, которого нет у нас, —
+находка: либо забытый раздел, либо мусор.
+
+**`events_userevent`**
+
+1:1: `id`, `name`, `started_at`, `ended_at`, `all_day`, `user_id` (владелец),
+`start_notified`.
+
+| Колонка | Что делать |
+|---|---|
+| `notification_frequency` | правило 4: `daily` / `weekly` / `monthly` / `none` → `DAILY` / `WEEKLY` / `MONTHLY` / `NONE` |
+| `status` | правило 4: `not_started` / `in_progress` / `completed` → `NOT_STARTED` / `IN_PROGRESS` / `COMPLETED` |
+| `next_notification_at` | переносить `NULL`. В старой модели поле объявлено `auto_now=True` и затиралось «сейчас» при каждом сохранении (§7, п. 2) — в базе лежит время последней правки записи, а не время напоминания |
+| `color` | старый валидатор проверял только первый символ, новая схема требует `^#[0-9a-fA-F]{6}$`. Значения вне шаблона чинить при импорте — иначе событие нельзя будет сохранить из формы |
+| `description` | правило 1 |
+
+**`events_userevent_assigned_users`** — 1:1 целиком: `id`, `userevent_id`,
+`user_id`.
+
+#### Что остаётся дампу
+
+Карта описывает схемы. По дампу проверяются: реальные объёмы по таблицам,
+грязь в данных (цвета событий, кодировки, битые Quill-строки), форма массива
+`author` у публикаций, наличие строк в `news_announcement` и прав в
+`auth_group`, фактическое состояние прод-схемы против репозитория, значения
+последовательностей и размер тома медиа. Это первый шаг T-55b: писать скрипт
+без дампа всё равно нельзя.
+
 ---
 
 ## 5. Сложные части — подход к переносу
