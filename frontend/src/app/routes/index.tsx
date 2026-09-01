@@ -21,6 +21,7 @@ import NewsPage from '@pages/NewsPage';
 import NewsDetailPage from '@pages/NewsDetailPage';
 import AnnouncementsPage from '@pages/AnnouncementsPage';
 import TeachersPage from '@pages/TeachersPage';
+import TeacherDetailPage from '@pages/TeacherDetailPage';
 import ProtectedRoute from './protectedRoute';
 import RouteError from './RouteError';
 
@@ -79,6 +80,7 @@ export const routes: RouteObject[] = [
         path: TEACHERS_ROUTE,
         children: [
           { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
+          { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
         ],
       },
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
