@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsername(String username);
     Optional<User> findByUsername(String username);
 
+    Page<User> findByTeacherTrueAndActiveTrue(Pageable pageable);
+
     @Modifying
     @Query("update User u set u.lastLogin = :now where u.id = :id")
     void updateLastLogin(Long id, OffsetDateTime now);

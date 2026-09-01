@@ -145,6 +145,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private static final Set<Actor> EDITORS = EnumSet.of(Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> TEACHERS = EnumSet.of(Actor.TEACHER);
     private static final Set<Actor> TEACHERS_AND_ADMINS = EnumSet.of(Actor.TEACHER, Actor.ADMIN);
+    private static final Set<Actor> EDITORS_AND_TEACHERS =
+            EnumSet.of(Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> ADMINS = EnumSet.of(Actor.ADMIN);
 
     /**
@@ -187,6 +189,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.PUT, "/api/users/{id}", ADMINS),
             controller(HttpMethod.POST, "/api/users/{id}/reset-password", ADMINS),
             controller(HttpMethod.POST, "/api/users/{id}/logout", ADMINS),
+            controller(HttpMethod.GET, "/api/users/directory", EDITORS_AND_TEACHERS),
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
@@ -212,6 +215,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/achievements", EDITORS),
             controller(HttpMethod.PUT, "/api/achievements/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/achievements/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/postgraduates/{id}", EDITORS),
             controller(HttpMethod.POST, "/api/postgraduates", EDITORS),
             controller(HttpMethod.PUT, "/api/postgraduates/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/postgraduates/{id}", EDITORS),

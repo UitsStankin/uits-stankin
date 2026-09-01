@@ -1,14 +1,18 @@
 package ru.stankin.uits.module.user.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidOldPasswordException;
+import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
+import ru.stankin.uits.module.user.dto.UserDirectoryDto;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
@@ -64,6 +68,18 @@ public class UserService {
 
         managedUser.setPassword(passwordEncoder.encode(newPassword));
         managedUser.setTokensNotBefore(OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusSeconds(1));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<UserDirectoryDto> getTeacherDirectory(Pageable pageable) {
+        return PageResponseDto.from(userRepository.findByTeacherTrueAndActiveTrue(pageable)
+                .map(userMapper::toDirectoryDto));
+    }
+
+    @Transactional(readOnly = true)
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new InvalidRequestException("Учётная запись не найдена: id=" + id));
     }
 
     @Transactional(readOnly = true)

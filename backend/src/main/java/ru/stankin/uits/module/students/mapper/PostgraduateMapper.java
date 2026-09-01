@@ -5,8 +5,10 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import ru.stankin.uits.common.FullName;
 import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.students.dto.PostgraduateDetailsResponseDto;
 import ru.stankin.uits.module.students.dto.PostgraduateResponseDto;
 import ru.stankin.uits.module.students.dto.StudentRequestDto;
+import ru.stankin.uits.module.students.dto.StudentResponseDto;
 import ru.stankin.uits.module.students.entity.Postgraduate;
 import ru.stankin.uits.module.students.entity.Student;
 
@@ -21,6 +23,11 @@ public interface PostgraduateMapper {
     @Mapping(target = "teacherId", source = "teacher.id")
     @Mapping(target = "teacherName", expression = "java(teacherName(postgraduate.getTeacher()))")
     PostgraduateResponseDto toDto(Postgraduate postgraduate);
+
+    @Mapping(target = "teacherId", source = "teacher.id")
+    PostgraduateDetailsResponseDto toDetailsDto(Postgraduate postgraduate);
+
+    StudentResponseDto toStudentDto(Student student);
 
     @Mapping(target = "id", ignore = true)
     Student toStudent(StudentRequestDto dto);

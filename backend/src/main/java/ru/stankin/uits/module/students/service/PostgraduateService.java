@@ -10,6 +10,7 @@ import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.service.TeacherService;
+import ru.stankin.uits.module.students.dto.PostgraduateDetailsResponseDto;
 import ru.stankin.uits.module.students.dto.PostgraduateRequestDto;
 import ru.stankin.uits.module.students.dto.PostgraduateResponseDto;
 import ru.stankin.uits.module.students.dto.StudentRequestDto;
@@ -40,6 +41,13 @@ public class PostgraduateService {
         return PageResponseDto.from(page.map(postgraduateMapper::toDto));
     }
 
+    @Transactional(readOnly = true)
+    public PostgraduateDetailsResponseDto getPostgraduate(Long id) {
+        return postgraduateRepository.findWithDetailsById(id)
+                .map(postgraduateMapper::toDetailsDto)
+                .orElseThrow(() -> notFound(id));
+    }
+
     @Transactional
     public PostgraduateResponseDto createPostgraduate(PostgraduateRequestDto request) {
         Student student = postgraduateMapper.toStudent(validated(request.getStudent()));
@@ -56,7 +64,7 @@ public class PostgraduateService {
     @Transactional
     public PostgraduateResponseDto updatePostgraduate(Long id, PostgraduateRequestDto request) {
         Postgraduate postgraduate = postgraduateRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Запись аспирантуры id=" + id + " не найдена"));
+                .orElseThrow(() -> notFound(id));
         StudentRequestDto studentRequest = validated(request.getStudent());
         Teacher teacher = resolveTeacher(request.getTeacherId());
         Student student = postgraduate.getStudent();
@@ -74,13 +82,17 @@ public class PostgraduateService {
     @Transactional
     public void deletePostgraduate(Long id) {
         Postgraduate postgraduate = postgraduateRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Запись аспирантуры id=" + id + " не найдена"));
+                .orElseThrow(() -> notFound(id));
         Student student = postgraduate.getStudent();
 
         postgraduateRepository.delete(postgraduate);
         if (student != null) {
             studentRepository.delete(student);
         }
+    }
+
+    private NotFoundException notFound(Long id) {
+        return new NotFoundException("Запись аспирантуры id=" + id + " не найдена");
     }
 
     private Page<Postgraduate> select(Long teacherId, String speciality, Pageable pageable) {

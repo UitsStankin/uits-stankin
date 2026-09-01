@@ -106,6 +106,10 @@ class ArchitectureTest {
                             // NewsService достаёт текущего пользователя из SecurityContext,
                             // чтобы проставить автора создаваемой новости
                             "..module.news.service..",
+                            // карточка ППС связывается с учётной записью через форму
+                            // модератора: TeacherService проверяет учётку и проставляет
+                            // Teacher.user (T-56b)
+                            "..module.staff.service..",
                             // владелец и назначенные приезжают в сервис календаря учётными записями
                             "..module.events.service..",
                             // логин достаёт id пользователя для обновления last_login
@@ -235,6 +239,9 @@ class ArchitectureTest {
      *   <li>events → user.service: назначенные на событие приходят списком id,
      *       и существование учёток проверяется через UserService — как модуль
      *       достижений проверяет преподавателя через TeacherService.</li>
+     *   <li>staff → user.service: связь карточки ППС с учётной записью приходит
+     *       идентификатором в теле запроса, и учётка достаётся через UserService —
+     *       тем же путём, что назначенные на событие.</li>
      * </ul>
      */
     @ArchTest
@@ -246,6 +253,9 @@ class ArchitectureTest {
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
                             resideInAPackage("..module.events.service.."),
+                            resideInAPackage("..module.user.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.staff.service.."),
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
                             DescribedPredicate.alwaysTrue(),

@@ -31,6 +31,7 @@ public abstract class TeacherMapper {
 
     @Mapping(target = "avatarUrl", source = "avatar", qualifiedByName = "avatarUrl")
     @Mapping(target = "subjects", source = "subjects", qualifiedByName = "sortedSubjects")
+    @Mapping(target = "userId", source = "user.id")
     public abstract TeacherDetailsResponseDto toDetailsDto(Teacher teacher);
 
     @Mapping(target = "id", ignore = true)
