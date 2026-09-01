@@ -45,6 +45,20 @@ describe('NewsPage', () => {
     expect(screen.queryByText('Новость 21')).not.toBeInTheDocument();
   });
 
+  /**
+   * С F-20 раздел показывает только `postType: news`. Отбор делает бэкенд
+   * по параметру запроса — в фикстуре объявления идут вперемешку с новостями
+   * и на первой же странице были бы видны, уйди запрос без параметра.
+   */
+  it('показывает новости и не показывает объявления', async () => {
+    renderWithProviders(<NewsPage />, { route: '/about/news' });
+
+    expect(await screen.findByText('Новость 1')).toBeInTheDocument();
+    expect(screen.queryByText('Объявление 1')).not.toBeInTheDocument();
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Новости кафедры');
+  });
+
   it('открывает страницу из адреса и отмечает её в пагинаторе', async () => {
     renderWithProviders(<NewsPage />, { route: '/about/news?page=2' });
 
