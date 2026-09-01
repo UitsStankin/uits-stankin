@@ -6,5 +6,6 @@
  * `msw/node` в браузерный бандл.
  */
 export { handlers } from './handlers';
+export { editablePageHandlers } from './editablePages';
 export { makeNews, newsFixture, newsHandlers, newsPage } from './news';
 export { problemResponse } from './problemResponse';
