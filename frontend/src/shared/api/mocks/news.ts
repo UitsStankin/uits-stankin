@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-import type { News, NewsPage } from '@shared/types';
+import type { News, NewsPage, PostType } from '@shared/types';
 
 import { problemResponse } from './problemResponse';
 
@@ -79,18 +79,35 @@ export function newsPage(items: readonly News[], page = 0, size = DEFAULT_SIZE):
  * Хендлеры чтения новостей. Список берётся аргументом, чтобы тест пустой
  * ленты был одной строкой `server.use(...newsHandlers([]))`, а не копией
  * хендлера с другим телом.
- *
- * Фильтра по `postType` здесь намеренно нет, хотя у ручки он появился
- * в T-36: сегодня фронт его не шлёт. Заводить его вместе с F-20 —
- * тогда же, когда появится тест, который его проверяет.
  */
 export function newsHandlers(items: readonly News[] = newsFixture) {
   return [
     http.get(PUBLIC_NEWS, ({ request }) => {
       const url = new URL(request.url);
+      const postType = url.searchParams.get('postType');
+
+      // Значение вне словаря — `400`, а не пустая страница: опечатка
+      // `?postType=announcement` иначе читалась бы как «объявлений пока нет»,
+      // и причину искали бы в контенте (docs/API.md, «Новости: фильтр
+      // по типу записи»). Мок, отвечающий здесь пустотой, скрыл бы ровно
+      // ту ошибку, ради которой контракт выбрал ошибку.
+      if (postType !== null && postType !== '' && !isPostType(postType)) {
+        return problemResponse(400, {
+          title: 'Bad Request',
+          detail: `Недопустимое значение postType: ${postType}`,
+          instance: '/api/public/news',
+        });
+      }
+
+      // Отбор **до** нарезки на страницы: счётчики считаются по выборке
+      // с учётом фильтра, иначе мок обещал бы страницы, которых нет,
+      // — то же самое, чем плоха фильтрация на клиенте.
+      const filtered = isPostType(postType)
+        ? items.filter((item) => item.postType === postType)
+        : items;
 
       return HttpResponse.json(
-        newsPage(items, numberParam(url, 'page', 0), numberParam(url, 'size', DEFAULT_SIZE, 1)),
+        newsPage(filtered, numberParam(url, 'page', 0), numberParam(url, 'size', DEFAULT_SIZE, 1)),
       );
     }),
 
@@ -123,4 +140,14 @@ function numberParam(url: URL, name: string, fallback: number, min = 0): number 
 
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed >= min ? parsed : fallback;
+}
+
+/**
+ * Значение `postType` из адреса — из словаря контракта или нет.
+ *
+ * Отсутствие параметра и пустая строка сюда попадают как «нет»: обе означают
+ * «все типы», то есть отбирать по ним нечего.
+ */
+function isPostType(raw: string | null): raw is PostType {
+  return raw === 'news' || raw === 'announcements';
 }
