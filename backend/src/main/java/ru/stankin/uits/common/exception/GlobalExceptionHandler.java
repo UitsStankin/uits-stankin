@@ -114,6 +114,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
     }
 
+    @ExceptionHandler(ResourceInUseException.class)
+    public ProblemDetail handleResourceInUse(ResourceInUseException ex) {
+        return problemDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidRequestException.class)
     public ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());

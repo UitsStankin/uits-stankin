@@ -36,6 +36,12 @@ public class TagController {
         return ResponseEntity.created(location).body(created);
     }
 
+    @PutMapping("/tags/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public TagDto updateTag(@PathVariable Long id, @Valid @RequestBody TagRequestDto request) {
+        return tagService.updateTag(id, request);
+    }
+
     @DeleteMapping("/tags/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<Void> deleteTag(@PathVariable Long id) {
