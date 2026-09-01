@@ -1,6 +1,6 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 
-import type { PageParams } from '@shared/types';
+import type { NewsListParams } from '@shared/types';
 
 import { fetchNewsItem, fetchNewsPage } from './newsApi';
 
@@ -15,11 +15,15 @@ import { fetchNewsItem, fetchNewsPage } from './newsApi';
  * Объект параметров внутри ключа безопасен: TanStack Query хеширует ключ
  * структурно и с сортировкой полей, поэтому `{ page: 1 }`, созданный заново
  * при каждом рендере, — это тот же ключ, а не новый запрос.
+ *
+ * `postType` входит в ключ наравне со страницей, и иначе быть не может:
+ * новости, объявления и смешанная лента — три разных ответа сервера,
+ * и общий ключ показал бы на странице объявлений то, что осталось от новостей.
  */
 export const newsKeys = {
   all: ['news'] as const,
   lists: () => [...newsKeys.all, 'list'] as const,
-  list: (params: PageParams) => [...newsKeys.lists(), params] as const,
+  list: (params: NewsListParams) => [...newsKeys.lists(), params] as const,
   items: () => [...newsKeys.all, 'item'] as const,
   item: (id: number) => [...newsKeys.items(), id] as const,
 };
@@ -38,7 +42,7 @@ export const newsKeys = {
  * страница остаётся на экране, пока едет следующая, — а `isPlaceholderData`
  * позволяет её на это время притушить.
  */
-export const newsListQuery = (params: PageParams) =>
+export const newsListQuery = (params: NewsListParams) =>
   queryOptions({
     queryKey: newsKeys.list(params),
     queryFn: ({ signal }) => fetchNewsPage(params, signal),

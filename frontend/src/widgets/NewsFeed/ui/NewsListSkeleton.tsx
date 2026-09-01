@@ -1,5 +1,10 @@
 import { NewsCardSkeleton } from '@entities/news';
 
+interface NewsListSkeletonProps {
+  /** Что читает диктор вместо серых прямоугольников. */
+  label: string;
+}
+
 /**
  * Заглушка на время первой загрузки.
  *
@@ -11,12 +16,12 @@ import { NewsCardSkeleton } from '@entities/news';
  * Сам силуэт карточки живёт в сущности, рядом с `NewsCard`: он повторяет
  * её раскладку и обязан меняться вместе с ней.
  */
-export function NewsListSkeleton() {
+export function NewsListSkeleton({ label }: NewsListSkeletonProps) {
   return (
     <div role="status" className="flex animate-pulse flex-col gap-gutter-sm">
       {/* Серые прямоугольники диктору ничего не говорят — для него
           загрузка проговаривается словами. */}
-      <span className="sr-only">Загрузка новостей</span>
+      <span className="sr-only">{label}</span>
 
       {[0, 1, 2].map((index) => (
         <NewsCardSkeleton key={index} />

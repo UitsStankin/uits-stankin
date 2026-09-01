@@ -1,5 +1,5 @@
 import { api } from '@shared/api';
-import type { News, NewsPage, PageParams } from '@shared/types';
+import type { News, NewsListParams, NewsPage } from '@shared/types';
 
 /**
  * Публичное чтение новостей — две ручки из семи, что есть у модуля.
@@ -12,13 +12,6 @@ import type { News, NewsPage, PageParams } from '@shared/types';
  * Админские ручки (`/api/news`, `POST`, `PUT`, `DELETE`) сюда не попали:
  * их время — блок 4 бэклога, а лежать они будут в фиче правки, а не здесь.
  * Сущность знает только чтение.
- *
- * ⚠️ Фильтра по `postType` у публичной ручки НЕТ. `NewsRepository`
- * умеет ровно `findAllByDisplayTrue(Pageable)`, и лента приходит смешанной:
- * новости и объявления вперемешку. Это расхождение с FRONTEND_BACKLOG,
- * где F-20 описан как «тот же эндпоинт с postType: announcements».
- * Пока фильтра нет, тип записи показывается меткой на карточке —
- * см. D-F7 в бэклоге.
  */
 
 const PUBLIC_NEWS_PATH = '/api/public/news';
@@ -34,9 +27,17 @@ const PUBLIC_NEWS_PATH = '/api/public/news';
  *
  * Незаданные поля `params` axios в строку запроса не кладёт — то есть
  * `{}` уходит как `GET /api/public/news` и получает умолчания контракта:
- * двадцать записей, новые сверху.
+ * двадцать записей, новые сверху, оба типа записей разом.
+ *
+ * `postType` отбирает новости или объявления, и отбирать надо **здесь**,
+ * а не после ответа: `totalElements` и `totalPages` считает база по своему
+ * запросу, поэтому фильтрация выдачи на клиенте уменьшила бы список
+ * на экране, оставив пагинатор обещать страницы, которых нет.
  */
-export async function fetchNewsPage(params: PageParams, signal?: AbortSignal): Promise<NewsPage> {
+export async function fetchNewsPage(
+  params: NewsListParams,
+  signal?: AbortSignal,
+): Promise<NewsPage> {
   const { data } = await api.get<NewsPage>(PUBLIC_NEWS_PATH, { params, signal });
   return data;
 }

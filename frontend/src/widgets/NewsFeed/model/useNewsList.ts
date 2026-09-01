@@ -2,7 +2,9 @@ import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { newsListQuery } from '@entities/news';
-import { NEWS_ROUTE, newsItemRoute } from '@shared/config/routes';
+import { newsItemRoute } from '@shared/config/routes';
+
+import type { NewsFeedProps } from '../NewsFeed.types';
 
 /** Имя query-параметра со страницей. Знают двое: разбор ниже и сборка адреса. */
 const PAGE_PARAM = 'page';
@@ -21,12 +23,16 @@ const PAGE_PARAM = 'page';
  * спринговая. Пересчёт сделан ровно в одном месте — здесь; это то самое
  * место, где список молча съезжает на одну страницу, если развести его
  * по разным файлам (`shared/types/api.types.ts`).
+ *
+ * Раздел (`postType`) и его адрес приходят снаружи: разделов два — новости
+ * и объявления, — и отличаются они ровно этой парой. Всё остальное у них
+ * общее, поэтому лента одна на оба (F-20).
  */
-export function useNewsList() {
+export function useNewsList({ postType, route }: NewsFeedProps) {
   const [searchParams] = useSearchParams();
   const page = parsePage(searchParams.get(PAGE_PARAM));
 
-  const query = useQuery(newsListQuery({ page: page - 1 }));
+  const query = useQuery(newsListQuery({ page: page - 1, postType }));
 
   // Прокрутки здесь нет намеренно, хотя пагинатор стоит внизу и без сброса
   // читатель остался бы у подвала: сбросом занимается <ScrollRestoration>
@@ -80,7 +86,7 @@ export function useNewsList() {
      */
     isOutOfRange: query.isSuccess && totalPages > 0 && page > totalPages,
 
-    hrefForPage,
+    hrefForPage: (target: number) => hrefForPage(route, target),
     hrefForItem: newsItemRoute,
   };
 }
@@ -103,8 +109,8 @@ export function parsePage(raw: string | null): number {
   return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1;
 }
 
-function hrefForPage(page: number): string {
+function hrefForPage(route: string, page: number): string {
   // Первая страница — без параметра: `?page=1` в адресе ничего не добавляет,
   // зато раздваивает канонический адрес ленты на два разных.
-  return page <= 1 ? NEWS_ROUTE : `${NEWS_ROUTE}?${PAGE_PARAM}=${page}`;
+  return page <= 1 ? route : `${route}?${PAGE_PARAM}=${page}`;
 }

@@ -22,7 +22,7 @@ export type {
 } from './auth.types';
 
 // Новости и объявления
-export type { News, NewsRequest, NewsPage, PostType } from './news.types';
+export type { News, NewsRequest, NewsPage, NewsListParams, PostType } from './news.types';
 
 // Редактируемые разделы
 export type { EditablePage, EditablePageSlug } from './pages.types';
