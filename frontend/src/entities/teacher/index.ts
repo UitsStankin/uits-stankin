@@ -23,6 +23,6 @@ export {
   teacherQuery,
   teachersListQuery,
 } from './api/teacherQueries';
-export { teacherCredentials, teacherFullName } from './lib/teacherPresenters';
+export { formatYears, teacherCredentials, teacherFullName } from './lib/teacherPresenters';
 export { TeacherCard } from './ui/TeacherCard';
 export { TeacherCardSkeleton } from './ui/TeacherCardSkeleton';

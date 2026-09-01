@@ -1,4 +1,5 @@
 import { degreeLabel, rankLabel } from '@shared/config/teacherDictionaries';
+import { pluralize } from '@shared/lib';
 import type { TeacherDegree, TeacherRank } from '@shared/types';
 
 /**
@@ -45,4 +46,16 @@ export function teacherCredentials(teacher: {
   return [teacher.position, degreeLabel(teacher.degree), rankLabel(teacher.rank)]
     .filter(Boolean)
     .join(', ');
+}
+
+/**
+ * Стаж словами: «15 лет», «1 год», «22 года». `null` остаётся `null` —
+ * чем заполнить незаполненное поле, решает карточка: в личном кабинете это
+ * прочерк, на публичной странице строка не показывается вовсе.
+ *
+ * Переехал сюда из личного кабинета, когда карточек со стажем стало две.
+ */
+export function formatYears(years: number | null): string | null {
+  if (years === null) return null;
+  return `${years} ${pluralize(years, ['год', 'года', 'лет'])}`;
 }

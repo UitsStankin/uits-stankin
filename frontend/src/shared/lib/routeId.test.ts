@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseId } from './useNewsItem';
+import { parseId } from './routeId';
 
 /**
  * Идентификатор из адреса. Всё, что не положительное целое, обязано стать
