@@ -14,6 +14,7 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
 
     boolean existsByAvatar(String avatar);
     Optional<Teacher> findByUserUsername(String username);
+    Optional<Teacher> findByUserId(Long userId);
 
     @Query("""
             select t from Teacher t

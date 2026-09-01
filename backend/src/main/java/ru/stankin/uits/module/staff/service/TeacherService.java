@@ -23,9 +23,12 @@ import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.staff.mapper.TeacherMapper;
 import ru.stankin.uits.module.staff.repository.SubjectRepository;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
+import ru.stankin.uits.module.user.entity.User;
+import ru.stankin.uits.module.user.service.UserService;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,6 +45,7 @@ public class TeacherService {
     private final TeacherMapper teacherMapper;
     private final FileStorage fileStorage;
     private final FileCleanup fileCleanup;
+    private final UserService userService;
 
     @Transactional(readOnly = true)
     public PageResponseDto<TeacherResponseDto> getAllTeachers(Pageable pageable) {
@@ -78,6 +82,7 @@ public class TeacherService {
     public TeacherDetailsResponseDto createTeacher(TeacherRequestDto request) {
         prepare(request);
         Teacher teacher = teacherMapper.toEntity(request);
+        teacher.setUser(resolveUser(request.getUserId(), null));
         teacher.getSubjects().addAll(resolveSubjects(request.getSubjectIds()));
 
         return teacherMapper.toDetailsDto(teacherRepository.save(teacher));
@@ -89,6 +94,7 @@ public class TeacherService {
                 .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
 
         applyUpdate(teacher, request);
+        teacher.setUser(resolveUser(request.getUserId(), teacher.getId()));
         teacher.getSubjects().clear();
         teacher.getSubjects().addAll(resolveSubjects(request.getSubjectIds()));
 
@@ -160,6 +166,27 @@ public class TeacherService {
         }
 
         return authentication.getName();
+    }
+
+    private User resolveUser(Long userId, Long teacherId) {
+        if (userId == null) {
+            return null;
+        }
+
+        User user = userService.getUserById(userId);
+
+        if (!user.isTeacher()) {
+            throw new InvalidRequestException("У учётной записи id=" + userId + " нет роли преподавателя");
+        }
+
+        teacherRepository.findByUserId(userId)
+                .filter(linked -> !Objects.equals(linked.getId(), teacherId))
+                .ifPresent(linked -> {
+                    throw new InvalidRequestException(
+                            "Учётная запись уже связана с карточкой преподавателя id=" + linked.getId());
+                });
+
+        return user;
     }
 
     private Set<Subject> resolveSubjects(List<Long> subjectIds) {

@@ -6,7 +6,12 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import ru.stankin.uits.module.students.entity.Postgraduate;
 
+import java.util.Optional;
+
 public interface PostgraduateRepository extends JpaRepository<Postgraduate, Long> {
+
+    @EntityGraph(attributePaths = {"student", "teacher"})
+    Optional<Postgraduate> findWithDetailsById(Long id);
 
     @EntityGraph(attributePaths = {"student", "teacher"})
     Page<Postgraduate> findAllBy(Pageable pageable);

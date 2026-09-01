@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class TeacherDetailsResponseDto {
     private Long id;
+    private Long userId;
     private String lastName;
     private String firstName;
     private String patronymic;

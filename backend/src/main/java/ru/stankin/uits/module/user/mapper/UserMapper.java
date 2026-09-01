@@ -9,6 +9,7 @@ import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
 import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
+import ru.stankin.uits.module.user.dto.UserDirectoryDto;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
@@ -24,6 +25,8 @@ public abstract class UserMapper {
 
     @Mapping(target = "avatarUrl", source = "avatar", qualifiedByName = "avatarUrl")
     public abstract UserAdminResponseDto toAdminDto(User user);
+
+    public abstract UserDirectoryDto toDirectoryDto(User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "password", ignore = true)

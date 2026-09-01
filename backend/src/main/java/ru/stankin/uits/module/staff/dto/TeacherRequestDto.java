@@ -19,6 +19,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TeacherRequestDto {
+    Long userId;
+
     @NotBlank(message = "Фамилия обязательна")
     @Size(max = 150)
     String lastName;

@@ -371,6 +371,159 @@ public class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(STORAGE_ROOT.resolve(newsKey)).exists();
     }
 
+    private ResponseEntity<TeacherDetailsResponseDto> publicCard(Long id) {
+        return restTemplate.getForEntity("/api/public/teachers/" + id, TeacherDetailsResponseDto.class);
+    }
+
+    private ResponseEntity<TeacherDetailsResponseDto> updateCard(Long id, TeacherRequestDto request, String token) {
+        return restTemplate.exchange(
+                "/api/teachers/" + id,
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(token)),
+                TeacherDetailsResponseDto.class
+        );
+    }
+
+    private TeacherRequestDto.TeacherRequestDtoBuilder cardRequest() {
+        return TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент");
+    }
+
+    @Test
+    void createTeacher_WithUserId_LinksAccountAndOpensMyCard() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+
+        ResponseEntity<TeacherDetailsResponseDto> created = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(cardRequest().userId(teacherUser.getId()).build(), authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(created.getBody()).isNotNull();
+        assertThat(created.getBody().getUserId()).isEqualTo(teacherUser.getId());
+
+        ResponseEntity<TeacherDetailsResponseDto> myCard = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(myCard.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(myCard.getBody()).isNotNull();
+        assertThat(myCard.getBody().getId()).isEqualTo(created.getBody().getId());
+    }
+
+    @Test
+    void updateTeacher_WithUserId_LinksAccountToExistingCard() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+
+        assertThat(updateCard(card.getId(), cardRequest().userId(teacherUser.getId()).build(), moderatorToken())
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isEqualTo(teacherUser.getId());
+    }
+
+    @Test
+    void updateTeacher_WhenUserIdResubmitted_KeepsLink() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        assertThat(updateCard(card.getId(), cardRequest().userId(teacherUser.getId()).build(), moderatorToken())
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isEqualTo(teacherUser.getId());
+    }
+
+    @Test
+    void updateTeacher_WhenUserIdOmitted_ClearsLink() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        assertThat(updateCard(card.getId(), cardRequest().build(), moderatorToken())
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAccountLinkedToAnotherCard_Returns400() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher linked = createCard("Иванова", "Мария");
+        linked.setUser(teacherUser);
+        teacherRepository.save(linked);
+        Teacher other = createCard("Абрамов", "Пётр");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + other.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(teacherUser.getId()).build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(publicCard(other.getId()).getBody().getUserId()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAccountHasNoTeacherRole_Returns400() {
+        User plainUser = createUser("plain_user", TestRole.USER);
+        Teacher card = createCard("Иванова", "Мария");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(plainUser.getId()).build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAccountUnknown_Returns400() {
+        Teacher card = createCard("Иванова", "Мария");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(999999L).build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void updateMyCard_WhenUserIdSubmitted_IgnoresIt() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        User stranger = createUser("stranger", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(stranger.getId()).build(), authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getUserId()).isEqualTo(teacherUser.getId());
+    }
+
     @Test
     void deleteTeacher_Returns204AndCardDisappears() {
         Teacher card = createCard("Иванова", "Мария");
