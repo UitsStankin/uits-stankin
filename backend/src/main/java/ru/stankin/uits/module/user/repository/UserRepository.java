@@ -25,10 +25,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("""
             select u from User u
             where (:q is null
-                    or lower(u.username) like lower(concat('%', :q, '%')) escape '\\'
-                    or lower(u.firstName) like lower(concat('%', :q, '%')) escape '\\'
-                    or lower(u.lastName) like lower(concat('%', :q, '%')) escape '\\'
-                    or lower(u.email) like lower(concat('%', :q, '%')) escape '\\')
+                    or lower(u.username) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                    or lower(u.firstName) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                    or lower(u.lastName) like lower(concat('%', cast(:q as string), '%')) escape '\\'
+                    or lower(u.email) like lower(concat('%', cast(:q as string), '%')) escape '\\')
               and (:active is null or u.active = :active)
               and (:superuser is null or u.superuser = :superuser)
               and (:moderator is null or u.moderator = :moderator)

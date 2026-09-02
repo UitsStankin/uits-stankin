@@ -2,7 +2,9 @@ package ru.stankin.uits.module.publications.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
@@ -21,6 +23,7 @@ import ru.stankin.uits.module.publications.repository.TagRepository;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -29,6 +32,16 @@ import java.util.Set;
 public class PublicationService {
 
     private static final String PUBLICATION_CATEGORY = "publications";
+
+    // Сортировка дописывается в native-запрос, поэтому значения — колонки таблицы, а не поля сущности
+    private static final Map<String, String> SORT_COLUMNS = Map.of(
+            "id", "id",
+            "name", "name",
+            "year", "year",
+            "source", "source",
+            "pages", "pages",
+            "volN", "vol_n",
+            "isbn", "isbn");
 
     private final PublicationRepository publicationRepository;
     private final TagRepository tagRepository;
@@ -41,7 +54,8 @@ public class PublicationService {
                                                                    String author,
                                                                    Integer year,
                                                                    Pageable pageable) {
-        Page<ScientificPublication> page = publicationRepository.search(tagId, normalize(author), year, pageable);
+        Page<ScientificPublication> page = publicationRepository.search(
+                tagId, normalize(author), year, withNativeSort(pageable));
         warmUpTags(page.getContent());
 
         return PageResponseDto.from(page.map(publicationMapper::toDto));
@@ -129,6 +143,23 @@ public class PublicationService {
         if (!fileStorage.existsInCategory(key, PUBLICATION_CATEGORY)) {
             throw new InvalidFileException("Файл публикации не найден: " + key);
         }
+    }
+
+    private static Pageable withNativeSort(Pageable pageable) {
+        Sort sort = Sort.by(pageable.getSort().stream()
+                .map(order -> order.withProperty(sortColumn(order.getProperty())))
+                .toList());
+
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+    }
+
+    private static String sortColumn(String property) {
+        String column = SORT_COLUMNS.get(property);
+        if (column == null) {
+            throw new InvalidRequestException("Неизвестное поле сортировки: " + property);
+        }
+
+        return column;
     }
 
     private String normalize(String author) {
