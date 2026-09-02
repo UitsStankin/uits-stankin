@@ -178,7 +178,7 @@
 
 **⛔ Не использовать / не делать**
 - ⚠️ ⛔ Не коммитить `.env`/секреты (проверено 2026-07-27: в git-истории их нет, значения в рабочей копии ротированы; прод-значения — только в GitHub Actions Secrets).
-- ⚠️ ⛔ Не оставлять `CORS allow all origins` / `*` в проде (сейчас так в `SecurityConfig`).
+- ⚠️ ⛔ Не оставлять `CORS allow all origins` / `*` в проде (закрыто в T-08: `SecurityConfig` читает белый список из `application.cors.allowed-origins`; `*` был только в первоначальном скаффолде).
 - ⛔ Не отдавать stacktrace/Swagger/actuator наружу в проде без ограничений.
 - ⛔ Не переносить token-auth (`dj-rest-auth`) — JWT уже правильнее.
 
