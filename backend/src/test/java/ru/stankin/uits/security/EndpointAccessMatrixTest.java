@@ -248,11 +248,14 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
 
     /**
      * Ручки, чьи правила доступа задаёт не проект: {@code /error} — резервный
-     * обработчик Spring Boot, {@code /v3/api-docs} и {@code /swagger-ui} —
-     * springdoc. Все три открыты в {@link SecurityConfig} осознанно, springdoc
-     * вдобавок выключен целиком в прод-профиле (ProdProfileIntegrationTest).
+     * обработчик Spring Boot, остальные — springdoc. Все они открыты
+     * в {@link SecurityConfig} осознанно, springdoc вдобавок выключен целиком
+     * в прод-профиле (ProdProfileIntegrationTest). Сравнение — по границе
+     * сегмента пути, а не подстрокой: иначе будущая ручка вида
+     * {@code GET /api/errors} молча выпадала бы из сторожа.
      */
-    private static final List<String> NOT_OUR_ENDPOINTS = List.of("/error", "/v3/api-docs", "/swagger-ui");
+    private static final List<String> NOT_OUR_ENDPOINTS =
+            List.of("/error", "/v3/api-docs", "/v3/api-docs.yaml", "/swagger-ui", "/swagger-ui.html");
 
     private static final String MEDIA_KEY = "matrix/probe.txt";
     private static final String TEACHER_ID = "1";
@@ -310,7 +313,12 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private Set<String> registeredEndpoints() {
         return handlerMapping.getHandlerMethods().keySet().stream()
                 .flatMap(EndpointAccessMatrixTest::keysOf)
-                .filter(key -> NOT_OUR_ENDPOINTS.stream().noneMatch(key::contains))
+                .filter(key -> {
+                    String path = key.substring(key.indexOf(' ') + 1);
+
+                    return NOT_OUR_ENDPOINTS.stream()
+                            .noneMatch(excluded -> path.equals(excluded) || path.startsWith(excluded + "/"));
+                })
                 .collect(Collectors.toSet());
     }
 
