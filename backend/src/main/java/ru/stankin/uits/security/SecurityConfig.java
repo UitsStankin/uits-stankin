@@ -36,6 +36,7 @@ public class SecurityConfig {
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthFilter,
             LoginRateLimitFilter loginRateLimitFilter,
+            UploadRateLimitFilter uploadRateLimitFilter,
             AuthenticationProvider authenticationProvider,
             JwtAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler,
@@ -63,7 +64,9 @@ public class SecurityConfig {
 
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
-                .addFilterBefore(loginRateLimitFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(loginRateLimitFilter, JwtAuthenticationFilter.class)
+
+                .addFilterAfter(uploadRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

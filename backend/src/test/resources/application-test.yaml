@@ -2,3 +2,6 @@ application:
   security:
     login-rate-limit:
       attempts: 100000
+      username-attempts: 100000
+    upload-rate-limit:
+      attempts: 100000
