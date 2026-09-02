@@ -60,6 +60,7 @@ class RefreshTokenIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE))
                 .contains(RefreshCookieFactory.COOKIE_NAME + "=")
                 .contains("HttpOnly")
+                .contains("Secure")
                 .contains("SameSite=Lax")
                 .contains("Path=/api/users/auth");
 
@@ -129,6 +130,66 @@ class RefreshTokenIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).contains("Max-Age=0");
         assertThat(refresh(cookie).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("Выход отзывает всё семейство, а не только предъявленный токен")
+    void logout_RevokesWholeFamily() {
+        createUser(USERNAME, TestRole.USER);
+        String first = refreshCookieValue(loginResponse(USERNAME));
+        String rotated = refreshCookieValue(refresh(first));
+
+        restTemplate.exchange("/api/users/auth/logout", HttpMethod.POST, withCookie(rotated), Void.class);
+
+        assertThat(refresh(first).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("Ротация второй ветки grace-форка выдаёт кражу и отзывает всё семейство")
+    void refresh_WhenSecondForkBranchRotates_RevokesFamily() {
+        createUser(USERNAME, TestRole.USER);
+        String stolen = refreshCookieValue(loginResponse(USERNAME));
+
+        String ownerBranch = refreshCookieValue(refresh(stolen));
+        ResponseEntity<AuthController.LoginResponse> replay = refresh(stolen);
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String thiefBranch = refreshCookieValue(replay);
+
+        ResponseEntity<AuthController.LoginResponse> ownerNext = refresh(ownerBranch);
+        assertThat(ownerNext.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(refresh(thiefBranch).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(refresh(refreshCookieValue(ownerNext)).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(aliveTokenCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("Кража ловится и когда ветка вора ротируется первой")
+    void refresh_WhenThiefBranchRotatesFirst_RevokesFamily() {
+        createUser(USERNAME, TestRole.USER);
+        String stolen = refreshCookieValue(loginResponse(USERNAME));
+
+        String ownerBranch = refreshCookieValue(refresh(stolen));
+        String thiefBranch = refreshCookieValue(refresh(stolen));
+
+        ResponseEntity<AuthController.LoginResponse> thiefNext = refresh(thiefBranch);
+        assertThat(thiefNext.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(refresh(ownerBranch).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(refresh(refreshCookieValue(thiefNext)).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(aliveTokenCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("Сессия старше абсолютного потолка отзывается целиком")
+    void refresh_WhenFamilyExceedsMaxSession_Returns401() {
+        createUser(USERNAME, TestRole.USER);
+        String cookie = refreshCookieValue(loginResponse(USERNAME));
+
+        jdbcTemplate.update("update refresh_token set family_created_at = family_created_at - interval '61 days'");
+
+        assertThat(refresh(cookie).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(aliveTokenCount()).isZero();
     }
 
     @Test
@@ -272,6 +333,11 @@ class RefreshTokenIntegrationTest extends AbstractIntegrationTest {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private Integer aliveTokenCount() {
+        return jdbcTemplate.queryForObject(
+                "select count(*) from refresh_token where revoked_at is null", Integer.class);
     }
 
     private void ageUsedTokens() {
