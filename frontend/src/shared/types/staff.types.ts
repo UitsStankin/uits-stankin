@@ -132,3 +132,33 @@ export type TeacherUpsertRequest = {
   examScheduleGraduation: string | null;
   examScheduleNonGraduation: string | null;
 };
+
+/**
+ * Учебно-вспомогательный персонал (УВП) — контракт T-27 (docs/API.md,
+ * «УВП»). Лаборанты, инженеры, методисты: карточки без степеней, званий,
+ * дисциплин и учётных записей.
+ *
+ * Форма у карточки одна: она целиком помещается в элементе списка,
+ * и `GET /api/public/helpers/{id}` отдаёт то же тело. Короткой и полной
+ * проекций, как у ППС, здесь нет — потому нет и пары типов «элемент
+ * списка / детальная».
+ */
+export type Helper = {
+  /** Идентификатор карточки; учётной записи за ним не стоит никогда. */
+  id: number;
+  lastName: string;
+  firstName: string;
+  patronymic: string | null;
+  /** Должность — свободная строка, словаря у неё нет. */
+  position: string;
+  /**
+   * Ключ файла аватара — он же уходит обратно в `PUT /api/helpers/{id}`.
+   * В отличие от ППС приходит и в списке: форма-то одна (T-44, заявка B-1).
+   */
+  avatar: string | null;
+  /** Готовый адрес для `<img src>`, относительный; без фото — `null`. */
+  avatarUrl: string | null;
+};
+
+/** Страница карточек УВП. */
+export type HelperPage = Page<Helper>;

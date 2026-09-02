@@ -82,3 +82,16 @@ export const TEACHERS_ROUTE = '/about/employee/teachers';
 export function teacherRoute(id: number): string {
   return `${TEACHERS_ROUTE}/${id}`;
 }
+
+/**
+ * Учебно-вспомогательный персонал. Адрес взят из меню
+ * (`shared/config/navigation.ts`, пункт `about/employee/uvp`) и повторяет
+ * старый портал — как и остальные перенесённые разделы, это экономит
+ * строку в карте редиректов nginx при переезде.
+ *
+ * Знают двое: список роутов и сама страница (собирает адреса пагинатора).
+ * Функции адреса одной карточки — как `teacherRoute` у ППС — нет вовсе:
+ * детальной страницы у УВП не было в оригинале и нет в контракте смысла —
+ * карточка целиком помещается в элементе списка (docs/API.md, «УВП»).
+ */
+export const HELPERS_ROUTE = '/about/employee/uvp';

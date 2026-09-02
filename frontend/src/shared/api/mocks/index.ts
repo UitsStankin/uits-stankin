@@ -7,6 +7,7 @@
  */
 export { handlers } from './handlers';
 export { editablePageHandlers } from './editablePages';
+export { helpersFixture, makeHelper, publicHelperHandlers } from './helpers';
 export { makeNews, newsFixture, newsHandlers } from './news';
 export { pageResponse } from './page';
 export {

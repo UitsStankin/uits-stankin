@@ -8,6 +8,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import Loader from '@shared/ui/Loader';
 import {
   ANNOUNCEMENTS_ROUTE,
+  HELPERS_ROUTE,
   LOGIN_ROUTE,
   NEWS_ROUTE,
   PERSONAL_ROUTE,
@@ -22,6 +23,7 @@ import NewsDetailPage from '@pages/NewsDetailPage';
 import AnnouncementsPage from '@pages/AnnouncementsPage';
 import TeachersPage from '@pages/TeachersPage';
 import TeacherDetailPage from '@pages/TeacherDetailPage';
+import HelpersPage from '@pages/HelpersPage';
 import ProtectedRoute from './protectedRoute';
 import RouteError from './RouteError';
 
@@ -82,6 +84,15 @@ export const routes: RouteObject[] = [
           { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
           { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
         ],
+      },
+      // УВП. Публичный: ручка `GET /api/public/helpers` открыта всем.
+      // Детальной страницы нет намеренно, поэтому и вложенных роутов нет:
+      // карточка целиком помещается в элементе списка, а публичная ручка
+      // одной карточки обслуживает форму правки (блок 4), не посетителя.
+      {
+        path: HELPERS_ROUTE,
+        element: <HelpersPage />,
+        errorElement: <RouteError />,
       },
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
       // у /corp было боковое меню на два пункта, но второй из них —
