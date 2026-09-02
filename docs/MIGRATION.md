@@ -304,7 +304,10 @@ from users_user u where u.teacher_id = t.id;
 | `is_published` → `display` | переименование, полярность та же |
 | `content` | правило 3 |
 
-**`scientific_publications_tag`** — 1:1 целиком: `id`, `name`.
+**`scientific_publications_tag`** — 1:1 по колонкам: `id`, `name`. Но новая схема
+держит уникальность имени без учёта регистра (`uq_tag_name_lower`, changeset 028):
+дубликаты вида «НИР»/«нир» перед вставкой схлопнуть в один тег и перевесить ссылки
+в `scientific_publications_scientificpublication_tags`.
 
 **`scientific_publications_scientificpublication`**
 
