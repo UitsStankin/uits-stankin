@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 from pypdf import PdfReader, PdfWriter, Transformation
 
+from app.parser import MAX_PAGES
+
 FIXTURES = Path(__file__).parent / "tests" / "fixtures"
 
 
@@ -38,6 +40,16 @@ def two_page_pdf(chekanin_pdf, razumovskiy_pdf) -> bytes:
 def blank_page_pdf() -> bytes:
     writer = PdfWriter()
     writer.add_blank_page(width=595, height=842)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
+@pytest.fixture(scope="session")
+def over_page_limit_pdf() -> bytes:
+    writer = PdfWriter()
+    for _ in range(MAX_PAGES + 1):
+        writer.add_blank_page(width=595, height=842)
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()

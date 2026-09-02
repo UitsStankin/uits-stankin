@@ -1,11 +1,12 @@
 import io
+import time
 from datetime import date
 
 import pdfplumber
 import pytest
 
 from app.errors import ScheduleParseError
-from app.exams import _parse_lines, parse_exams
+from app.exams import EXAM_HEAD_RE, _parse_lines, parse_exams
 from app.models import Consultation
 
 
@@ -235,3 +236,9 @@ class TestLineParsing:
     def test_empty_line_list(self):
         with pytest.raises(ScheduleParseError, match="ни одного экзамена"):
             _parse_lines([])
+
+    def test_hostile_group_list_fails_fast(self):
+        line = "09.01.2025 8:30 - 14:00 ауд. 209 " + "ИДБ-21-10," * 30 + " хвост хвост"
+        started = time.perf_counter()
+        assert EXAM_HEAD_RE.match(line) is None
+        assert time.perf_counter() - started < 0.5

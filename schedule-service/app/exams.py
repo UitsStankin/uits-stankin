@@ -8,14 +8,14 @@ from pydantic import ValidationError
 
 from app.errors import ScheduleParseError
 from app.models import Consultation, Exam, ParsedExams
-from app.parser import DAYS, GROUP_RE
+from app.parser import DAYS, GROUP_RE, MAX_PAGES
 
 CONSULTATION_RE = re.compile(
     r"^консультация:\s*(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2})\s+ауд\.\s*(\S+)$"
 )
 EXAM_HEAD_RE = re.compile(
     r"^(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s+"
-    r"ауд\.\s*(\S+)\s+(\S+(?:,\s*\S+)*)$"
+    r"ауд\.\s*(\S+)\s+([^\s,]+(?:,\s*[^\s,]+)*)$"
 )
 EXAM_TAIL_RE = re.compile(r"^([А-ЯЁ][а-яё]+)\s+(.+)$")
 
@@ -30,9 +30,15 @@ def parse_exams(source: bytes | BinaryIO) -> ParsedExams:
     lines: list[str] = []
     try:
         with pdf:
+            if len(pdf.pages) > MAX_PAGES:
+                raise ScheduleParseError(
+                    f"в файле {len(pdf.pages)} страниц при пределе {MAX_PAGES}"
+                )
             for page in pdf.pages:
                 for table in page.find_tables():
                     lines.extend(_table_lines(page, table))
+    except ScheduleParseError:
+        raise
     except Exception as e:
         raise ScheduleParseError("не удалось извлечь таблицы из PDF") from e
     if not lines:

@@ -63,6 +63,14 @@ class TestParse:
             "detail": "в PDF не найдено ни одной таблицы расписания",
         }
 
+    def test_pdf_over_page_limit(self, client, over_page_limit_pdf):
+        response = post_pdf(client, over_page_limit_pdf)
+        assert response.status_code == 422
+        assert response.json() == {
+            "error": "schedule_parse_error",
+            "detail": "в файле 51 страниц при пределе 50",
+        }
+
 
 class TestParseExams:
     def test_valid_pdf(self, client, bychkova_exams_pdf):
@@ -102,6 +110,14 @@ class TestParseExams:
         assert response.json() == {
             "error": "schedule_parse_error",
             "detail": "в PDF не найдено ни одной таблицы экзаменов",
+        }
+
+    def test_pdf_over_page_limit(self, client, over_page_limit_pdf):
+        response = post_exams(client, over_page_limit_pdf)
+        assert response.status_code == 422
+        assert response.json() == {
+            "error": "schedule_parse_error",
+            "detail": "в файле 51 страниц при пределе 50",
         }
 
 
@@ -147,6 +163,38 @@ class TestBadRequest:
         response = post_pdf(client, b"x" * MAX_UPLOAD_BYTES)
         assert response.status_code == 422
         assert response.json()["error"] == "schedule_parse_error"
+
+    def test_oversized_content_length_is_rejected_before_parsing(self, monkeypatch, client):
+        def boom(source):
+            raise AssertionError("разбор не должен запускаться")
+
+        monkeypatch.setattr(main, "parse_schedule", boom)
+        response = client.post(
+            "/parse",
+            headers={"Content-Length": str(main.MAX_REQUEST_BYTES + 1)},
+            content=b"",
+        )
+        assert response.status_code == 413
+        assert response.json() == {
+            "error": "file_too_large",
+            "detail": "файл больше допустимых 5 МБ",
+        }
+
+    def test_chunked_body_over_limit_is_rejected(self, client):
+        def chunks():
+            for _ in range(2):
+                yield b"x" * main.MAX_REQUEST_BYTES
+
+        response = client.post(
+            "/parse",
+            headers={"Content-Type": "multipart/form-data; boundary=chunky"},
+            content=chunks(),
+        )
+        assert response.status_code == 413
+        assert response.json() == {
+            "error": "file_too_large",
+            "detail": "файл больше допустимых 5 МБ",
+        }
 
 
 class TestUnexpectedError:
