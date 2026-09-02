@@ -27,7 +27,7 @@ export type { News, NewsRequest, NewsPage, NewsListParams, PostType } from './ne
 // Редактируемые разделы
 export type { EditablePage, EditablePageSlug } from './pages.types';
 
-// Преподаватели
+// Преподаватели и УВП
 export type {
   Teacher,
   TeacherListItem,
@@ -36,6 +36,8 @@ export type {
   TeacherRank,
   TeacherUpsertRequest,
   Subject,
+  Helper,
+  HelperPage,
 } from './staff.types';
 
 // Навигация
