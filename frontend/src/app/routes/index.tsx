@@ -24,12 +24,87 @@ import AnnouncementsPage from '@pages/AnnouncementsPage';
 import TeachersPage from '@pages/TeachersPage';
 import TeacherDetailPage from '@pages/TeacherDetailPage';
 import HelpersPage from '@pages/HelpersPage';
+import EditablePagePage from '@pages/EditablePagePage';
+import type { EditablePageSlug } from '@shared/types';
 import ProtectedRoute from './protectedRoute';
 import RouteError from './RouteError';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
 // const ErrorsRoutes = lazy(() => import('@pages/errors'));
+
+/**
+ * Редактируемые разделы: адрес → слаг раздела и заголовок страницы.
+ *
+ * Девять из тринадцати. У `home-before` и `home-after` собственного адреса
+ * нет по контракту — их рисует главная. Контакты и аспирантура ждут свои
+ * страницы (F-32, F-34): в оригинале вокруг их редактируемых блоков была
+ * своя вёрстка — карта с соцсетями и таблица аспирантов.
+ *
+ * Адреса взяты из меню (`shared/config/navigation.ts`) и повторяют старый
+ * портал. Заголовки — формулировки подписей из сида
+ * `008-seed-editable-pages`, чтобы посетитель и модератор называли раздел
+ * одинаково; сам `title` из ответа страница не рисует — контракт называет
+ * его подписью для списка в админке, и в перенесённых строках он бывает
+ * `null`.
+ *
+ * Обобщённого роута `/page/:slug` из оригинала нет намеренно: там на него
+ * не вела ни одна ссылка, здесь он дал бы каждому разделу второй адрес —
+ * дубль для поисковика, тот самый, от которого F-20 уходил у записей.
+ * Слаг захардкожен здесь, а не разбирается из адреса: опечатка в нём —
+ * ошибка компиляции по `EditablePageSlug`, а не рантаймовый `404`.
+ */
+const EDITABLE_PAGES: ReadonlyArray<{
+  path: string;
+  slug: EditablePageSlug;
+  heading: string;
+}> = [
+  {
+    path: '/about/fields-of-study',
+    slug: 'fields-of-study',
+    heading: 'Направления подготовки',
+  },
+  {
+    path: '/about/documents/department',
+    slug: 'documents-department',
+    heading: 'Нормативные документы кафедры',
+  },
+  {
+    path: '/about/documents/university',
+    slug: 'documents-university',
+    heading: 'Нормативные документы университета',
+  },
+  {
+    path: '/educational-activities/bachelor/edu-plans',
+    slug: 'bachelor-edu-plans',
+    heading: 'Бакалавриат: учебные планы',
+  },
+  {
+    path: '/educational-activities/bachelor/graduate',
+    slug: 'bachelor-graduate',
+    heading: 'Бакалавриат: защита ВКР',
+  },
+  {
+    path: '/educational-activities/bachelor/practices',
+    slug: 'bachelor-practices',
+    heading: 'Бакалавриат: практики',
+  },
+  {
+    path: '/educational-activities/master/edu-plans',
+    slug: 'master-edu-plans',
+    heading: 'Магистратура: учебные планы',
+  },
+  {
+    path: '/educational-activities/master/graduate',
+    slug: 'master-graduate',
+    heading: 'Магистратура: защита ВКР',
+  },
+  {
+    path: '/educational-activities/master/practices',
+    slug: 'master-practices',
+    heading: 'Магистратура: практики',
+  },
+];
 
 // Базовые роуты
 export const routes: RouteObject[] = [
@@ -94,6 +169,14 @@ export const routes: RouteObject[] = [
         element: <HelpersPage />,
         errorElement: <RouteError />,
       },
+      // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`
+      // открыта всем. Одна страница на девять адресов — разделы отличаются
+      // только слагом и заголовком, оба лежат в таблице выше.
+      ...EDITABLE_PAGES.map(({ path, slug, heading }) => ({
+        path,
+        element: <EditablePagePage slug={slug} heading={heading} />,
+        errorElement: <RouteError />,
+      })),
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
       // у /corp было боковое меню на два пункта, но второй из них —
       // календарь событий — приедет только в Фазе 3. Меню из одного
