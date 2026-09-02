@@ -110,3 +110,13 @@ databaseChangeLog:
             columns:
               - column:
                   name: exam_schedule_id
+      # Откат пишется руками: произвольный SQL Liquibase отменить сам не умеет,
+      # и без этого блока шаг стал бы необратимым. Явный rollback замещает
+      # автогенерируемый откат целиком, поэтому здесь раскатываются и таблицы.
+      rollback:
+        - sql:
+            sql: ALTER TABLE schedule_exam DROP CONSTRAINT ck_exam_consultation_all_or_none
+        - dropTable:
+            tableName: schedule_exam
+        - dropTable:
+            tableName: schedule_examschedule

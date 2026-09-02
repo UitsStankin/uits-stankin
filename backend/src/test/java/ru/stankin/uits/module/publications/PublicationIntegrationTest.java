@@ -177,6 +177,34 @@ class PublicationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void unknownSortFieldGives400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/publications?sort=foo", ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("foo");
+    }
+
+    @Test
+    void sortByYearAscendingReversesDefaultOrder() {
+        assertThat(page("?sort=year,asc").content())
+                .extracting(PublicationResponseDto::getId)
+                .containsExactly(forecast.getId(), cutting.getId());
+    }
+
+    @Test
+    void sortByVolNumberUsesTableColumn() {
+        cutting.setVolN("Т. 1");
+        forecast.setVolN("Т. 2");
+        publicationRepository.saveAll(List.of(cutting, forecast));
+
+        assertThat(page("?sort=volN,desc").content())
+                .extracting(PublicationResponseDto::getId)
+                .containsExactly(forecast.getId(), cutting.getId());
+    }
+
+    @Test
     void paginationReportsTotals() {
         PageResponseDto<PublicationResponseDto> firstPage = page("?size=1");
 

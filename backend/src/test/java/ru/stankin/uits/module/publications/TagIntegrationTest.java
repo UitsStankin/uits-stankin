@@ -3,6 +3,7 @@ package ru.stankin.uits.module.publications;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -20,6 +21,7 @@ import ru.stankin.uits.module.publications.repository.TagRepository;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TagIntegrationTest extends AbstractIntegrationTest {
 
@@ -117,6 +119,21 @@ class TagIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(tagRepository.count()).isEqualTo(1);
+    }
+
+    /**
+     * Гонка двух одновременных POST проходит проверку existsByNameIgnoreCase до вставки
+     * друг друга, поэтому дубль обязан отбить сама база — индексом uq_tag_name_lower.
+     * Вставка идёт через репозиторий в обход сервисной проверки: через ручку тот же
+     * отказ отдал бы код, и тест не отличил бы отказ кода от отказа схемы.
+     */
+    @Test
+    void duplicateNameIgnoringCaseIsRejectedByDatabase() {
+        tagRepository.saveAndFlush(Tag.builder().name("Machine learning").build());
+
+        assertThatThrownBy(() -> tagRepository.saveAndFlush(Tag.builder().name("MACHINE LEARNING").build()))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uq_tag_name_lower");
     }
 
     @Test

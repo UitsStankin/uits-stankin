@@ -29,22 +29,25 @@ public class RefreshTokenService {
     private final SecureRandom secureRandom = new SecureRandom();
     private final long expirationMillis;
     private final long gracePeriodMillis;
+    private final long maxSessionMillis;
 
     public RefreshTokenService(
             RefreshTokenRepository refreshTokenRepository,
             @Value("${application.security.refresh.expiration}") long expirationMillis,
-            @Value("${application.security.refresh.grace-period}") long gracePeriodMillis
+            @Value("${application.security.refresh.grace-period}") long gracePeriodMillis,
+            @Value("${application.security.refresh.max-session}") long maxSessionMillis
     ) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.expirationMillis = expirationMillis;
         this.gracePeriodMillis = gracePeriodMillis;
+        this.maxSessionMillis = maxSessionMillis;
     }
 
     public record Rotation(User user, String refreshToken) {}
 
     @Transactional
     public String issue(User user) {
-        return issue(user, UUID.randomUUID());
+        return issue(user, UUID.randomUUID(), null, OffsetDateTime.now());
     }
 
     @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
@@ -70,8 +73,23 @@ public class RefreshTokenService {
             throw new InvalidRefreshTokenException("Сессия открыта до смены пароля");
         }
 
+        if (isFamilyPastMaxSession(token.getFamilyCreatedAt(), now)) {
+            refreshTokenRepository.revokeFamily(token.getFamilyId(), now);
+            throw new InvalidRefreshTokenException("Достигнут предельный срок сессии");
+        }
+
         if (token.getUsedAt() != null && isOutsideGracePeriod(token.getUsedAt(), now)) {
             log.warn("Повторное использование refresh-токена: семейство {} отозвано", token.getFamilyId());
+            refreshTokenRepository.revokeFamily(token.getFamilyId(), now);
+            throw new InvalidRefreshTokenException("Повторное использование токена сессии");
+        }
+
+        // Grace-окно позволяет получить от одного родителя два токена. Дальше живёт
+        // ровно одна ветка: если брат предъявленного токена уже ротирован — вторую
+        // ветку двигает украденная cookie, семейство закрывается целиком.
+        if (token.getParentId() != null
+                && refreshTokenRepository.existsByParentIdAndUsedAtIsNotNullAndIdNot(token.getParentId(), token.getId())) {
+            log.warn("Ротация второй ветки refresh-токена: семейство {} отозвано", token.getFamilyId());
             refreshTokenRepository.revokeFamily(token.getFamilyId(), now);
             throw new InvalidRefreshTokenException("Повторное использование токена сессии");
         }
@@ -80,7 +98,7 @@ public class RefreshTokenService {
             token.setUsedAt(now);
         }
 
-        return new Rotation(user, issue(user, token.getFamilyId()));
+        return new Rotation(user, issue(user, token.getFamilyId(), token.getId(), token.getFamilyCreatedAt()));
     }
 
     @Transactional
@@ -94,7 +112,7 @@ public class RefreshTokenService {
         return refreshTokenRepository.deleteExpired(OffsetDateTime.now());
     }
 
-    private String issue(User user, UUID familyId) {
+    private String issue(User user, UUID familyId, Long parentId, OffsetDateTime familyCreatedAt) {
         byte[] bytes = new byte[TOKEN_BYTES];
         secureRandom.nextBytes(bytes);
 
@@ -105,6 +123,8 @@ public class RefreshTokenService {
                 .tokenHash(hash(rawToken))
                 .user(user)
                 .familyId(familyId)
+                .parentId(parentId)
+                .familyCreatedAt(familyCreatedAt)
                 .issuedAt(now)
                 .expiresAt(now.plus(expirationMillis, ChronoUnit.MILLIS))
                 .build());
@@ -118,6 +138,10 @@ public class RefreshTokenService {
 
     private boolean isOutsideGracePeriod(OffsetDateTime usedAt, OffsetDateTime now) {
         return usedAt.plus(gracePeriodMillis, ChronoUnit.MILLIS).isBefore(now);
+    }
+
+    private boolean isFamilyPastMaxSession(OffsetDateTime familyCreatedAt, OffsetDateTime now) {
+        return familyCreatedAt.plus(maxSessionMillis, ChronoUnit.MILLIS).isBefore(now);
     }
 
     private String hash(String rawToken) {

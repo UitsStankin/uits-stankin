@@ -15,6 +15,8 @@ import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.auth.service.RefreshCookieFactory;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
+import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
@@ -153,6 +155,26 @@ public class UserAdminIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getDetail()).isEqualTo("Неизвестная роль: root");
+    }
+
+    @Test
+    void getUsers_RejectsUnknownSortField() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users?sort=foo", HttpMethod.GET, withToken(adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("foo");
+    }
+
+    @Test
+    void getUsers_SortsByRequestedField() {
+        saveUser("ivanov", "Иван", "Яшин", "ivanov@stankin.ru", true, TestRole.USER);
+        saveUser("petrov", "Пётр", "Аистов", "petrov@stankin.ru", true, TestRole.USER);
+
+        PageResponseDto<UserAdminResponseDto> body = getUsers("/api/users?sort=lastName");
+
+        assertThat(usernames(body)).containsExactly("petrov", "ivanov", "admin_user");
     }
 
     @Test
@@ -332,6 +354,62 @@ public class UserAdminIntegrationTest extends AbstractIntegrationTest {
                 withToken(updateRequest(), adminToken), ProblemDetail.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void updateUser_Returns409_WhenTeacherRoleRemovedFromAccountWithLinkedCard() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.TEACHER);
+        long cardId = createLinkedCard(ivanov.getId());
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId(), HttpMethod.PUT,
+                withToken(updateRequest(), adminToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo(
+                "К учётной записи привязана карточка преподавателя id=" + cardId + ", сначала отвязать её");
+        assertThat(userRepository.findById(ivanov.getId()).orElseThrow().isTeacher()).isTrue();
+    }
+
+    @Test
+    void updateUser_RemovesTeacherRole_AfterCardIsUnlinked() {
+        User ivanov = saveUser("ivanov", "Иван", "Иванов", "ivanov@stankin.ru", true, TestRole.TEACHER);
+        long cardId = createLinkedCard(ivanov.getId());
+        unlinkCard(cardId);
+
+        ResponseEntity<UserAdminResponseDto> response = restTemplate.exchange(
+                "/api/users/" + ivanov.getId(), HttpMethod.PUT,
+                withToken(updateRequest(), adminToken), UserAdminResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(userRepository.findById(ivanov.getId()).orElseThrow().isTeacher()).isFalse();
+    }
+
+    private long createLinkedCard(Long userId) {
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers", HttpMethod.POST,
+                withToken(cardRequest().userId(userId).build(), adminToken), TeacherDetailsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        return response.getBody().getId();
+    }
+
+    private void unlinkCard(long cardId) {
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/" + cardId, HttpMethod.PUT,
+                withToken(cardRequest().build(), adminToken), TeacherDetailsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    private static TeacherRequestDto.TeacherRequestDtoBuilder cardRequest() {
+        return TeacherRequestDto.builder()
+                .lastName("Иванов")
+                .firstName("Иван")
+                .position("доцент");
     }
 
     private UserCreateRequestDto createRequest(String username) {

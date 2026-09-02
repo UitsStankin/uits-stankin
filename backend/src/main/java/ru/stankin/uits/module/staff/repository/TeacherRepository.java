@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface TeacherRepository extends JpaRepository<Teacher, Long> {
 
     boolean existsByAvatar(String avatar);
+    boolean existsByEducationContaining(String key);
+    boolean existsByQualificationContaining(String key);
     Optional<Teacher> findByUserUsername(String username);
     Optional<Teacher> findByUserId(Long userId);
 

@@ -51,3 +51,7 @@ databaseChangeLog:
       file: db/changelog/changesets/025-create-event-tables.yml
   - include:
       file: db/changelog/changesets/026-create-exam-tables.yml
+  - include:
+      file: db/changelog/changesets/027-refresh-token-lineage.yml
+  - include:
+      file: db/changelog/changesets/028-tag-name-lower-unique.yml

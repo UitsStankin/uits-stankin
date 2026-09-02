@@ -36,6 +36,13 @@ spring:
       pageable:
         max-page-size: 100
 
+server:
+  tomcat:
+    # Сколько тела отклонённого запроса Tomcat дочитывает перед ответом
+    # (по умолчанию 2MB): без запаса над max-request-size клиент вместо 413
+    # видит обрыв соединения
+    max-swallow-size: 20MB
+
 management:
   endpoints:
     web:
@@ -55,12 +62,18 @@ application:
     refresh:
       expiration: ${REFRESH_EXPIRATION:1209600000}
       grace-period: ${REFRESH_GRACE_PERIOD:60000}
+      max-session: ${REFRESH_MAX_SESSION:5184000000}
       cookie-secure: ${REFRESH_COOKIE_SECURE:true}
       cleanup-cron: ${REFRESH_CLEANUP_CRON:0 15 3 * * *}
     login-rate-limit:
       attempts: ${LOGIN_RATE_LIMIT_ATTEMPTS:5}
+      username-attempts: ${LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS:10}
       period: ${LOGIN_RATE_LIMIT_PERIOD:60000}
       eviction-cron: ${LOGIN_RATE_LIMIT_EVICTION_CRON:0 */10 * * * *}
+    upload-rate-limit:
+      attempts: ${UPLOAD_RATE_LIMIT_ATTEMPTS:30}
+      period: ${UPLOAD_RATE_LIMIT_PERIOD:60000}
+      eviction-cron: ${UPLOAD_RATE_LIMIT_EVICTION_CRON:0 */10 * * * *}
   schedule-service:
     url: ${SCHEDULE_SERVICE_URL:http://localhost:8000}
     connect-timeout: ${SCHEDULE_SERVICE_CONNECT_TIMEOUT:3s}

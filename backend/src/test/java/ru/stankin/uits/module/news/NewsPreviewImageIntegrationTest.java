@@ -154,6 +154,35 @@ public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
                 .isEqualTo("/media/" + newKey.replace(".jpg", "_thumb.jpg"));
     }
 
+    /**
+     * Обложка появляется у новости, созданной без неё. Пересчёт миниатюры обязан
+     * срабатывать и на переходе null → ключ: иначе поле остаётся пустым, лента тянет
+     * полноразмерный файл, а осиротевший _thumb-файл через сутки уносит уборка.
+     */
+    @Test
+    void updateNews_WhenCoverAdded_SetsThumbnail() throws IOException {
+        String token = createAdminAndLogin();
+        String key = storeFile();
+        String thumbnailKey = storeThumbnailFor(key);
+
+        ResponseEntity<NewsResponseDto> created = restTemplate.postForEntity(
+                "/api/news", withToken(requestWithoutCover(), token), NewsResponseDto.class);
+        assertThat(created.getBody()).isNotNull();
+
+        ResponseEntity<NewsResponseDto> updated = restTemplate.exchange(
+                "/api/news/" + created.getBody().getId(),
+                HttpMethod.PUT,
+                withToken(requestWithCover(key), token),
+                NewsResponseDto.class);
+
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody()).isNotNull();
+        assertThat(updated.getBody().getPreviewThumbnailUrl()).isEqualTo("/media/" + thumbnailKey);
+        assertThat(newsRepository.findById(created.getBody().getId()).orElseThrow().getPreviewThumbnail())
+                .isEqualTo(thumbnailKey);
+        assertThat(STORAGE_ROOT.resolve(thumbnailKey)).exists();
+    }
+
     /** Новость без обложки законна, и адрес у неё пустой, а не строка «/media/null». */
     @Test
     void createNews_WhenNoCover_ReturnsNullUrl() {
