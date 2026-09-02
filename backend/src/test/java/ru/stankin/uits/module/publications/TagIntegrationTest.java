@@ -3,6 +3,7 @@ package ru.stankin.uits.module.publications;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -20,6 +21,7 @@ import ru.stankin.uits.module.publications.repository.TagRepository;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TagIntegrationTest extends AbstractIntegrationTest {
 
@@ -119,6 +121,21 @@ class TagIntegrationTest extends AbstractIntegrationTest {
         assertThat(tagRepository.count()).isEqualTo(1);
     }
 
+    /**
+     * Гонка двух одновременных POST проходит проверку existsByNameIgnoreCase до вставки
+     * друг друга, поэтому дубль обязан отбить сама база — индексом uq_tag_name_lower.
+     * Вставка идёт через репозиторий в обход сервисной проверки: через ручку тот же
+     * отказ отдал бы код, и тест не отличил бы отказ кода от отказа схемы.
+     */
+    @Test
+    void duplicateNameIgnoringCaseIsRejectedByDatabase() {
+        tagRepository.saveAndFlush(Tag.builder().name("Machine learning").build());
+
+        assertThatThrownBy(() -> tagRepository.saveAndFlush(Tag.builder().name("MACHINE LEARNING").build()))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uq_tag_name_lower");
+    }
+
     @Test
     void blankNameReturns400() {
         ResponseEntity<ProblemDetail> response = restTemplate.exchange(
@@ -130,6 +147,65 @@ class TagIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(tagRepository.count()).isZero();
+    }
+
+    private ResponseEntity<TagDto> rename(Long id, String name, String token) {
+        return restTemplate.exchange(
+                "/api/tags/" + id,
+                HttpMethod.PUT,
+                new HttpEntity<>(new TagRequestDto(name), authJson(token)),
+                TagDto.class
+        );
+    }
+
+    @Test
+    void moderatorRenamesTag() {
+        Tag stored = tag("машиное обучение");
+
+        ResponseEntity<TagDto> response = rename(stored.getId(), "машинное обучение", moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(stored.getId());
+        assertThat(tagRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("машинное обучение");
+    }
+
+    @Test
+    void renameToNameTakenByAnotherTagReturns400() {
+        tag("машинное обучение");
+        Tag stored = tag("оптимизация");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/tags/" + stored.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(new TagRequestDto("Машинное Обучение"), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(tagRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("оптимизация");
+    }
+
+    @Test
+    void renameChangingOnlyCaseIsAllowed() {
+        Tag stored = tag("machine learning");
+
+        ResponseEntity<TagDto> response = rename(stored.getId(), "Machine Learning", moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(tagRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("Machine Learning");
+    }
+
+    @Test
+    void renamingUnknownTagReturns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/tags/999999",
+                HttpMethod.PUT,
+                new HttpEntity<>(new TagRequestDto("что угодно"), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test

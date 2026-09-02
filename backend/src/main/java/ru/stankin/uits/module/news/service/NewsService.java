@@ -22,6 +22,8 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.security.SecurityUser;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 public class NewsService {
@@ -139,10 +141,12 @@ public class NewsService {
         String oldThumbnail = newsPost.getPreviewThumbnail();
         newsMapper.updateEntity(newsPost, request);
 
-        if (oldKey != null && !oldKey.equals(newsPost.getPreviewImage())) {
+        if (!Objects.equals(oldKey, newsPost.getPreviewImage())) {
             newsPost.setPreviewThumbnail(thumbnailFor(newsPost.getPreviewImage()));
-            fileCleanup.deleteAfterCommit(oldKey);
 
+            if (oldKey != null) {
+                fileCleanup.deleteAfterCommit(oldKey);
+            }
             if (oldThumbnail != null) {
                 fileCleanup.deleteAfterCommit(oldThumbnail);
             }

@@ -135,6 +135,39 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    @Test
+    void upload_WhenFileIsEmpty_Returns400() {
+        createUser("admin_empty", TestRole.ADMIN);
+        String token = login("admin_empty");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(new byte[0], "photo.jpg", "news", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Файл не передан");
+    }
+
+    /**
+     * Ответ обязан доехать телом ProblemDetail, а не обрывом соединения:
+     * Tomcat дочитывает отклонённое тело только в пределах max-swallow-size.
+     */
+    @Test
+    void upload_WhenFileExceedsSizeLimit_Returns413WithProblemDetail() {
+        createUser("admin_large", TestRole.ADMIN);
+        String token = login("admin_large");
+        byte[] oversized = new byte[16 * 1024 * 1024];
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(oversized, "photo.jpg", "news", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Файл превышает допустимый размер.");
+    }
+
     /** Адрес из ответа должен работать без токена: картинки открывают посетители сайта. */
     @Test
     void uploadedFile_IsServedByReturnedUrlWithoutToken() throws IOException {

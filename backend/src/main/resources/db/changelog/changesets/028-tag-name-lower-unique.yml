@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-tag-name-lower-unique
+      author: eeffeecct
+      changes:
+        # Регистронезависимая уникальность тегов держалась только на проверке
+        # existsByNameIgnoreCase в TagService: два одновременных POST c «ML» и «ml»
+        # проходят её до вставки друг друга, а uq_tag_name сравнивает с учётом
+        # регистра. Гонку закрывает индекс по lower(name) на уровне базы.
+        - sql:
+            sql: CREATE UNIQUE INDEX uq_tag_name_lower ON scientific_publications_tag (lower(name))
+      # Откат пишется руками: произвольный SQL Liquibase отменить сам не умеет,
+      # и без этого блока шаг стал бы необратимым.
+      rollback:
+        - sql:
+            sql: DROP INDEX uq_tag_name_lower

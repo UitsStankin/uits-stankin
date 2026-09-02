@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.students.dto.PostgraduateDetailsResponseDto;
 import ru.stankin.uits.module.students.dto.PostgraduateRequestDto;
 import ru.stankin.uits.module.students.dto.PostgraduateResponseDto;
 import ru.stankin.uits.module.students.service.PostgraduateService;
@@ -29,6 +30,12 @@ public class PostgraduateController {
             @PageableDefault(size = 20, sort = {"student.lastName", "student.firstName", "id"}) Pageable pageable
     ) {
         return postgraduateService.getPostgraduates(teacherId, speciality, pageable);
+    }
+
+    @GetMapping("/postgraduates/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public PostgraduateDetailsResponseDto getPostgraduate(@PathVariable Long id) {
+        return postgraduateService.getPostgraduate(id);
     }
 
     @PostMapping("/postgraduates")

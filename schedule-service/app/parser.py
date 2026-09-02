@@ -11,6 +11,8 @@ from app.models import DatePeriod, Lesson, ParsedSchedule
 
 LEAP_YEAR = 2024
 
+MAX_PAGES = 50
+
 TIMINGS = {
     "8:30 - 10:10": 1,
     "10:20 - 12:00": 2,
@@ -50,7 +52,13 @@ def parse_schedule(source: bytes | BinaryIO) -> ParsedSchedule:
         raise ScheduleParseError("файл не удалось прочитать как PDF") from e
     try:
         with pdf:
+            if len(pdf.pages) > MAX_PAGES:
+                raise ScheduleParseError(
+                    f"в файле {len(pdf.pages)} страниц при пределе {MAX_PAGES}"
+                )
             tables = [table for page in pdf.pages if (table := page.extract_table())]
+    except ScheduleParseError:
+        raise
     except Exception as e:
         raise ScheduleParseError("не удалось извлечь таблицы из PDF") from e
     if not tables:

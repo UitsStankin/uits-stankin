@@ -69,6 +69,32 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getHelper_ReturnsOneCard() {
+        createHelper("Яковлев", "Иван");
+        HelpersEmployee stored = createHelper("Абрамова", "Анна");
+
+        ResponseEntity<HelpersEmployeeResponseDto> response = restTemplate.getForEntity(
+                "/api/public/helpers/" + stored.getId(),
+                HelpersEmployeeResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(stored.getId());
+        assertThat(response.getBody().getLastName()).isEqualTo("Абрамова");
+    }
+
+    @Test
+    void getHelper_WhenUnknownId_Returns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/helpers/999999",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void createHelper_AsModerator_Returns201WithLocation() {
         HelpersEmployeeRequestDto request = HelpersEmployeeRequestDto.builder()
                 .lastName("Кузнецова")

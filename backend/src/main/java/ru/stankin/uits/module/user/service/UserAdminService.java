@@ -2,12 +2,14 @@ package ru.stankin.uits.module.user.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
+import ru.stankin.uits.common.exception.ResourceInUseException;
 import ru.stankin.uits.module.user.dto.UserAdminResponseDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
 import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
@@ -17,14 +19,20 @@ import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserAdminService {
 
+    private static final Set<String> SORT_FIELDS = Set.of(
+            "id", "username", "firstName", "lastName", "email",
+            "superuser", "moderator", "teacher", "active", "lastLogin", "dateJoined");
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TeacherCardLookup teacherCardLookup;
 
     @Transactional(readOnly = true)
     public PageResponseDto<UserAdminResponseDto> getUsers(
@@ -33,6 +41,7 @@ public class UserAdminService {
             String role,
             Pageable pageable
     ) {
+        validateSort(pageable.getSort());
         RoleFilter filter = RoleFilter.of(role);
 
         return PageResponseDto.from(userRepository
@@ -62,6 +71,7 @@ public class UserAdminService {
         User user = findUser(id);
 
         validateSelfStaysAdmin(user, currentUserId, request);
+        validateTeacherCardUnlinked(user, request);
         userMapper.updateEntity(user, request);
 
         return userMapper.toAdminDto(user);
@@ -96,6 +106,25 @@ public class UserAdminService {
 
         if (!request.getSuperuser() || !request.getActive()) {
             throw new InvalidRequestException("Нельзя снять с себя права администратора или заблокировать себя");
+        }
+    }
+
+    private void validateTeacherCardUnlinked(User user, UserAdminUpdateRequestDto request) {
+        if (!user.isTeacher() || request.getTeacher()) {
+            return;
+        }
+
+        teacherCardLookup.cardIdByUserId(user.getId()).ifPresent(cardId -> {
+            throw new ResourceInUseException(
+                    "К учётной записи привязана карточка преподавателя id=" + cardId + ", сначала отвязать её");
+        });
+    }
+
+    private static void validateSort(Sort sort) {
+        for (Sort.Order order : sort) {
+            if (!SORT_FIELDS.contains(order.getProperty())) {
+                throw new InvalidRequestException("Неизвестное поле сортировки: " + order.getProperty());
+            }
         }
     }
 

@@ -41,6 +41,21 @@ public class TagService {
     }
 
     @Transactional
+    public TagDto updateTag(Long id, TagRequestDto request) {
+        Tag tag = tagRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Тег id=" + id + " не найден"));
+        String name = request.getName().trim();
+
+        if (tagRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw new InvalidRequestException("Тег с названием «" + name + "» уже существует");
+        }
+
+        tag.setName(name);
+
+        return tagMapper.toDto(tag);
+    }
+
+    @Transactional
     public void deleteTag(Long id) {
         Tag tag = tagRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Тег id=" + id + " не найден"));

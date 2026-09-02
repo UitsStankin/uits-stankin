@@ -4,12 +4,14 @@
 > Написан 2026-07-21 после четырёхмесячного перерыва. Читается сверху вниз за один заход.
 >
 > ⚠️ Разбор §5–§6 — снимок кода **до Фазы 0**: обработки JWT-ошибок в фильтре и CORS
-> по белому списку в нём нет.
-> §7 сверен с кодом 2026-08-30 и покрывает 106 файлов из 174, включая модули
+> по белому списку в нём нет, как и появившихся позже `LoginRateLimitFilter`
+> и `UploadRateLimitFilter` в цепочке, `exceptionHandling` с JSON-ответами 401/403
+> и `DjangoAwarePasswordEncoder` (T-55c) — в §6 их искать не стоит.
+> §7 сверен с кодом 2026-08-30 и покрывает 106 файлов из 196, включая модули
 > расписания, аспирантуры, публикаций и календаря; что осталось за рамками,
 > перечислено в его шапке. §9 переписан 2026-08-26: прежняя редакция описывала
-> фронт до Фазы 0. Актуальные статусы дефектов — в таблице §10, находки аудита
-> перенесённого кода — в бэклоге, раздел T-54.
+> фронт до Фазы 0. Актуальные статусы дефектов — в таблице §10, находки аудитов
+> перенесённого кода — в бэклоге, разделы T-54 и T-58…T-65.
 >
 > Связанные документы: [ARCHITECTURE.md](ARCHITECTURE.md) — принятые решения и почему;
 > [MIGRATION.md](MIGRATION.md) — матрица паритета со старым порталом;
@@ -64,7 +66,9 @@ Markdown-страницы (13 разделов, T-25), загрузка файл
 rich-text, владение объектом против роли, состав ответов, стоимость одного запроса,
 транзакции против внешних эффектов, версии зависимостей. Пять проходов дали находки,
 разбор каждой — в бэклоге; два вывода вынесены в правила ArchUnit, чтобы те же
-ошибки не вернулись в новых модулях.
+ошибки не вернулись в новых модулях. Второй аудит (T-58…T-65, 2026-09-02) прошёл
+по восьми направлениям — от мутационного анализа тестов до Python-микросервиса —
+дал 20 подтверждённых находок, и все закрыты одним заходом; разбор — в бэклоге.
 
 Фронтенд ходит на этот API: вход, профиль со сменой пароля, лента новостей
 и страница новости; прочие контентные страницы и админка — впереди (см. §9).
@@ -90,7 +94,7 @@ Backend внутри:
 ```
 backend/src/main/java/ru/stankin/uits/
 ├── UitsPortalApplication.java      точка входа (main)
-├── security/                       вся Spring Security, 5 файлов — cross-cutting
+├── security/                       вся Spring Security, 11 файлов — cross-cutting
 ├── common/                         общее для модулей: хранилище файлов, обработчик
 │                                   ошибок, санитайзер и прочие валидаторы
 └── module/                         бизнес-модули, каждый по одной схеме
@@ -166,18 +170,16 @@ Swagger UI после старта: `http://localhost:8080/swagger-ui.html`
 ### Три грабли на старте
 
 **1. Падение на старте: `Could not resolve placeholder 'JWT_SECRET_KEY'`.**
-`application.yaml` читает `${JWT_SECRET_KEY}` из **переменных окружения**, а Spring Boot файл `.env`
-сам по себе **не читает** — это умеет docker compose, но не Java. Нужно задать переменную
-в run-конфигурации IntelliJ либо в PowerShell перед запуском:
+Значит, нет файла `backend/.env`. Сам по себе Spring Boot `.env` не читает, но
+в `application.yaml` стоит `spring.config.import: optional:file:.env[.properties]`
+(T-02) — при запуске из каталога `backend` значения подхватываются оттуда. Файл
+создаётся копией `.env.example` с заполнением секретов; руками переменные
+окружения задавать не нужно.
 
-```powershell
-$env:JWT_SECRET_KEY = "<значение из backend/.env>"
-```
-
-**2. Расхождение кредов к БД.** `application.yaml` коннектится как `postgres` / `password`,
-а `docker-compose.yml` создаёт контейнер с юзером `uits_stankin_db` из `.env`. Если том
-`uits_postgres_data` остался с прошлых запусков — прокатит; на чистой машине — нет
-(образ postgres при заданном `POSTGRES_USER` роль `postgres` не создаёт вовсе).
+**2. Расхождение кредов к БД — историческая грабля (D-10, закрыта в T-02).**
+Теперь `application.yaml` и `docker-compose.yml` читают одни и те же
+`POSTGRES_USER` / `POSTGRES_PASSWORD` из `backend/.env` — расходиться нечему,
+пока значения меняются в одном месте.
 
 **3. Нет эндпоинта регистрации.** В `AuthController` только `/login`, и регистрации
 **не будет** — по [ARCHITECTURE.md §4.5](ARCHITECTURE.md) аккаунты создаёт админ. Первого
@@ -456,29 +458,31 @@ Refresh-токен в httpOnly cookie появился в T-30, и CSRF оста
 `@PreAuthorize` (точная).
 
 ```java
-new BCryptPasswordEncoder()
+new DjangoAwarePasswordEncoder()
 ```
-BCrypt — намеренно медленный хеш с солью внутри. Одинаковые пароли дают разные хеши. Проверка
-только через `passwordEncoder.matches(raw, hash)`, сравнивать строки бессмысленно.
-
-⚠️ Задача из миграции: в старой БД пароли в формате **Django pbkdf2**, а не BCrypt. По ARCHITECTURE
-решено сделать кастомный `PasswordEncoder`, понимающий формат Django, с перехешированием в BCrypt
-при первом успешном логине. Пока этого нет — старые юзеры не залогинятся.
+Под капотом BCrypt — намеренно медленный хеш с солью внутри: одинаковые пароли дают разные
+хеши, проверка только через `passwordEncoder.matches(raw, hash)`. Обёртка нужна миграции
+(T-55c): в старой БД пароли в формате **Django pbkdf2**, `matches` различает форматы
+по префиксу хеша, а при первом успешном входе `PasswordUpgradeService` молча перехеширует
+строку в BCrypt — старые пользователи входят прежними паролями.
 
 ---
 
 ## 7. Разбор файлов бэкенда по модулям
 
-> Разобрано 106 файлов из 174 в `src/main/java` и 4 тестовых класса из 42. Число в заголовке
+> Разобрано 106 файлов из 196 в `src/main/java` и 4 тестовых класса из 51. Число в заголовке
 > раздела — сколько файлов в нём описано; где описано не всё, стоит «X из Y».
-> Вне разбора остались: `common/PageResponseDto`, `common/FullName`, шесть классов
+> Вне разбора остались: `common/PageResponseDto`, `common/FullName`, восемь классов
 > `common/exception`, `common/validation` (`SafeUrl`, `SafeHtmlNotBlank`, `BcryptCompatible`,
 > `HtmlSanitizer`), часть `common/storage` (`PdfValidator`, `OrphanFileCleanupTask`,
-> `MediaResourceConfig`), `config/DevDataSeeder`, `config/OpenApiConfig`,
-> `security/JwtAuthenticationEntryPoint`, `security/RestAccessDeniedHandler`, девять файлов
+> `StoredFile`), `config/DevDataSeeder`, `config/OpenApiConfig`, `config/JacksonConfig`,
+> `config/SchedulingConfig`, шесть файлов `security/` (`JwtAuthenticationEntryPoint`,
+> `RestAccessDeniedHandler`, `DjangoAwarePasswordEncoder`, `PasswordUpgradeService`,
+> `LoginRateLimitFilter`, `UploadRateLimitFilter`), `pages/EditablePageFileUsageProbe`,
+> пара `TeacherCardLookup` (интерфейс в `user`, реализация в `staff`), девять файлов
 > конференций из `module/news` (T-28) и все тесты, кроме четырёх ниже.
 
-### Корень и security (6 из 8 файлов)
+### Корень и security (6 из 12 файлов)
 
 | Файл | Что делает |
 |---|---|
@@ -489,19 +493,19 @@ BCrypt — намеренно медленный хеш с солью внутр
 | `security/SecurityUser.java` | Адаптер `User` (JPA) → `UserDetails` (Security). Здесь булевы флаги превращаются в роли. `isEnabled()` возвращает `user.isActive()` — забаненный юзер не войдёт. |
 | `security/CustomUserDetailsService.java` | Единственная реализация `UserDetailsService`: достаёт `User` из БД по username и оборачивает в `SecurityUser`. Точка входа Security в БД проекта. |
 
-### common/storage (7 файлов)
+### common/storage (9 из 12 файлов)
 
 Загрузка и раздача картинок, T-22. Контракт ручек — [API.md](API.md), решение «диск сейчас,
 S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 
 | Файл | Что делает |
 |---|---|
-| `FileStorage.java` | Интерфейс хранилища: `store` / `delete` / `url` / `exists` / `existsInCategory`. Реализация одна, абстракция введена заранее — MinIO отложен, но переезд на него не закрыт. Ключевое решение: в БД лежит **ключ** (`news/2026/08/a3f9.jpg`), а не URL и не абсолютный путь. Путь зависит от машины, URL — от домена; сохранить в базу любой из них значит получить битые ссылки после первого же переезда. |
+| `FileStorage.java` | Интерфейс хранилища: `store` / `delete` / `url` / `exists` / `existsInCategory`, плюс `storeVariant` / `variantKey` под миниатюры (T-52c) и `listFiles` для уборки сирот (T-31). Реализация одна, абстракция введена заранее — MinIO отложен, но переезд на него не закрыт. Ключевое решение: в БД лежит **ключ** (`news/2026/08/a3f9.jpg`), а не URL и не абсолютный путь. Путь зависит от машины, URL — от домена; сохранить в базу любой из них значит получить битые ссылки после первого же переезда. |
 | `LocalFileStorage.java` | Единственная реализация — файлы на диске. Корень и публичный префикс приходят из `application.storage.root` и `application.storage.public-base-url` через `@Value`: локально это `./media`, в проде — том `media_data`, смонтированный в `/app/media` (`docker-compose.prod.yml`). Каталог создаётся в конструкторе, и неудача роняет приложение — иначе сервис поднялся бы «здоровым» и падал на каждой загрузке. Имя файла — `UUID` плюс раскладка `категория/yyyy/MM`, потому что имя из запроса — недоверенные данные. `resolveAndVerify` нормализует ключ и проверяет `startsWith(root)`. При `store` ключ собирает само хранилище, но `delete` получает его снаружи — из БД или из чужого кода, — и без проверки ключ вида `../../application.yaml` увёл бы удаление за пределы каталога. `delete` использует `deleteIfExists` — повторное удаление не ошибка, цель вызова уже достигнута. `existsInCategory` появился в T-33 и отвечает на другой вопрос: лежит ли файл именно в этом разделе. Сверяются два **разобранных** пути (`Path.startsWith`, посегментно), а не строки: проверка по началу строки пропускала ключ `avatars/../news/a3f9.jpg`, который затем нормализовался в раздел `news`, — и правка профиля удаляла обложку чужой новости. Пока проверка и удаление смотрят на разные представления ключа, между ними пролезает `..`. |
 | `ImageProcessor.java` | Проверка и нормализация картинки: не больше 15 МБ и 25 мегапикселей на входе, не больше 1600×1600 на выходе, только JPEG и PNG. Мегапиксели проверяются отдельно от мегабайт и до `ImageIO.read`: PNG со сплошной заливкой сжимается тысячекратно, и файл в пределах лимита разворачивался бы в полтора гигабайта кучи — заливать такой мог любой авторизованный, категория `avatars` открыта всем (T-54d). Размеры берутся у `ImageReader` из заголовка, пиксели при этом не декодируются. Формат определяется **по содержимому** (`ImageIO.getImageReaders`), а не по расширению и не по `Content-Type` — и то и другое присылает клиент, и подделать их ничего не стоит. Thumbnailator декодирует картинку и кодирует заново, поэтому всё, что прицеплено к файлу помимо изображения (EXIF, дописанный в хвост архив), до диска не доезжает. Ошибки — `InvalidFileException`, её `@ExceptionHandler` в `GlobalExceptionHandler` превращает в `400` с ProblemDetail. |
 | `ProcessedImage.java` | Record из двух полей — байты и расширение. Нужен, чтобы `process()` вернул и то и другое разом: расширение выбирает процессор по распознанному формату, а имя файла из него собирает хранилище. |
 | `FileCleanup.java` | Удаление файла, оставшегося без сущности (T-35). Отвечает на два вопроса сразу: **когда** удалять — после коммита, через `TransactionSynchronization`, потому что диск транзакцию не откатывает, а исключение из `afterCommit` превратило бы удавшийся запрос в 500 при сохранённых данных (поэтому сбой уборки логируется, а не пробрасывается); и **можно ли** удалять — один файл может стоять обложкой у двух записей, и тогда правка одной сносила бы картинку у другой. Раньше у каждого сервиса была своя копия отложенного удаления без второй проверки. Обход `FileCleanup` закрыт правилом 8 `ArchitectureTest`: `FileStorage.delete` разрешён только внутри `common.storage`, иначе удаление уехало бы вперёд коммита в любом новом модуле с файлами (T-54e). |
-| `FileUsageProbe.java` | «Ссылается ли модуль на этот ключ». Интерфейс объявлен рядом с хранилищем, реализации (`NewsFileUsageProbe`, `StaffFileUsageProbe`, `AchievementFileUsageProbe`, `UserFileUsageProbe`) живут в модулях: спросить чужие репозитории напрямую `FileCleanup` не может — `ArchitectureTest` запрещает модулям зависеть друг от друга, а хранилищу — знать о них. Зависимость перевёрнута: модули знают об интерфейсе, Spring собирает реализации в список. |
+| `FileUsageProbe.java` | «Ссылается ли модуль на этот ключ». Интерфейс объявлен рядом с хранилищем, реализации (`NewsFileUsageProbe`, `StaffFileUsageProbe`, `AchievementFileUsageProbe`, `PublicationFileUsageProbe`, `UserFileUsageProbe`, `EditablePageFileUsageProbe`) живут в модулях: спросить чужие репозитории напрямую `FileCleanup` не может — `ArchitectureTest` запрещает модулям зависеть друг от друга, а хранилищу — знать о них. Зависимость перевёрнута: модули знают об интерфейсе, Spring собирает реализации в список. |
 | `FileController.java` | `POST /api/files`, `multipart/form-data`, под `@PreAuthorize("#category == 'avatars' or hasAnyRole('ADMIN', 'MODERATOR')")` — аноним картинки не заливает, а с T-33 свой аватар грузит любой авторизованный: контент портала наполняют редакторы, но аватар учётной записи меняет её владелец. Аноним при этом отсекается раньше, в `SecurityConfig` (`anyRequest().authenticated()`), до вычисления SpEL. Категория берётся из белого списка `news` / `avatars` / `publications` / `achievements`: она попадает в путь на диске, и произвольной строке снаружи там делать нечего. Порядок шагов принципиален: сначала `ImageProcessor` (валидация и перекодирование), только потом `FileStorage.store` — на диск уезжает уже проверенный файл. Ответ — `201` с `key` и `url`. |
 | `FileUploadResponseDto.java` | Ответ загрузки: `key` — чтобы сохранить в сущность, `url` — чтобы показать превью сразу, не собирая адрес на фронте руками. |
 | `MediaResourceConfig.java` | Обратная сторона загрузки — раздача. `WebMvcConfigurer` вешает `ResourceHandler` с `/media/**` на каталог хранилища, то есть отдаёт файлы мимо контроллеров, как статику. Парная строка — `.requestMatchers(HttpMethod.GET, mediaBaseUrl + "/**").permitAll()` в `SecurityConfig`: без неё картинка требовала бы токен, а `<img src>` его не отправляет. |
@@ -521,7 +525,7 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 `last_login` перестала быть мёртвой (D-05). Поле ответа — `accessToken` в camelCase;
 snake_case `access_token` из старого Angular-контракта больше не отдаётся.
 
-### module/user (описано 7 из 15 файлов)
+### module/user (описано 7 из 18 файлов)
 
 | Файл | Что делает |
 |---|---|
@@ -545,7 +549,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 | `dto/NewsRequestDto.java` | `@Pattern(regexp = "news\|announcements")` на `postType` — единственная защита от произвольной строки в этом поле, enum'а по-прежнему нет. `display` объявлен `Boolean` с `@NotNull`, а не `boolean`: примитив молча получил бы `false` при отсутствии поля в запросе, а так клиент обязан решить явно. `@Size(max = 100)` на `previewImage` совпадает с длиной колонки под ключ. |
 | `dto/NewsResponseDto.java` | Наружу отдаётся `authorName` строкой, а не вложенный объект юзера. Превью приезжает двумя полями: `previewImage` — ключ для последующего `PUT`, `previewImageUrl` — готовый адрес для `<img>`, собранный маппером. |
 
-### module/staff (описано 16 из 26 файлов)
+### module/staff (описано 16 из 27 файлов)
 
 Модули 7 и 9 паритета, T-26. Ключевое решение: **карточка живёт отдельно
 от учётной записи** — ФИО, отчество и аватар хранятся в `employee_teacher`,
@@ -561,16 +565,16 @@ snake_case `access_token` из старого Angular-контракта бол�
 | `repository/TeacherRepository.java` | `@EntityGraph` на `findAll` больше нет: карточка списка не читает `user`, N+1 исчезла by design, JOIN стал лишним. `findByUserUsername` — поиск своей карточки по username из токена. |
 | `repository/SubjectRepository.java` | Пустой интерфейс — хватает наследников `JpaRepository`. |
 | `service/TeacherService.java` | Список, детальная, CRUD и `/me`. Аватар — по схеме обложки новости (T-23): ключ проверяется через `fileStorage.existsInCategory`, старый файл убирает `FileCleanup`. Неизвестные `subjectIds` → `InvalidRequestException` → 400. Текущий пользователь определяется по `authentication.getName()` (username строкой), а не через объект `User` — иначе пришлось бы расширять закрытый список допущенных к `User` в `ArchitectureTest` (правило 4а). В `updateMyCard` состав дисциплин не трогается — по контракту преподаватель их не правит. `education` и `qualification` прогоняются через `HtmlSanitizer`: на старом портале оба поля выводились через `[innerHTML]`, то есть уходят в браузер как разметка (T-54a). Чистка стоит в `prepare()` — общей точке `createTeacher` и `applyUpdate`, потому что путей записи три, а `applyUpdate` собирает два из них; `bio` не чистится сознательно, это плоский текст. |
-| `service/SubjectService.java` | Список и создание. Обработки дубля в коде нет намеренно: `uq_subject_name` кидает `DataIntegrityViolationException`, а её маппинг на 409 уже есть в `GlobalExceptionHandler`. |
+| `service/SubjectService.java` | Список и CRUD (правка и удаление — T-57; удаление назначенной дисциплины — `409`). Обработки дубля в коде нет намеренно: `uq_subject_name` кидает `DataIntegrityViolationException`, а её маппинг на 409 уже есть в `GlobalExceptionHandler`. |
 | `controller/TeacherController.java` | Семь ручек: две публичные (список — сортировка `lastName`, `firstName`, `id`; детальная с дисциплинами), CRUD под `ADMIN`/`MODERATOR` (`POST` — `201` + `Location`), `GET`/`PUT /api/teachers/me` под `hasRole('TEACHER')`. Литерал `me` в пути выигрывает у шаблона `{id}` — это штатное поведение Spring MVC. |
-| `controller/SubjectController.java` | `GET`/`POST /api/subjects` под `ADMIN`/`MODERATOR` — словарь для формы карточки. |
+| `controller/SubjectController.java` | `GET`/`POST /api/subjects` и `PUT`/`DELETE /api/subjects/{id}` (T-57) под `ADMIN`/`MODERATOR` — словарь для формы карточки. |
 | `mapper/TeacherMapper.java` | Абстрактный класс, как `NewsMapper`: `FileStorage` собирает `avatarUrl` из ключа. Дисциплины в детальный DTO сортируются `@Named`-методом по имени — на `@OrderBy` сущности полагаться нельзя: после `PUT` в той же транзакции коллекция в памяти ещё не отсортирована базой. `toEntity`/`updateEntity` игнорируют `id`, `user`, `subjects`. |
 | `mapper/SubjectMapper.java` | Один метод `toDto`. |
 | `dto/TeacherResponseDto.java` | Короткая карточка списка: ФИО, должность, коды `degree`/`rank`, `avatarUrl`. Полей учётной записи больше нет. |
-| `dto/TeacherDetailsResponseDto.java` | Полная карточка: контакты, стажи, тексты, ссылки на расписания экзаменов, `subjects`. |
-| `dto/TeacherRequestDto.java` | Общее тело `POST`/`PUT`/`PUT me`. `degree`/`rank` типизированы enum'ами — неизвестный код валит разбор JSON в 400 до контроллера. `subjectIds` — только для модераторских ручек, в `/me` игнорируется сервисом. |
+| `dto/TeacherDetailsResponseDto.java` | Полная карточка: контакты, стажи, тексты, ссылки на расписания экзаменов, `subjects`, `userId` привязанной учётки (T-56b). |
+| `dto/TeacherRequestDto.java` | Общее тело `POST`/`PUT`/`PUT me`. `degree`/`rank` типизированы enum'ами — неизвестный код валит разбор JSON в 400 до контроллера. `subjectIds` и `userId` (привязка карточки к учётке, T-56b) — только для модераторских ручек, в `/me` игнорируются сервисом. |
 | `dto/SubjectDto.java`, `dto/SubjectRequestDto.java` | `{id, name}` наружу и `{name}` на создание. |
-| `HelpersEmployee*` (7 файлов, T-27) | УВП, модуль 8: сущность (`employee_helpersemployee`), репозиторий, два DTO, маппер, сервис, контроллер. Дословная копия шаблона преподавателей без учёток, enum'ов и дисциплин: публичный `GET /api/public/helpers` и CRUD под `ADMIN`/`MODERATOR`; аватар — по той же схеме проверки ключа и удаления после коммита. Построчного разбора не требуют — всё описано выше на преподавателях. |
+| `HelpersEmployee*` (7 файлов, T-27) | УВП, модуль 8: сущность (`employee_helpersemployee`), репозиторий, два DTO, маппер, сервис, контроллер. Дословная копия шаблона преподавателей без учёток, enum'ов и дисциплин: публичные `GET /api/public/helpers` и `GET /api/public/helpers/{id}` (T-57) и CRUD под `ADMIN`/`MODERATOR`; аватар — по той же схеме проверки ключа и удаления после коммита. Построчного разбора не требуют — всё описано выше на преподавателях. |
 
 ### module/achievements (описано 7 из 8 файлов)
 
@@ -601,7 +605,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 на преподавателях с достижениями, а `CASCADE` — что вместе с карточкой из истории кафедры
 исчезают её награды. Проверено тестом `deleteTeacher_KeepsAchievementAndClearsLink`.
 
-### module/pages (7 файлов)
+### module/pages (7 из 8 файлов)
 
 Тринадцать текстовых разделов сайта, T-25: контакты, направления подготовки, нормативные
 документы кафедры и университета, учебные планы, практики и защиты ВКР бакалавриата
@@ -630,7 +634,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 | Файл | Что делает |
 |---|---|
 | `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8) и `open-in-view: false`: вне транзакции сущность становится detached сразу после запроса в репозиторий, ленивые поля за пределами сервиса молча не подгружаются. `profiles.default: dev` — локальный запуск получает `DevDataSeeder`, прод обязан явно задать `prod`. Здесь же лимиты `multipart` (15 МБ) и корень файлового хранилища. Закомментирован `logging.level.org.springframework.security: DEBUG` — **его стоит включать при разборе проблем с Security**, он печатает всю цепочку фильтров. |
-| `db/changelog/db.changelog-master.yaml` | Оглавление: подключает восемь changeset-файлов по порядку. Liquibase идёт строго по этому списку и запоминает выполненное в служебной таблице `databasechangelog` — уже применённый файл нельзя переименовать или поправить задним числом, изменение оформляется новым changeset-файлом. |
+| `db/changelog/db.changelog-master.yaml` | Оглавление: подключает 28 changeset-файлов (001–028) по порядку; таблица ниже разбирает первые восемь, остальные описаны в бэклоге по тикетам. Liquibase идёт строго по этому списку и запоминает выполненное в служебной таблице `databasechangelog` — уже применённый файл нельзя переименовать или поправить задним числом, изменение оформляется новым changeset-файлом. |
 | `changesets/001-create-users-table.yml` | Таблица `users_user`. |
 | `changesets/002-create-news-table.yml` | Таблица `news_post` + FK `fk_news_author` на `users_user(id)`. |
 | `changesets/003-create-teacher-table.yml` | Таблица `employee_teacher` + FK `fk_teacher_user`, `user_id` уникален (это и есть OneToOne на уровне БД). |
@@ -644,7 +648,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 и `createIndex` откат генерируется автоматически, а для `modifyDataType` (004)
 и произвольного `sql` (008) — нет, и без явного блока шаг стал бы необратимым.
 
-### Тесты (4 из 16 классов)
+### Тесты (4 из 51 файла)
 
 | Файл | Что делает |
 |---|---|
@@ -653,11 +657,9 @@ snake_case `access_token` из старого Angular-контракта бол�
 | `NewsIntegrationTest.java` | Самый большой тест проекта, около семисот строк. Матрица доступа: админ и модератор создают новость → запись в БД с правильным автором, обычный юзер → **403 и в БД пусто**, аноним → `401`. Контракт: `201` с заголовком `Location`, форма страницы, срез по `page` и `size`, `400` на неизвестное поле сортировки. Публичные ручки отдают только `display = true`, скрытая новость по id — `404`. Отдельный блок — санитизация: `<script>` и `onerror` вырезаются, форматирование и относительные картинки остаются. |
 | `UserIntegrationTest.java` | Профиль по валидному токену и четыре случая смены пароля: успех, неверный старый → `400`, пустой новый → `400` со списком полей, слишком короткий → `400`. Токен собирается напрямую через `jwtService`, а не через `POST /login`: тест намеренно **обходит логин** и проверяет фильтр и сам эндпоинт. Пароль в базу кладётся хешем — `matches()` на сырой строке всегда даст false. |
 
-Остальные 12 файлов `src/test` не разобраны: `ArchitectureTest`, `TestRole` (не тест,
-а общий для тестов enum ролей), `EndpointAccessMatrixTest`, `CorsIntegrationTest`,
-`JwtSecurityIntegrationTest`, `ProdProfileIntegrationTest`, тесты хранилища
-(`LocalFileStorageTest`, `ImageProcessorTest`, `FileUploadIntegrationTest`),
-`NewsPreviewImageIntegrationTest`, `TeacherIntegrationTest`, `EditablePageIntegrationTest`.
+Остальные файлы `src/test` не разобраны — полный список даст сам каталог
+(`TestRole` — не тест, а общий для тестов enum ролей); ориентиры по свежим
+классам — в бэклоге, в записях соответствующих тикетов.
 
 ---
 
@@ -696,7 +698,7 @@ Python-микросервис `schedule-service/` — решение зафик�
 | `dto/ExamScheduleFilesResponseDto.java` | Не разобранные экзамены, а строка со ссылками на PDF из карточки ППС (T-47). Имя с `Files` появилось в разборе именований после T-48e: до него оно называлось `ExamScheduleResponseDto` и путалось с разобранными экзаменами. |
 | `enums/…` | Тип экзаменов (`GRADUATION` / `NON_GRADUATION`) лежит в `module/staff/enums` — он описывает поля карточки ППС, и обратная зависимость сломала бы границы модулей. |
 
-### module/students (описано 9 из 11 файлов)
+### module/students (описано 9 из 13 файлов)
 
 Аспирантура, T-49. Модуль закрывает сразу два пункта матрицы паритета: 14 (аспирантура)
 и 13 (студенты). Отдельной страницы студентов в старом портале нет — приложение `guidance`
@@ -724,14 +726,14 @@ Python-микросервис `schedule-service/` — решение зафик�
 | Файл | Что делает |
 |---|---|
 | `entity/ScientificPublication.java` | Название, авторы, описание, ссылка, PDF, год, источник, страницы, том и ISBN. Авторы — `jsonb`-массив (`@JdbcTypeCode(SqlTypes.JSON)`), как в Django: своя таблица авторов сделала бы перенос данных невозможным. Поле `file` — ключ в хранилище, а не base64: хранение PDF строкой в колонке значится в списке «не переносить» MIGRATION §7. |
-| `entity/Tag.java` | Имя с уникальным ограничением в схеме — параллельные запросы обходят проверку `exists`, и тогда срабатывает база, а advice превращает это в `409`. |
+| `entity/Tag.java` | Имя с уникальным ограничением в схеме — параллельные запросы обходят проверку `exists`, и тогда срабатывает база, а advice превращает это в `409`. С T-63 уникальность в схеме регистронезависимая: индекс `uq_tag_name_lower` по `lower(name)`. |
 | `repository/PublicationRepository.java` | Нативный запрос с тремя необязательными фильтрами: восемь derived-методов на три независимых фильтра писать не стоит. Фильтр по автору — `p.author::text ilike`, повторяет `author__icontains` оригинала. `findDistinctAuthors` разворачивает `jsonb` через `lateral jsonb_array_elements_text`. |
 | `repository/TagRepository.java` | Поиск и проверка имени без учёта регистра, список с сортировкой. |
 | `service/PublicationService.java` | Выборка, CRUD, проверка ключа файла по разделу и уборка старого PDF после коммита. Теги догружаются вторым запросом по списку id: `@EntityGraph` к нативному запросу не применяется, а Hibernate отдаёт те же объекты из контекста, и обращение к `getTags()` в базу уже не идёт. |
-| `service/TagService.java` | Список, создание с обрезкой пробелов и проверкой дубля, удаление. |
+| `service/TagService.java` | Список, создание с обрезкой пробелов и проверкой дубля, переименование (T-57), удаление. |
 | `service/PublicationFileUsageProbe.java` | Отвечает ночной зачистке, занят ли PDF: без него раздел `publications` в списке подметаемых удалял бы привязанные файлы. |
 | `controller/PublicationController.java` | Публичный список с `?tagId=`, `?author=`, `?year=`, одиночная карточка, список авторов для фильтра и CRUD для модератора. |
-| `controller/TagController.java` | Справочник наружу, создание и удаление модератору. |
+| `controller/TagController.java` | Справочник наружу, создание, переименование (T-57) и удаление модератору. |
 | `mapper/PublicationMapper.java`, `TagMapper.java` | Адрес файла собирает `FileStorage`, теги превращаются в список DTO. |
 | `dto/PublicationRequestDto.java` | Ссылка проверяется тем же `@SafeUrl`, что и расписание экзаменов: поле уезжает в `href` на публичной странице. |
 | `dto/PublicationResponseDto.java`, `TagDto.java`, `TagRequestDto.java` | Ключ файла отдаётся рядом с адресом — форма правки возвращает его обратно. |
@@ -929,6 +931,10 @@ D-12 — в T-34, D-13 — в T-35, D-03 — в T-30, D-14…D-16 — при с�
 имя импортированного PDF — из публичного расписания, у загружаемых картинок
 появился потолок в мегапикселях, а у страниц списков — в сто записей; версии
 зависимостей подняты обновлением Spring Boot, закрывшим 17 уязвимых артефактов.
+Второй аудит (T-58…T-65, 2026-09-02) разобран там же: родословная refresh-токенов
+и потолок сессии, ведро логина по учётке и лимит загрузок, пробы занятости
+для Markdown и rich-text, белые списки `sort`, регистронезависимая уникальность
+тегов, ReDoS и ранний 413 в schedule-service — всё закрыто тем же заходом.
 
 | ID | Дефект | Последствие | Статус |
 |---|---|---|---|

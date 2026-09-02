@@ -19,9 +19,11 @@ import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
+import ru.stankin.uits.module.students.dto.PostgraduateDetailsResponseDto;
 import ru.stankin.uits.module.students.dto.PostgraduateRequestDto;
 import ru.stankin.uits.module.students.dto.PostgraduateResponseDto;
 import ru.stankin.uits.module.students.dto.StudentRequestDto;
+import ru.stankin.uits.module.students.dto.StudentResponseDto;
 import ru.stankin.uits.module.students.entity.Postgraduate;
 import ru.stankin.uits.module.students.entity.Student;
 import ru.stankin.uits.module.students.enums.EducationLevel;
@@ -129,6 +131,15 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
         return response.getBody().content();
     }
 
+    private ResponseEntity<PostgraduateDetailsResponseDto> details(String token, Long id) {
+        return restTemplate.exchange(
+                "/api/postgraduates/" + id,
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(token)),
+                PostgraduateDetailsResponseDto.class
+        );
+    }
+
     private Statistics statistics() {
         return entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     }
@@ -203,6 +214,101 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
         list("");
 
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
+    }
+
+    @Test
+    void detailsCarryEveryFieldTheFormNeeds() {
+        PostgraduateDetailsResponseDto card = details(moderatorToken(), abramov.getId()).getBody();
+
+        assertThat(card).isNotNull();
+        assertThat(card.getId()).isEqualTo(abramov.getId());
+        assertThat(card.getTeacherId()).isEqualTo(razumovskiy.getId());
+
+        StudentResponseDto student = card.getStudent();
+        assertThat(student.getLastName()).isEqualTo("Абрамов");
+        assertThat(student.getFirstName()).isEqualTo("Пётр");
+        assertThat(student.getPatronymic()).isNull();
+        assertThat(student.getGroup()).isEqualTo("ИДМ-24-01");
+        assertThat(student.getEducationLevel()).isEqualTo(EducationLevel.POSTGRADUATE);
+        assertThat(student.getSpeciality()).isEqualTo("1.2.2");
+        assertThat(student.getDiplomaTheme()).isEqualTo("Тема Абрамов");
+        assertThat(student.getAdmissionYear()).isEqualTo(2024);
+    }
+
+    @Test
+    void detailsSentBackIntoUpdateChangeNothing() {
+        String token = moderatorToken();
+        ResponseEntity<String> card = restTemplate.exchange(
+                "/api/postgraduates/" + abramov.getId(),
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(token)),
+                String.class
+        );
+
+        assertThat(card.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<PostgraduateResponseDto> saved = restTemplate.exchange(
+                "/api/postgraduates/" + abramov.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(card.getBody(), authJson(token)),
+                PostgraduateResponseDto.class
+        );
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        Student student = studentRepository.findById(abramov.getStudent().getId()).orElseThrow();
+        assertThat(student.getLastName()).isEqualTo("Абрамов");
+        assertThat(student.getFirstName()).isEqualTo("Пётр");
+        assertThat(student.getPatronymic()).isNull();
+        assertThat(student.getGroup()).isEqualTo("ИДМ-24-01");
+        assertThat(student.getSpeciality()).isEqualTo("1.2.2");
+        assertThat(student.getDiplomaTheme()).isEqualTo("Тема Абрамов");
+        assertThat(student.getAdmissionYear()).isEqualTo(2024);
+        assertThat(postgraduateRepository.findWithDetailsById(abramov.getId()).orElseThrow().getTeacher().getId())
+                .isEqualTo(razumovskiy.getId());
+    }
+
+    @Test
+    void publicListStillHidesStudentGroup() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/public/postgraduates", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .doesNotContain("\"group\"")
+                .doesNotContain("ИДМ-24-01");
+    }
+
+    @Test
+    void detailsAreClosedToAnonymous() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/postgraduates/" + abramov.getId(),
+                HttpMethod.GET,
+                null,
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void detailsAreClosedToTeacher() {
+        createUser("teach", TestRole.TEACHER);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/postgraduates/" + abramov.getId(),
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(login("teach"))),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void detailsOfUnknownRecordReturn404() {
+        ResponseEntity<PostgraduateDetailsResponseDto> response = details(moderatorToken(), 999999L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
