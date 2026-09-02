@@ -6,7 +6,13 @@ import AppLayout from '../layouts/AppLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
 import Loader from '@shared/ui/Loader';
-import { ANNOUNCEMENTS_ROUTE, LOGIN_ROUTE, NEWS_ROUTE, PERSONAL_ROUTE } from '@shared/config/routes';
+import {
+  ANNOUNCEMENTS_ROUTE,
+  LOGIN_ROUTE,
+  NEWS_ROUTE,
+  PERSONAL_ROUTE,
+  TEACHERS_ROUTE,
+} from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
 import LoginPage from '@pages/LoginPage';
@@ -14,6 +20,8 @@ import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
 import NewsDetailPage from '@pages/NewsDetailPage';
 import AnnouncementsPage from '@pages/AnnouncementsPage';
+import TeachersPage from '@pages/TeachersPage';
+import TeacherDetailPage from '@pages/TeacherDetailPage';
 import ProtectedRoute from './protectedRoute';
 import RouteError from './RouteError';
 
@@ -63,6 +71,17 @@ export const routes: RouteObject[] = [
         path: ANNOUNCEMENTS_ROUTE,
         element: <AnnouncementsPage />,
         errorElement: <RouteError />,
+      },
+      // Преподаватели. Публичные: ручки `GET /api/public/teachers` открыты
+      // всем. Карточка — вложенным роутом по тем же причинам, что у новостей:
+      // адрес раздела объявлен один раз, и переименование не оставит
+      // карточку на старом пути.
+      {
+        path: TEACHERS_ROUTE,
+        children: [
+          { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
+          { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
+        ],
       },
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
       // у /corp было боковое меню на два пункта, но второй из них —

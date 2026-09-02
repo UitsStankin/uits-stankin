@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 
 import { ANNOUNCEMENTS_ROUTE, NEWS_ROUTE } from '@shared/config/routes';
 import StatusBlock from '@shared/ui/StatusBlock';
+import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { useNewsItem } from './model/useNewsItem';
 import { NewsArticle } from './ui/NewsArticle';
@@ -46,11 +47,7 @@ export default function NewsDetailPage() {
         <StatusBlock
           title="Нет связи с сервером"
           description="Проверьте подключение и повторите попытку."
-          action={
-            <button type="button" onClick={refetch} className={actionClass}>
-              Повторить
-            </button>
-          }
+          action={<RetryButton onClick={refetch} />}
         />
       )}
 
@@ -62,11 +59,7 @@ export default function NewsDetailPage() {
           description="Возможно, её удалили или сняли с публикации, а ссылка осталась."
           // Здесь ведём в новости всегда: записи нет, тип неизвестен,
           // и угадывать раздел не по чему.
-          action={
-            <Link to={NEWS_ROUTE} className={actionClass}>
-              К ленте новостей
-            </Link>
-          }
+          action={<ActionLink to={NEWS_ROUTE}>К ленте новостей</ActionLink>}
         />
       )}
 
@@ -75,11 +68,7 @@ export default function NewsDetailPage() {
           tone="danger"
           title="Не удалось загрузить новость"
           description={errorMessage}
-          action={
-            <button type="button" onClick={refetch} className={actionClass}>
-              Повторить
-            </button>
-          }
+          action={<RetryButton onClick={refetch} />}
         />
       )}
 
@@ -87,6 +76,3 @@ export default function NewsDetailPage() {
     </div>
   );
 }
-
-const actionClass =
-  'rounded bg-primary px-4 py-2 text-base font-bold text-white transition-colors hover:bg-primary/90';

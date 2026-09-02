@@ -1,6 +1,6 @@
 import { editablePageHandlers } from './editablePages';
 import { newsHandlers } from './news';
-import { teacherHandlers } from './teachers';
+import { publicTeacherHandlers, teacherHandlers } from './teachers';
 
 /**
  * Хендлеры по умолчанию — «всё хорошо, данные есть».
@@ -15,4 +15,9 @@ import { teacherHandlers } from './teachers';
  * на чистой базе. Заполненный блок главной в браузере — это
  * `worker.use(...editablePageHandlers({ 'home-before': '# Заголовок' }))`.
  */
-export const handlers = [...newsHandlers(), ...editablePageHandlers(), ...teacherHandlers()];
+export const handlers = [
+  ...newsHandlers(),
+  ...editablePageHandlers(),
+  ...publicTeacherHandlers(),
+  ...teacherHandlers(),
+];

@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw';
 
-import type { News, NewsPage, PostType } from '@shared/types';
+import type { News, PostType } from '@shared/types';
 
+import { pageFromUrl } from './page';
 import { problemResponse } from './problemResponse';
 
 /**
@@ -13,9 +14,6 @@ import { problemResponse } from './problemResponse';
  * страницы и во втором случае не сработал бы.
  */
 const PUBLIC_NEWS = '*/api/public/news';
-
-/** Размер страницы по умолчанию — из контракта, а не из головы. */
-const DEFAULT_SIZE = 20;
 
 /**
  * Одна запись со всеми полями контракта. Переопределяется точечно:
@@ -82,25 +80,6 @@ function buildFixture(): readonly News[] {
 }
 
 /**
- * Страница списка по правилам Spring: `content` — срез, счётчики считаются
- * по всей выборке, а не по срезу.
- *
- * Страница за пределами данных — это `200` с пустым `content`, а не `404`
- * (docs/API.md, «Пагинация списков»). Именно на этом различии стоит ветка
- * `isOutOfRange` в модели ленты, и мок, отвечающий здесь ошибкой, проверял бы
- * несуществующее поведение.
- */
-export function newsPage(items: readonly News[], page = 0, size = DEFAULT_SIZE): NewsPage {
-  return {
-    content: items.slice(page * size, page * size + size),
-    page,
-    size,
-    totalElements: items.length,
-    totalPages: Math.ceil(items.length / size),
-  };
-}
-
-/**
  * Хендлеры чтения новостей. Список берётся аргументом, чтобы тест пустой
  * ленты был одной строкой `server.use(...newsHandlers([]))`, а не копией
  * хендлера с другим телом.
@@ -131,9 +110,7 @@ export function newsHandlers(items: readonly News[] = newsFixture) {
         ? items.filter((item) => item.postType === postType)
         : items;
 
-      return HttpResponse.json(
-        newsPage(filtered, numberParam(url, 'page', 0), numberParam(url, 'size', DEFAULT_SIZE, 1)),
-      );
+      return HttpResponse.json(pageFromUrl(filtered, url));
     }),
 
     http.get(`${PUBLIC_NEWS}/:id`, ({ params }) => {
@@ -149,22 +126,6 @@ export function newsHandlers(items: readonly News[] = newsFixture) {
           });
     }),
   ];
-}
-
-/**
- * Числовой query-параметр или умолчание контракта.
- *
- * Отсутствие параметра проверяется отдельной строкой, а не через `Number`:
- * `Number(null)` — это ноль, целое и неотрицательное, то есть проверка
- * пропустила бы его как заданный размер страницы. Ровно на этом мок
- * и отдавал пустой список при живых двадцати трёх записях.
- */
-function numberParam(url: URL, name: string, fallback: number, min = 0): number {
-  const raw = url.searchParams.get(name);
-  if (raw === null) return fallback;
-
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed >= min ? parsed : fallback;
 }
 
 /**

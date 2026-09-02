@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { findCachedNews, newsItemQuery } from '@entities/news';
 import { isApiError } from '@shared/api';
+import { parseId } from '@shared/lib';
 
 /**
  * Одна новость: разбор адреса, запрос, подсадка данных из уже загруженного
@@ -64,16 +65,4 @@ export function useNewsItem() {
     errorMessage: query.error?.message ?? null,
     refetch: () => void query.refetch(),
   };
-}
-
-/**
- * Идентификатор из адреса. `null` — всё, что не положительное целое:
- * `/about/news/abc`, `/about/news/-1`, `/about/news/1.5`.
- *
- * Экспортируется ради теста — по той же причине, что и `parsePage`
- * в модели ленты.
- */
-export function parseId(raw: string | undefined): number | null {
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }

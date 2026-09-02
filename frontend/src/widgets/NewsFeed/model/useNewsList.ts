@@ -3,11 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { newsListQuery } from '@entities/news';
 import { newsItemRoute } from '@shared/config/routes';
+import { PAGE_PARAM, pageHref, parsePage } from '@shared/lib';
 
 import type { NewsFeedProps } from '../NewsFeed.types';
-
-/** Имя query-параметра со страницей. Знают двое: разбор ниже и сборка адреса. */
-const PAGE_PARAM = 'page';
 
 /**
  * Вся логика ленты новостей: какая страница открыта, что на ней и куда ведут
@@ -20,9 +18,8 @@ const PAGE_PARAM = 'page';
  *
  * **В адресе счёт с единицы, в запросе — с нуля.** Пользователю показывается
  * человеческая нумерация (`?page=0` выглядит поломкой), контракту нужна
- * спринговая. Пересчёт сделан ровно в одном месте — здесь; это то самое
- * место, где список молча съезжает на одну страницу, если развести его
- * по разным файлам (`shared/types/api.types.ts`).
+ * спринговая. Пересчёт сделан ровно в одном месте — здесь; сам разбор
+ * адреса и сборка ссылок общие на все списки портала (`shared/lib/pageParam.ts`).
  *
  * Раздел (`postType`) и его адрес приходят снаружи: разделов два — новости
  * и объявления, — и отличаются они ровно этой парой. Всё остальное у них
@@ -86,31 +83,7 @@ export function useNewsList({ postType, route }: NewsFeedProps) {
      */
     isOutOfRange: query.isSuccess && totalPages > 0 && page > totalPages,
 
-    hrefForPage: (target: number) => hrefForPage(route, target),
+    hrefForPage: (target: number) => pageHref(route, target),
     hrefForItem: newsItemRoute,
   };
-}
-
-/**
- * Номер страницы из адреса. Всё, что не похоже на номер, — первая страница.
- *
- * `?page=abc`, `?page=-1`, `?page=2.5` приходят от людей, правящих адрес
- * руками, и от чужих ссылок. Отвечать на это ошибкой незачем: показать
- * первую страницу — ровно то, чего от ленты ждут.
- *
- * Экспортируется ради теста и только ради него: снаружи страницы номер
- * из адреса никому не нужен. Разбор проверяется прямо, а не через рендер
- * ленты, — мусор в адресе бывает десяти видов, и десять рендеров ради
- * десяти строк были бы медленнее в сотни раз и молчали бы о том, что
- * именно сломалось.
- */
-export function parsePage(raw: string | null): number {
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1;
-}
-
-function hrefForPage(route: string, page: number): string {
-  // Первая страница — без параметра: `?page=1` в адресе ничего не добавляет,
-  // зато раздваивает канонический адрес ленты на два разных.
-  return page <= 1 ? route : `${route}?${PAGE_PARAM}=${page}`;
 }

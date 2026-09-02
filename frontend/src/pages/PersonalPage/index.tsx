@@ -4,6 +4,7 @@ import { useAuth } from '@features/auth';
 import { ChangePasswordForm, useChangePasswordForm } from '@features/change-password';
 import { TeacherCardForm, useTeacherCardForm } from '@features/edit-teacher-card';
 import StatusBlock from '@shared/ui/StatusBlock';
+import { RetryButton } from '@shared/ui/StatusAction';
 import Loader from '@shared/ui/Loader';
 import type { Teacher } from '@shared/types';
 
@@ -183,18 +184,5 @@ function TeacherCardEditor({
         onAvatarSelect={form.onAvatarSelect}
       />
     </section>
-  );
-}
-
-/** Кнопка «повторить» — одинаковая у сбоя и у обрыва связи, как в ленте. */
-function RetryButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded bg-primary px-4 py-2 text-base font-bold text-white transition-colors hover:bg-primary/90"
-    >
-      Повторить
-    </button>
   );
 }

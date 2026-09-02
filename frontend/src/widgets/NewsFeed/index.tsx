@@ -1,7 +1,6 @@
-import { Link } from 'react-router';
-
 import Pagination from '@shared/ui/Pagination';
 import StatusBlock from '@shared/ui/StatusBlock';
+import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { FEED_COPY } from './lib/feedCopy';
 import { useNewsList } from './model/useNewsList';
@@ -74,11 +73,7 @@ export default function NewsFeed({ postType, route }: NewsFeedProps) {
         <StatusBlock
           title="Такой страницы нет"
           description={`Всего страниц: ${totalPages}.`}
-          action={
-            <Link to={hrefForPage(1)} className={actionClass}>
-              К первой странице
-            </Link>
-          }
+          action={<ActionLink to={hrefForPage(1)}>К первой странице</ActionLink>}
         />
       )}
 
@@ -91,15 +86,3 @@ export default function NewsFeed({ postType, route }: NewsFeedProps) {
     </>
   );
 }
-
-/** Единственная кнопка ленты: одинаковая у сбоя и у обрыва связи. */
-function RetryButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className={actionClass}>
-      Повторить
-    </button>
-  );
-}
-
-const actionClass =
-  'rounded bg-primary px-4 py-2 text-base font-bold text-white transition-colors hover:bg-primary/90';

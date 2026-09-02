@@ -33,10 +33,15 @@ export type TeacherDegree =
 /** Учёное звание. `READER` — это «доцент». */
 export type TeacherRank = 'READER' | 'PROFESSOR';
 
-/** Дисциплина — элемент `subjects` карточки и словаря `GET /api/subjects`. */
+/**
+ * Дисциплина — элемент `subjects` карточки и словаря `GET /api/subjects`.
+ * Схема одна на оба места: те же три поля приходят и там, и там.
+ */
 export type Subject = {
   id: number;
   name: string;
+  /** Незаполненное описание приходит как `null`, а не пустой строкой. */
+  description: string | null;
 };
 
 /** Короткая карточка — элемент `GET /api/public/teachers`. */

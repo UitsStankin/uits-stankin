@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePage } from './useNewsList';
+import { pageHref, parsePage } from './pageParam';
 
 /**
  * Номер страницы из адреса. Сюда приезжает не только то, что фронт написал
@@ -39,5 +39,30 @@ describe('parsePage', () => {
    */
   it('большой номер пропускает дальше — про границы знает только ответ', () => {
     expect(parsePage('9000')).toBe(9000);
+  });
+});
+
+/**
+ * Сборка адреса — вторая половина того же правила: первая страница
+ * канонична без параметра, иначе у списка появляется два разных адреса
+ * с одинаковым содержимым.
+ */
+describe('pageHref', () => {
+  it('первая страница — адрес раздела без параметра', () => {
+    expect(pageHref('/about/employee/teachers', 1)).toBe('/about/employee/teachers');
+  });
+
+  it('остальные — с номером в запросе', () => {
+    expect(pageHref('/about/employee/teachers', 2)).toBe('/about/employee/teachers?page=2');
+  });
+
+  /**
+   * Ноль и отрицательные сюда приходят от самого пагинатора: стрелка «назад»
+   * на первой странице считает `page - 1`. Ссылка на несуществующую нулевую
+   * страницу не собирается — получается адрес первой.
+   */
+  it('номер меньше первого не собирает битую ссылку', () => {
+    expect(pageHref('/about/news', 0)).toBe('/about/news');
+    expect(pageHref('/about/news', -3)).toBe('/about/news');
   });
 });

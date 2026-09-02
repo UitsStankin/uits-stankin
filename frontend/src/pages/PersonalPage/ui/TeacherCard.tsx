@@ -2,9 +2,8 @@ import { degreeLabel, rankLabel } from '@shared/config/teacherDictionaries';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
 import { cn } from '@shared/lib';
 import type { Teacher } from '@shared/types';
-import { teacherFullName } from '@entities/teacher';
+import { formatYears, teacherFullName } from '@entities/teacher';
 
-import { formatYears } from '../lib/teacherFields';
 import { DefinitionField, definitionLabelClass } from './DefinitionField';
 
 interface TeacherCardProps {

@@ -7,6 +7,13 @@
  */
 export { handlers } from './handlers';
 export { editablePageHandlers } from './editablePages';
-export { makeNews, newsFixture, newsHandlers, newsPage } from './news';
-export { makeTeacher, teacherHandlers } from './teachers';
+export { makeNews, newsFixture, newsHandlers } from './news';
+export { pageResponse } from './page';
+export {
+  makeTeacher,
+  publicTeacherHandlers,
+  teacherHandlers,
+  teacherListItem,
+  teachersFixture,
+} from './teachers';
 export { problemResponse } from './problemResponse';
