@@ -60,6 +60,27 @@ export function newsItemRoute(id: number): string {
 }
 
 /**
+ * Объявления о конференциях. Адрес взят из меню
+ * (`shared/config/navigation.ts`, пункт `scientific-activities/conferences`)
+ * и повторяет старый портал — как и остальные перенесённые разделы,
+ * это экономит строку в карте редиректов nginx при переезде.
+ *
+ * Знают трое: список роутов, сама страница (собирает адреса пагинатора)
+ * и детальная (ссылка «ко всем конференциям»).
+ */
+export const CONFERENCES_ROUTE = '/scientific-activities/conferences';
+
+/**
+ * Адрес одного объявления о конференции. Функция, а не шаблон по месту,
+ * по той же причине, что у `newsItemRoute`: адрес собирают список
+ * и — с F-45 — админка, а склейка строкой разъезжается при первом
+ * переименовании.
+ */
+export function conferenceRoute(id: number): string {
+  return `${CONFERENCES_ROUTE}/${id}`;
+}
+
+/**
  * Профессорско-преподавательский состав. Адрес взят из меню
  * (`shared/config/navigation.ts`, пункт `about/employee/teachers`)
  * и повторяет старый портал — как и остальные перенесённые разделы,

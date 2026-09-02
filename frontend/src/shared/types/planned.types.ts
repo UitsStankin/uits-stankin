@@ -9,7 +9,7 @@
  * Файл отдельный намеренно. Всё, что лежит в `auth`, `news`, `staff`
  * и `api`, сверено со Swagger и existing DTO — на эти типы можно опираться.
  * Здесь же лежат **несверенные** формы: соответствующих модулей на бэкенде
- * нет (матрица паритета в docs/MIGRATION.md §3, пункты 5, 6, 9–14, 20),
+ * нет (матрица паритета в docs/MIGRATION.md §3, пункты 6, 9–14, 20),
  * и как Spring назовёт поля, сегодня знать неоткуда. Путь импорта об этом
  * и предупреждает: `planned.types` в шапке файла видно на код-ревью.
  *
@@ -43,38 +43,6 @@ export type Achievement = {
 
 /** Элемент списка достижений — то же самое без тела записи. */
 export type AchievementListItem = Omit<Achievement, 'content'>;
-
-/**
- * Объявление о конференции. Матрица паритета, п. 5. Тикет фронта — F-24.
- *
- * Отдельная сущность, а не `postType` новости: у неё свои даты проведения,
- * организатор и контакты.
- */
-export type ConferenceAnnouncement = {
-  id: number;
-  title: string;
-  description: string;
-  /** Даты проведения. */
-  startDate: string;
-  endDate: string;
-  /** Время начала. */
-  time: string;
-  organizer: string;
-  contactEmail: string;
-  contactPhone: string;
-  createdAt: string;
-  previewImage: string;
-  previewImageDescription: string;
-  /** Rich-text, HTML. */
-  content: string;
-  /**
-   * Признак скрытой записи. В оригинале — `is_hidden`, обратный по смыслу
-   * `display` у новости. При переносе на Spring эти два поля стоит свести
-   * к одному соглашению: два взаимно обратных флага на соседних сущностях —
-   * готовый источник ошибок в админке.
-   */
-  isHidden: boolean;
-};
 
 /**
  * Аспирант и его научный руководитель. Матрица паритета, п. 14.
