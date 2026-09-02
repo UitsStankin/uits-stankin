@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface EditablePageRepository extends JpaRepository<EditablePage, Long> {
     Optional<EditablePage> findBySlug(String slug);
+
+    boolean existsByTextContaining(String key);
 }
