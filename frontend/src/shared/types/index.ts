@@ -7,7 +7,7 @@
  * **не реэкспортируются намеренно** — импорт оттуда должен оставаться
  * заметным, поэтому пишется полным путём:
  *
- *   import type { Achievement } from '@shared/types/planned.types';
+ *   import type { Schedule } from '@shared/types/planned.types';
  */
 
 // Транспорт
@@ -26,6 +26,9 @@ export type { News, NewsRequest, NewsPage, NewsListParams, PostType } from './ne
 
 // Конференции
 export type { Conference, ConferenceRequest, ConferencePage } from './conference.types';
+
+// Достижения кафедры
+export type { Achievement, AchievementRequest, AchievementPage } from './achievement.types';
 
 // Редактируемые разделы
 export type { EditablePage, EditablePageSlug } from './pages.types';
