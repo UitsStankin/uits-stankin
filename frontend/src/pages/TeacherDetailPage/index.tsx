@@ -5,7 +5,9 @@ import { TEACHERS_ROUTE } from '@shared/config/routes';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
+import { useTeacherAchievements } from './model/useTeacherAchievements';
 import { useTeacherCard } from './model/useTeacherCard';
+import { TeacherAchievements } from './ui/TeacherAchievements';
 import { TeacherProfile } from './ui/TeacherProfile';
 import { TeacherProfileSkeleton } from './ui/TeacherProfileSkeleton';
 
@@ -17,12 +19,19 @@ import { TeacherProfileSkeleton } from './ui/TeacherProfileSkeleton';
  * на страницу попадают и из поиска, и по присланному адресу, и
  * `history.back()` увёл бы такого посетителя с портала совсем.
  *
- * Достижения преподавателя (F-25) и его расписание (Фаза 2) встанут сюда же
- * отдельными блоками — обе ручки уже есть в контракте.
+ * Достижения преподавателя приехали с F-25 отдельным блоком под профилем;
+ * расписание (Фаза 2) встанет сюда же следующим — его ручка уже есть
+ * в контракте.
+ *
+ * Оба запроса — карточки и достижений — уходят параллельно, но блок
+ * достижений рисуется только рядом с загруженной карточкой: на
+ * несуществующем преподавателе его ручка отвечает не `404`, а пустой
+ * страницей, и «достижений нет» висело бы под «преподаватель не найден».
  */
 export default function TeacherDetailPage() {
-  const { teacher, isLoading, isOffline, isNotFound, isError, errorMessage, refetch } =
+  const { teacher, id, isLoading, isOffline, isNotFound, isError, errorMessage, refetch } =
     useTeacherCard();
+  const achievements = useTeacherAchievements(id);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter-sm">
@@ -63,7 +72,12 @@ export default function TeacherDetailPage() {
         />
       )}
 
-      {teacher && <TeacherProfile teacher={teacher} />}
+      {teacher && (
+        <>
+          <TeacherProfile teacher={teacher} />
+          <TeacherAchievements state={achievements} />
+        </>
+      )}
     </div>
   );
 }
