@@ -24,6 +24,9 @@ export type {
 // Новости и объявления
 export type { News, NewsRequest, NewsPage, NewsListParams, PostType } from './news.types';
 
+// Конференции
+export type { Conference, ConferenceRequest, ConferencePage } from './conference.types';
+
 // Редактируемые разделы
 export type { EditablePage, EditablePageSlug } from './pages.types';
 

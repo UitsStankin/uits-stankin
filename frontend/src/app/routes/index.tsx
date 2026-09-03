@@ -8,6 +8,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import Loader from '@shared/ui/Loader';
 import {
   ANNOUNCEMENTS_ROUTE,
+  CONFERENCES_ROUTE,
   HELPERS_ROUTE,
   LOGIN_ROUTE,
   NEWS_ROUTE,
@@ -24,6 +25,8 @@ import AnnouncementsPage from '@pages/AnnouncementsPage';
 import TeachersPage from '@pages/TeachersPage';
 import TeacherDetailPage from '@pages/TeacherDetailPage';
 import HelpersPage from '@pages/HelpersPage';
+import ConferencesPage from '@pages/ConferencesPage';
+import ConferenceDetailPage from '@pages/ConferenceDetailPage';
 import EditablePagePage from '@pages/EditablePagePage';
 import type { EditablePageSlug } from '@shared/types';
 import ProtectedRoute from './protectedRoute';
@@ -168,6 +171,17 @@ export const routes: RouteObject[] = [
         path: HELPERS_ROUTE,
         element: <HelpersPage />,
         errorElement: <RouteError />,
+      },
+      // Конференции. Публичные: ручка `GET /api/public/conferences` открыта
+      // всем. Детальная — вложенным роутом по тем же причинам, что у новостей:
+      // адрес раздела объявлен один раз, и переименование не оставит
+      // детальную страницу на старом пути.
+      {
+        path: CONFERENCES_ROUTE,
+        children: [
+          { index: true, element: <ConferencesPage />, errorElement: <RouteError /> },
+          { path: ':id', element: <ConferenceDetailPage />, errorElement: <RouteError /> },
+        ],
       },
       // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`
       // открыта всем. Одна страница на девять адресов — разделы отличаются

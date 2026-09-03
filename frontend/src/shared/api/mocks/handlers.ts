@@ -1,3 +1,4 @@
+import { conferenceHandlers } from './conferences';
 import { editablePageHandlers } from './editablePages';
 import { publicHelperHandlers } from './helpers';
 import { newsHandlers } from './news';
@@ -18,6 +19,7 @@ import { publicTeacherHandlers, teacherHandlers } from './teachers';
  */
 export const handlers = [
   ...newsHandlers(),
+  ...conferenceHandlers(),
   ...editablePageHandlers(),
   ...publicTeacherHandlers(),
   ...teacherHandlers(),
