@@ -1,5 +1,10 @@
 import { api, LOGIN_PATH, LOGOUT_PATH } from '@shared/api';
-import type { AccessTokenResponse, LoginRequest, Profile } from '@shared/types';
+import type {
+  AccessTokenResponse,
+  LoginRequest,
+  Profile,
+  ProfileUpdateRequest,
+} from '@shared/types';
 
 /**
  * Ручки аутентификации, которые зовёт прикладной код.
@@ -44,5 +49,20 @@ export async function logout(): Promise<void> {
  */
 export async function fetchProfile(signal?: AbortSignal): Promise<Profile> {
   const { data } = await api.get<Profile>(PROFILE_PATH, { signal });
+  return data;
+}
+
+/**
+ * Правка своего профиля — `PUT /api/users/profile` (F-27).
+ *
+ * Адрес общий с чтением и потому берётся из той же константы: два места
+ * с одной строкой разъезжаются ровно так же, как два описания запроса.
+ *
+ * Ответ — полный профиль после правки, в том же виде, что у `GET`: вызывающий
+ * кладёт его на ключ `['profile']` вместо инвалидации, и второй запрос
+ * за теми же данными не нужен.
+ */
+export async function updateProfile(body: ProfileUpdateRequest): Promise<Profile> {
+  const { data } = await api.put<Profile>(PROFILE_PATH, body);
   return data;
 }
