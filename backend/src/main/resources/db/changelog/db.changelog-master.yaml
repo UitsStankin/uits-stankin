@@ -55,3 +55,7 @@ databaseChangeLog:
       file: db/changelog/changesets/027-refresh-token-lineage.yml
   - include:
       file: db/changelog/changesets/028-tag-name-lower-unique.yml
+  - include:
+      file: db/changelog/changesets/029-create-gradesheet-tables.yml
+  - include:
+      file: db/changelog/changesets/030-create-gradesheet-blocks.yml

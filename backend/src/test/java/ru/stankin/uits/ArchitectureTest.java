@@ -166,6 +166,9 @@ class ArchitectureTest {
                             "..module.students.entity..",
                             "..module.students.mapper..",
                             "..module.students.service..",
+                            "..module.gradesheets.entity..",
+                            "..module.gradesheets.mapper..",
+                            "..module.gradesheets.service..",
                             "..config.."
                     )
                     .because("Teacher — внутренняя модель модуля staff, "
@@ -242,6 +245,14 @@ class ArchitectureTest {
      *   <li>staff → user.service: связь карточки ППС с учётной записью приходит
      *       идентификатором в теле запроса, и учётка достаётся через UserService —
      *       тем же путём, что назначенные на событие.</li>
+     *   <li>gradesheets → staff.entity: ведомость привязана к преподавателю
+     *       из шапки файла (FK на employee_teacher) и к дисциплине из справочника
+     *       (FK на subject_subject) — обе связи того же рода, что у расписания.</li>
+     *   <li>staff.service → gradesheets.service: обратная сторона той же связи.
+     *       Сопоставление ФИО из ведомости со справочниками идёт через порты
+     *       {@code TeacherByNameLookup} и {@code SubjectByNameLookup}: интерфейсы
+     *       объявлены у потребителя, реализация — у владельца данных, как
+     *       {@code TeacherCardLookup} у модулей user и staff.</li>
      * </ul>
      */
     @ArchTest
@@ -281,6 +292,12 @@ class ArchitectureTest {
                     .ignoreDependency(
                             resideInAPackage("..module.students.service.."),
                             resideInAPackage("..module.staff.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.gradesheets.."),
+                            resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.staff.service.."),
+                            resideInAPackage("..module.gradesheets.service.."))
                     .because("границы модулей — сервисы и DTO; прямой доступ к чужим "
                             + "внутренностям превращает модули обратно в один клубок");
 

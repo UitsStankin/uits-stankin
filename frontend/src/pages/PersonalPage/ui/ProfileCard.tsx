@@ -1,4 +1,5 @@
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
+import { cn } from '@shared/lib';
 
 import { DefinitionField, definitionLabelClass } from './DefinitionField';
 
@@ -12,18 +13,29 @@ interface ProfileCardProps {
   avatarUrl: string | null;
   /** Подписи ролей: их может быть несколько. */
   roles: readonly string[];
+  /** Показать форму вместо карточки. */
+  onEdit: () => void;
 }
 
 /**
- * Карточка учётной записи. Чистая: ничего не помнит и не запрашивает,
- * всё приходит пропсами из сборки страницы.
+ * Карточка учётной записи — режим чтения. Чистая: ничего не помнит
+ * и не запрашивает, данные и обработчик приходят пропсами из сборки
+ * страницы.
  *
- * Только чтение — и это не упрощение, а состояние контракта: ручки правки
- * профиля нет, аватар записывать некуда (матрица паритета, п. 21). Кнопку
- * «Редактировать» из оригинала не переношу: она открывала бы форму,
- * которой некуда отправлять.
+ * Кнопка «Редактировать» из оригинала вернулась вместе с ручкой правки
+ * (T-33, F-27): до неё форме некуда было отправлять, и кнопки здесь
+ * не было вовсе. Правятся не все показанные поля — логин, почта и роли
+ * остаются за администратором, — и об этом говорит сама форма,
+ * а не карточка: пока на кнопку не нажали, ограничение ни при чём.
  */
-export function ProfileCard({ username, fullName, email, avatarUrl, roles }: ProfileCardProps) {
+export function ProfileCard({
+  username,
+  fullName,
+  email,
+  avatarUrl,
+  roles,
+  onEdit,
+}: ProfileCardProps) {
   return (
     <section className="rounded bg-white p-6 shadow-sm">
       <header className="border-b border-default pb-4">
@@ -64,6 +76,22 @@ export function ProfileCard({ username, fullName, email, avatarUrl, roles }: Pro
             </dd>
           </div>
         </dl>
+      </div>
+
+      {/* Кнопка внизу и первичным стилем — как у карточки преподавателя
+          ниже по странице: две соседние карточки с одинаковым действием,
+          разложенным по-разному, читаются как два разных действия. */}
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={onEdit}
+          className={cn(
+            'rounded bg-primary px-4 py-2.5 text-base font-bold text-white transition',
+            'hover:brightness-95',
+          )}
+        >
+          Редактировать
+        </button>
       </div>
     </section>
   );

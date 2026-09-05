@@ -1,4 +1,4 @@
-import type { ChangeEventHandler, FormEventHandler } from 'react';
+import type { FormEventHandler } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import type { FieldErrors, UseFormRegister } from 'react-hook-form';
 
@@ -8,11 +8,11 @@ import {
   RANK_CODES,
   RANK_LABELS,
 } from '@shared/config/teacherDictionaries';
-import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
 import { cn } from '@shared/lib';
+import { AvatarPicker } from '@shared/ui/AvatarPicker';
+import { SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
 
 import type { TeacherCardFormValues } from '../model/teacherCardSchema';
-import { SelectField, TextAreaField, TextField } from './fields';
 
 interface TeacherCardFormProps {
   register: UseFormRegister<TeacherCardFormValues>;
@@ -53,14 +53,6 @@ export function TeacherCardForm({
   isUploadingAvatar,
   onAvatarSelect,
 }: TeacherCardFormProps) {
-  const handleFileChange: ChangeEventHandler<HTMLInputElement> = (event) => {
-    const file = event.target.files?.[0];
-    if (file) onAvatarSelect(file);
-    // Тот же файл, выбранный второй раз (после ошибки загрузки), должен
-    // снова вызвать `change` — а без сброса значения браузер промолчит.
-    event.target.value = '';
-  };
-
   return (
     <form onSubmit={onSubmit} noValidate className="mt-5 flex flex-col gap-5">
       {formError && (
@@ -70,46 +62,16 @@ export function TeacherCardForm({
       )}
 
       {/* Фото: предпросмотр и выбор файла. Загрузка уходит сразу при
-          выборе, до «Сохранить», — в кружке то, что вернул сервер. */}
-      <div className="flex items-center gap-5">
-        <div className="relative shrink-0">
-          <img
-            src={avatarPreviewUrl ?? DEFAULT_AVATAR_URL}
-            alt=""
-            aria-hidden
-            className="h-28 w-28 rounded-full object-cover"
-          />
-          {isUploadingAvatar && (
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70">
-              <LoaderCircle size={24} className="animate-spin text-primary" aria-hidden />
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            className={cn(
-              'cursor-pointer self-start rounded border border-default px-3 py-1.5',
-              'text-sm font-bold text-text-heading transition hover:border-primary hover:text-primary',
-            )}
-          >
-            Выбрать фото
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              className="sr-only"
-              disabled={isUploadingAvatar}
-              onChange={handleFileChange}
-            />
-          </label>
-          <p className="text-sm text-text-muted">JPEG или PNG, до 15 МБ.</p>
-          {avatarError && (
-            <p role="alert" className="text-sm text-danger">
-              {avatarError}
-            </p>
-          )}
-        </div>
-      </div>
+          выборе, до «Сохранить», — в кружке то, что вернул сервер.
+          Кнопки удаления здесь нет: `PUT /api/teachers/me` очистку фото
+          принимает, но карточку ППС видят посетители, и решение убрать
+          с неё лицо стоит отдельного разговора с кафедрой. */}
+      <AvatarPicker
+        previewUrl={avatarPreviewUrl}
+        isUploading={isUploadingAvatar}
+        error={avatarError}
+        onSelect={onAvatarSelect}
+      />
 
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField
