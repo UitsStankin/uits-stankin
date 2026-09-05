@@ -1,4 +1,4 @@
-package ru.stankin.uits.module.schedule.client;
+package ru.stankin.uits.common.client;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;

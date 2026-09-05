@@ -9,7 +9,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.errors import ScheduleParseError
 from app.exams import parse_exams
-from app.models import ParsedExams, ParsedSchedule
+from app.gradesheets import parse_gradesheets
+from app.models import ParsedExams, ParsedGradeSheets, ParsedSchedule
 from app.parser import parse_schedule
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -92,7 +93,7 @@ class BodySizeLimitMiddleware:
 
 app = FastAPI(
     title="schedule-service",
-    description="Разбор PDF-расписания преподавателя СТАНКИНа",
+    description="Разбор PDF-расписаний и Excel-ведомостей СТАНКИНа",
     version="0.1.0",
 )
 app.add_middleware(BodySizeLimitMiddleware)
@@ -100,7 +101,7 @@ app.add_middleware(BodySizeLimitMiddleware)
 
 @app.exception_handler(RequestValidationError)
 async def _on_invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
-    return _error(400, "invalid_request", "ожидается multipart-поле file с PDF-файлом")
+    return _error(400, "invalid_request", "ожидается multipart-поле file с файлом")
 
 
 @app.exception_handler(UploadTooLargeError)
@@ -139,3 +140,8 @@ async def parse(file: Annotated[UploadFile, File()]) -> ParsedSchedule:
 @app.post("/parse-exams", response_model=ParsedExams)
 async def exams(file: Annotated[UploadFile, File()]) -> ParsedExams:
     return await run_in_threadpool(parse_exams, await _read_upload(file))
+
+
+@app.post("/parse-gradesheet", response_model=ParsedGradeSheets)
+async def gradesheet(file: Annotated[UploadFile, File()]) -> ParsedGradeSheets:
+    return await run_in_threadpool(parse_gradesheets, await _read_upload(file))

@@ -89,3 +89,8 @@ def overflowing_exams_pdf(ibatulin_exams_pdf) -> bytes:
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()
+
+
+@pytest.fixture(scope="session")
+def gradesheet_xlsx() -> bytes:
+    return (FIXTURES / "gradesheet-idb-25-tsis.xlsx").read_bytes()
