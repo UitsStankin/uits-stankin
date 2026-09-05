@@ -8,6 +8,12 @@ group = "ru.stankin"
 version = "0.0.1-SNAPSHOT"
 description = "Project for Uits"
 
+// Spring Boot 4.1.1 приносит Tomcat 11.0.24 с тремя критическими CVE
+// (CVE-2026-68525, CVE-2026-65905, CVE-2026-65182), закрытыми в 11.0.25.
+// Удалить строку вместе с обновлением Spring Boot до версии с 11.0.25+,
+// иначе она начнёт удерживать Tomcat ниже BOM.
+extra["tomcat.version"] = "11.0.25"
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
