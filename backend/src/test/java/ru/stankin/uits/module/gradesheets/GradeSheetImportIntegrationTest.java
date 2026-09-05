@@ -432,6 +432,20 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void workbookWithTwoSheetsOfTheSameGradeSheetIsRejected() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheet("ИДБ-25-11", student(1, "Абрамов", score("М1", "30"))),
+                sheet("ИДБ-25-11", student(1, "Агапова", score("М1", "45")))));
+
+        ResponseEntity<String> response = importWorkbook(adminToken, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("описывают одну ведомость");
+        assertThat(countRows("gradesheet_gradesheet")).isZero();
+        assertThat(countRows("gradesheet_student")).isZero();
+    }
+
+    @Test
     void anonymousCannotImport() {
         ResponseEntity<String> response = importWorkbook(null, String.class);
 

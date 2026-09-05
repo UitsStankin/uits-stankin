@@ -25,7 +25,9 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -65,19 +67,27 @@ public class GradeSheetImportService {
             throw new InvalidFileException("В книге нет ни одной ведомости.");
         }
 
+        Map<String, String> seen = new HashMap<>();
         List<ImportedGradeSheetDto> imported = sheets.stream()
-                .map(sheet -> save(sheet, file.getOriginalFilename()))
+                .map(sheet -> save(sheet, file.getOriginalFilename(), seen))
                 .toList();
         return GradeSheetImportResponseDto.builder().sheets(imported).build();
     }
 
-    private ImportedGradeSheetDto save(ParsedGradeSheetDto parsed, String filename) {
+    private ImportedGradeSheetDto save(
+            ParsedGradeSheetDto parsed, String filename, Map<String, String> seen) {
         String sheetName = Objects.requireNonNullElse(text(parsed.getSheetName()), "без имени");
         String discipline = required(parsed.getDiscipline(), "дисциплина", sheetName, DISCIPLINE_LIMIT);
         String group = required(parsed.getGroup(), "группа", sheetName, GROUP_LIMIT);
         String semester = required(parsed.getSemester(), "семестр", sheetName, SEMESTER_LIMIT);
 
         List<String> warnings = new ArrayList<>(orEmpty(parsed.getWarnings()));
+        String previous = seen.put(discipline + "|" + group + "|" + semester, sheetName);
+        if (previous != null) {
+            throw new InvalidFileException("Листы '" + previous + "' и '" + sheetName
+                    + "' описывают одну ведомость: та же дисциплина, группа и семестр."
+                    + " Книга не импортирована — уберите лишний лист.");
+        }
 
         GradeSheet sheet = gradeSheetRepository
                 .findWithLockByDisciplineNameAndGroupAndSemester(discipline, group, semester)
