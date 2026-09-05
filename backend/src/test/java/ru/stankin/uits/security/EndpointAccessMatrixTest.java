@@ -235,6 +235,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/teachers/{id}/schedule/import", EDITORS),
             controller(HttpMethod.POST, "/api/teachers/{id}/exams/import", EDITORS),
             controller(HttpMethod.POST, "/api/gradesheets/import", EDITORS),
+            controller(HttpMethod.GET, "/api/gradesheets", EDITORS),
+            controller(HttpMethod.GET, "/api/gradesheets/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/subjects", EDITORS),
             controller(HttpMethod.PUT, "/api/subjects/{id}", EDITORS),
