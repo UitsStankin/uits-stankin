@@ -17,10 +17,14 @@ interface HistoryTimelineProps {
  * а вот точки на ней держались абсолютными отступами, своими на каждый
  * из четырёх брейкпоинтов (`left: 146px`, `left: 144px`, `top: -10px`).
  * Здесь и шкала, и точка стоят от одного края, и подгонять нечего.
+ *
+ * Обёртка вокруг `ol` нужна именно шкале: внутри списка ей места нет —
+ * `ol` содержит только `li`, — а позиционировать её надо от того же
+ * прямоугольника, что и точки.
  */
 export function HistoryTimeline({ events }: HistoryTimelineProps) {
   return (
-    <ol className="relative flex flex-col gap-gutter">
+    <div className="relative">
       {/* Шкала. Цвет идёт сверху вниз от светлого к тёмному — как
           в оригинале: чем ниже, тем ближе к сегодняшнему дню. */}
       <span
@@ -28,18 +32,20 @@ export function HistoryTimeline({ events }: HistoryTimelineProps) {
         className="absolute bottom-0 left-2 top-0 w-1 rounded-pill bg-gradient-to-b from-gray-400 via-primary to-gray-900"
       />
 
-      {events.map((event) => (
-        <li key={event.id} className="relative pl-7 md:pl-10">
-          {/* Точка события. Обводка цветом фона портала отделяет её
-              от шкалы, на которой она стоит. */}
-          <span
-            aria-hidden
-            className="absolute left-2.5 top-7 h-4 w-4 -translate-x-1/2 rounded-pill border-2 border-background-default bg-primary"
-          />
+      <ol className="flex flex-col gap-gutter">
+        {events.map((event) => (
+          <li key={event.id} className="relative pl-7 md:pl-10">
+            {/* Точка события. Обводка цветом фона портала отделяет её
+                от шкалы, на которой она стоит. */}
+            <span
+              aria-hidden
+              className="absolute left-2.5 top-7 h-4 w-4 -translate-x-1/2 rounded-pill border-2 border-background-default bg-primary"
+            />
 
-          <HistoryEventCard event={event} />
-        </li>
-      ))}
-    </ol>
+            <HistoryEventCard event={event} />
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
