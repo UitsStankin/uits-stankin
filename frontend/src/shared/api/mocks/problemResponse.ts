@@ -14,7 +14,19 @@ import { HttpResponse } from 'msw';
  */
 export function problemResponse(
   status: number,
-  init: { title: string; detail: string; instance: string },
+  init: {
+    title: string;
+    detail: string;
+    instance: string;
+    /**
+     * Словарь валидации `@Valid`: имя поля → сообщения. Только у ошибок
+     * формы — у остальных его в ответе нет вовсе, и `undefined` уходит
+     * из JSON сам, а не превращается в пустой объект. Разницу форма видит:
+     * по наличию словаря она решает, раскладывать ошибки по полям
+     * или показывать одним баннером.
+     */
+    errors?: Record<string, string[]>;
+  },
 ) {
   return HttpResponse.json(
     {
@@ -23,6 +35,7 @@ export function problemResponse(
       detail: init.detail,
       instance: init.instance,
       timestamp: '2026-08-29T12:00:00.000000+03:00',
+      errors: init.errors,
     },
     {
       status,

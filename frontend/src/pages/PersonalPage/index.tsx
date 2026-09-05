@@ -1,16 +1,17 @@
 import { CheckCircle2 } from 'lucide-react';
 
-import { useAuth } from '@features/auth';
+import { ProfileForm, useAuth, useProfileForm } from '@features/auth';
 import { ChangePasswordForm, useChangePasswordForm } from '@features/change-password';
 import { TeacherCardForm, useTeacherCardForm } from '@features/edit-teacher-card';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { RetryButton } from '@shared/ui/StatusAction';
 import Loader from '@shared/ui/Loader';
-import type { Teacher } from '@shared/types';
+import type { Profile, Teacher } from '@shared/types';
 
 import { ProfileCard } from './ui/ProfileCard';
 import { TeacherCard } from './ui/TeacherCard';
 import { describeRoles, formatFullName } from './lib/profileFields';
+import { useEditToggle } from './model/useEditToggle';
 import { useTeacherCardSection } from './model/useTeacherCardSection';
 
 /**
@@ -29,6 +30,7 @@ import { useTeacherCardSection } from './model/useTeacherCardSection';
 export default function PersonalPage() {
   const { profile } = useAuth();
   const passwordForm = useChangePasswordForm();
+  const profileEditing = useEditToggle();
 
   // Страница стоит за ProtectedRoute, и без профиля сюда не попасть —
   // тот сам показывает загрузку и уводит на форму входа. Но тип этого
@@ -44,13 +46,7 @@ export default function PersonalPage() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
       <h1 className="text-h4 text-text-heading">Личный кабинет</h1>
 
-      <ProfileCard
-        username={profile.username}
-        fullName={formatFullName(profile)}
-        email={profile.email}
-        avatarUrl={profile.avatarUrl}
-        roles={describeRoles(profile)}
-      />
+      <ProfileSection profile={profile} editing={profileEditing} />
 
       {profile.teacher && <TeacherCardSection section={teacherSection} />}
 
@@ -65,6 +61,90 @@ export default function PersonalPage() {
         onToggleVisibility={passwordForm.onToggleVisibility}
       />
     </div>
+  );
+}
+
+/**
+ * Секция «Информация об аккаунте»: карточка либо форма правки (F-27).
+ *
+ * Своего запроса и своих состояний загрузки у неё нет: профиль уже лежит
+ * в кэше — без него страница не рисуется вовсе, — и сбой формы показывает
+ * сама форма баннером над полями.
+ */
+function ProfileSection({
+  profile,
+  editing,
+}: {
+  profile: Profile;
+  editing: ReturnType<typeof useEditToggle>;
+}) {
+  if (editing.isEditing) {
+    return (
+      <ProfileEditor
+        profile={profile}
+        onSaved={editing.finishEditing}
+        onCancel={editing.cancelEditing}
+      />
+    );
+  }
+
+  return (
+    <>
+      {editing.justSaved && <SavedNotice>Профиль сохранён.</SavedNotice>}
+      <ProfileCard
+        username={profile.username}
+        fullName={formatFullName(profile)}
+        email={profile.email}
+        avatarUrl={profile.avatarUrl}
+        roles={describeRoles(profile)}
+        onEdit={editing.startEditing}
+      />
+    </>
+  );
+}
+
+/**
+ * Обёртка ради правила хуков — та же, что у карточки ППС: `useProfileForm`
+ * требует загруженный профиль, а хук нельзя позвать условно. Монтируется
+ * на время правки: с размонтированием умирают и начальные значения,
+ * и брошенные правки, включая выбор «удалить фото».
+ */
+function ProfileEditor({
+  profile,
+  onSaved,
+  onCancel,
+}: {
+  profile: Profile;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const form = useProfileForm(profile, onSaved);
+
+  return (
+    <section className="rounded bg-white p-6 shadow-sm">
+      <header className="border-b border-default pb-4">
+        <h2 className="text-h5 text-text-heading">Информация об аккаунте</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Так вас увидят в шапке портала и рядом с вашими записями
+        </p>
+      </header>
+
+      <ProfileForm
+        register={form.register}
+        onSubmit={form.onSubmit}
+        onCancel={onCancel}
+        fieldErrors={form.fieldErrors}
+        formError={form.formError}
+        isPending={form.isPending}
+        avatarPreviewUrl={form.avatarPreviewUrl}
+        avatarError={form.avatarError}
+        isUploadingAvatar={form.isUploadingAvatar}
+        onAvatarSelect={form.onAvatarSelect}
+        onAvatarRemove={form.onAvatarRemove}
+        username={profile.username}
+        email={profile.email}
+      />
+    </section>
   );
 }
 
@@ -132,17 +212,26 @@ function TeacherCardSection({
 
   return (
     <>
-      {section.justSaved && (
-        <p
-          role="status"
-          className="flex items-center gap-2 rounded bg-success/10 px-3 py-2 text-base text-success"
-        >
-          <CheckCircle2 size={18} aria-hidden />
-          Карточка сохранена.
-        </p>
-      )}
+      {section.justSaved && <SavedNotice>Карточка сохранена.</SavedNotice>}
       <TeacherCard card={section.card} onEdit={section.startEditing} />
     </>
+  );
+}
+
+/**
+ * «Сохранено» над карточкой, к которой это относится. `role="status"`,
+ * а не `alert`: диктор дочитает текущее и сообщит следом — успех
+ * не настолько срочен, чтобы перебивать.
+ */
+function SavedNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      role="status"
+      className="flex items-center gap-2 rounded bg-success/10 px-3 py-2 text-base text-success"
+    >
+      <CheckCircle2 size={18} aria-hidden />
+      {children}
+    </p>
   );
 }
 

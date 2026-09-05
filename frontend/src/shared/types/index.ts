@@ -19,6 +19,7 @@ export type {
   LoginRequest,
   AccessTokenResponse,
   ChangePasswordRequest,
+  ProfileUpdateRequest,
 } from './auth.types';
 
 // Новости и объявления

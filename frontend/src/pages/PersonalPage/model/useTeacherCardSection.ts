@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { myTeacherCardQuery } from '@entities/teacher';
 import { isApiError } from '@shared/api';
+
+import { useEditToggle } from './useEditToggle';
 
 /**
  * Состояние секции «Информация о преподавателе» в личном кабинете:
@@ -16,14 +17,7 @@ import { isApiError } from '@shared/api';
  */
 export function useTeacherCardSection(isTeacher: boolean) {
   const query = useQuery({ ...myTeacherCardQuery, enabled: isTeacher });
-
-  const [isEditing, setIsEditing] = useState(false);
-  /**
-   * «Карточка сохранена» после выхода из формы. Отдельный флаг, а не
-   * `mutation.isSuccess`: мутация живёт в форме, а форма после сохранения
-   * размонтирована — сообщать об успехе больше некому.
-   */
-  const [justSaved, setJustSaved] = useState(false);
+  const editing = useEditToggle();
 
   const notFound = isApiError(query.error) && query.error.status === 404;
   /**
@@ -54,18 +48,6 @@ export function useTeacherCardSection(isTeacher: boolean) {
     isError: failure,
     errorMessage: failure && isApiError(query.error) ? query.error.message : null,
     refetch: () => void query.refetch(),
-    isEditing,
-    justSaved,
-    startEditing: () => {
-      setIsEditing(true);
-      // Форму открыли снова — значит, «сохранено» относится к прошлому
-      // разу и после новой отмены висело бы враньём.
-      setJustSaved(false);
-    },
-    cancelEditing: () => setIsEditing(false),
-    finishEditing: () => {
-      setIsEditing(false);
-      setJustSaved(true);
-    },
+    ...editing,
   };
 }
