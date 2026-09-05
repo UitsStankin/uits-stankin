@@ -22,6 +22,8 @@ import ru.stankin.uits.module.gradesheets.repository.GradeSheetRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,6 +58,7 @@ class GradeSheetReadIntegrationTest extends AbstractIntegrationTest {
                 .direction("09.03.03 «Прикладная информатика»")
                 .importedTeachers("Чеканин В.А., Ступивцев А.В.")
                 .importedFileName("gradesheet.xlsx")
+                .blocks(new ArrayList<>(List.of("М1", "М2", "Зачёт")))
                 .build();
 
         GradeSheetStudent first = GradeSheetStudent.builder()
@@ -157,7 +160,7 @@ class GradeSheetReadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         GradeSheetDetailsResponseDto details = response.getBody();
         assertThat(details.getDiscipline()).isEqualTo(DISCIPLINE);
-        assertThat(details.getBlocks()).containsExactly("М1", "Зачёт");
+        assertThat(details.getBlocks()).containsExactly("М1", "М2", "Зачёт");
         assertThat(details.getStudents()).extracting(GradeSheetStudentResponseDto::getLastName)
                 .containsExactly("Абрамов", "Виноградов");
 
@@ -178,6 +181,19 @@ class GradeSheetReadIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(details.getStudents().getLast().getMarks().getFirst().getText())
                 .isEqualTo("не допущен");
+    }
+
+    @Test
+    void blockWithoutASingleMarkStaysInTheHeader() {
+        GradeSheetDetailsResponseDto details = restTemplate.exchange(
+                "/api/gradesheets/" + firstSheetId, HttpMethod.GET, auth(adminToken),
+                GradeSheetDetailsResponseDto.class).getBody();
+
+        assertThat(details.getBlocks()).contains("М2");
+        assertThat(details.getStudents())
+                .flatExtracting(GradeSheetStudentResponseDto::getMarks)
+                .extracting(mark -> mark.getBlock())
+                .doesNotContain("М2");
     }
 
     @Test

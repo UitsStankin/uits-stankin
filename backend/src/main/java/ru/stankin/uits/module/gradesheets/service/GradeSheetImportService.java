@@ -95,6 +95,14 @@ public class GradeSheetImportService {
         sheet.setTeacher(matchTeacher(parsed.getTeachers(), warnings));
         sheet.setSubject(matchSubject(discipline, warnings));
 
+        sheet.getBlocks().clear();
+        for (String block : orEmpty(parsed.getBlocks())) {
+            String name = fit(block, MARK_LIMIT, "блок оценок", sheetName);
+            if (name != null) {
+                sheet.getBlocks().add(name);
+            }
+        }
+
         sheet.getStudents().clear();
         for (ParsedGradeSheetStudentDto student : orEmpty(parsed.getStudents())) {
             sheet.addStudent(toStudent(student, sheetName));

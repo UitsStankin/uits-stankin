@@ -102,7 +102,7 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
                 .teachers(List.of("Чеканин В.А.", "Ступивцев А.В."))
                 .semester(SEMESTER)
                 .direction("09.03.03 «Прикладная информатика»")
-                .blocks(List.of("М1", "Зачёт"))
+                .blocks(List.of("М1", "М2", "Курсовой проект", "Зачёт"))
                 .students(List.of(students))
                 .warnings(List.of(WARNING))
                 .build();
@@ -137,6 +137,11 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
 
     private int countRows(String table) {
         return jdbc.queryForObject("select count(*) from " + table, Integer.class);
+    }
+
+    private List<String> storedBlocks() {
+        return jdbc.queryForList(
+                "select name from gradesheet_block order by gradesheet_id, block_order", String.class);
     }
 
     @Test
@@ -393,6 +398,37 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
         assertThat(imported.getTeacherId()).isEqualTo(chekanin.getId());
         assertThat(imported.getWarnings())
                 .anyMatch(warning -> warning.contains("не найдена в справочнике"));
+    }
+
+    @Test
+    void headerBlocksAreStoredEvenWithoutMarks() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheet("ИДБ-25-11", student(1, "Абрамов", score("М1", "30")))));
+
+        importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        assertThat(storedBlocks()).containsExactly("М1", "М2", "Курсовой проект", "Зачёт");
+    }
+
+    @Test
+    void repeatedImportReplacesBlocks() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheet("ИДБ-25-11", student(1, "Абрамов", score("М1", "30")))));
+        importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                ParsedGradeSheetDto.builder()
+                        .sheetName("ИДБ-25-11")
+                        .group("ИДБ-25-11")
+                        .discipline(DISCIPLINE)
+                        .semester(SEMESTER)
+                        .teachers(List.of("Чеканин В.А."))
+                        .blocks(List.of("М1", "Экзамен"))
+                        .students(List.of(student(1, "Абрамов", score("М1", "30"))))
+                        .build()));
+        importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        assertThat(storedBlocks()).containsExactly("М1", "Экзамен");
     }
 
     @Test

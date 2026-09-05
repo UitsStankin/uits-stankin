@@ -11,12 +11,10 @@ import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.module.gradesheets.dto.GradeSheetDetailsResponseDto;
 import ru.stankin.uits.module.gradesheets.dto.GradeSheetResponseDto;
 import ru.stankin.uits.module.gradesheets.entity.GradeSheet;
-import ru.stankin.uits.module.gradesheets.entity.GradeSheetMark;
 import ru.stankin.uits.module.gradesheets.mapper.GradeSheetMapper;
 import ru.stankin.uits.module.gradesheets.repository.GradeSheetRepository;
 import ru.stankin.uits.module.gradesheets.repository.GradeSheetSummary;
 
-import java.util.List;
 import java.util.Set;
 
 @Service
@@ -66,17 +64,7 @@ public class GradeSheetService {
         GradeSheet gradeSheet = gradeSheetRepository.findWithStudentsById(id)
                 .orElseThrow(() -> new NotFoundException("Ведомость не найдена: id=" + id));
 
-        GradeSheetDetailsResponseDto details = gradeSheetMapper.toDetailsDto(gradeSheet);
-        details.setBlocks(blocks(gradeSheet));
-        return details;
-    }
-
-    private List<String> blocks(GradeSheet gradeSheet) {
-        return gradeSheet.getStudents().stream()
-                .flatMap(student -> student.getMarks().stream())
-                .map(GradeSheetMark::getBlock)
-                .distinct()
-                .toList();
+        return gradeSheetMapper.toDetailsDto(gradeSheet);
     }
 
     private static void validateSort(Sort sort) {

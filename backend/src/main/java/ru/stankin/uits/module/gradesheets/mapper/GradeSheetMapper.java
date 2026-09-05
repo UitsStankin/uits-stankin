@@ -16,7 +16,6 @@ public interface GradeSheetMapper {
     @Mapping(source = "importedTeachers", target = "teachers")
     @Mapping(source = "teacher.id", target = "teacherId")
     @Mapping(source = "subject.id", target = "subjectId")
-    @Mapping(target = "blocks", ignore = true)
     GradeSheetDetailsResponseDto toDetailsDto(GradeSheet gradeSheet);
 
     @Mapping(source = "studentNumber", target = "number")

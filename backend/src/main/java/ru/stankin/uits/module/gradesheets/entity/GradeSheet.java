@@ -6,7 +6,9 @@ import ru.stankin.uits.module.staff.entity.Subject;
 import ru.stankin.uits.module.staff.entity.Teacher;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -53,6 +55,13 @@ public class GradeSheet {
 
     @Column(name = "imported_at", nullable = false)
     private OffsetDateTime importedAt;
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "gradesheet_block", joinColumns = @JoinColumn(name = "gradesheet_id"))
+    @OrderColumn(name = "block_order")
+    @Column(name = "name", length = 128, nullable = false)
+    private List<String> blocks = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "gradeSheet", cascade = CascadeType.ALL, orphanRemoval = true)
