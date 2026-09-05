@@ -18,6 +18,7 @@ import ru.stankin.uits.module.staff.repository.TeacherRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,6 +70,7 @@ class GradeSheetEntityMappingTest extends AbstractIntegrationTest {
                 .teacher(teacher)
                 .importedTeachers("Чеканин В.А., Ступивцев А.В.")
                 .importedFileName("gradesheet-idb-25-tsis.xlsx")
+                .blocks(new ArrayList<>(List.of("М1", "М2", "Курсовой проект", "Зачёт")))
                 .build();
 
         GradeSheetStudent first = GradeSheetStudent.builder()
@@ -124,6 +126,24 @@ class GradeSheetEntityMappingTest extends AbstractIntegrationTest {
         assertThat(found.getSubject().getName()).isEqualTo(DISCIPLINE);
         assertThat(found.getTeacher().getLastName()).isEqualTo("Чеканин");
         assertThat(found.getStudents()).hasSize(2);
+    }
+
+    @Test
+    void blocksComeBackInTheHeaderOrder() {
+        Long id = persistGradeSheet().getId();
+
+        assertThat(entityManager.find(GradeSheet.class, id).getBlocks())
+                .containsExactly("М1", "М2", "Курсовой проект", "Зачёт");
+    }
+
+    @Test
+    void deletingGradeSheetDeletesBlocks() {
+        Long id = persistGradeSheet().getId();
+
+        entityManager.remove(entityManager.find(GradeSheet.class, id));
+        entityManager.flush();
+
+        assertThat(count("gradesheet_block")).isZero();
     }
 
     @Test
