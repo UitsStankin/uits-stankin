@@ -6,4 +6,6 @@
 export { useAuth } from './model/useAuth';
 export { useLogout } from './model/useLogout';
 export { useLoginForm } from './model/useLoginForm';
+export { useProfileForm } from './model/useProfileForm';
 export { LoginForm } from './ui/LoginForm';
+export { ProfileForm } from './ui/ProfileForm';

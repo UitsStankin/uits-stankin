@@ -6,10 +6,13 @@
  * `msw/node` в браузерный бандл.
  */
 export { handlers } from './handlers';
+export { achievementHandlers, achievementsFixture, makeAchievement } from './achievements';
 export { conferenceHandlers, conferencesFixture, makeConference } from './conferences';
 export { editablePageHandlers } from './editablePages';
+export { fileHandlers } from './files';
 export { helpersFixture, makeHelper, publicHelperHandlers } from './helpers';
 export { makeNews, newsFixture, newsHandlers } from './news';
+export { makeProfile, profileHandlers } from './profile';
 export { pageResponse } from './page';
 export {
   makeTeacher,

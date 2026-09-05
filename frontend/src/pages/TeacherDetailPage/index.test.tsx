@@ -4,7 +4,13 @@ import { http } from 'msw';
 import { Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { makeTeacher, problemResponse, publicTeacherHandlers } from '@shared/api/mocks';
+import {
+  achievementHandlers,
+  makeAchievement,
+  makeTeacher,
+  problemResponse,
+  publicTeacherHandlers,
+} from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
 
@@ -176,6 +182,96 @@ describe('TeacherDetailPage', () => {
       expect(screen.queryByText(section)).not.toBeInTheDocument();
     }
     expect(screen.queryByText('—')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Достижения преподавателя — ручка, появившаяся с T-29 и повешенная
+   * на карточку, а не на отдельную страницу (F-25). В фикстуре первому
+   * преподавателю принадлежат два достижения.
+   */
+  it('показывает достижения преподавателя блоком под профилем', async () => {
+    renderCard(1);
+
+    expect(await screen.findByText('Достижения преподавателя')).toBeInTheDocument();
+
+    const achievement = screen.getByRole('link', { name: 'Достижение 2' });
+    expect(achievement).toHaveAttribute('href', '/scientific-activities/achievements/2');
+
+    // Имя преподавателя в карточках блока не повторяется: оно стоит
+    // заголовком страницы, на которой посетитель уже находится.
+    expect(screen.queryByText('Преподаватель:')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Достижений не будет у большинства карточек, и «Достижений пока нет»
+   * под каждой второй — надпись, из которой посетителю ничего не следует.
+   * Пустого состояния у блока нет: нет достижений — нет и блока.
+   */
+  it('без достижений не рисует ни заголовка блока, ни пустой надписи', async () => {
+    server.use(...achievementHandlers([]));
+
+    renderCard(1);
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(screen.queryByText('Достижения преподавателя')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Ручка постраничная, блок берёт первую страницу. Больше двадцати
+   * достижений у преподавателя не бывает, но если случится — показанное
+   * не должно выглядеть полным списком.
+   */
+  it('говорит вслух, когда достижений больше, чем поместилось', async () => {
+    server.use(
+      ...achievementHandlers(
+        Array.from({ length: 23 }, (_, index) =>
+          makeAchievement({ id: index + 1, title: `Награда ${index + 1}`, teacherId: 1 }),
+        ),
+      ),
+    );
+
+    renderCard(1);
+
+    expect(await screen.findByText('Показаны последние 20 из 23.')).toBeInTheDocument();
+  });
+
+  /**
+   * Сбой блока — не то же самое, что его пустота: данные есть, но
+   * не доехали, и промолчать значило бы их потерять. Карточка при этом
+   * загружена и остаётся на экране.
+   */
+  it('на сбое достижений показывает сбой блока, не трогая карточку', async () => {
+    server.use(
+      http.get('*/api/public/teachers/:teacherId/achievements', () =>
+        problemResponse(500, {
+          title: 'Internal Server Error',
+          detail: 'Что-то пошло не так на сервере',
+          instance: '/api/public/teachers/1/achievements',
+        }),
+      ),
+    );
+
+    renderCard(1);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Абрамов Никита Сергеевич' }),
+    ).toBeInTheDocument();
+
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Не удалось загрузить достижения')).toBeInTheDocument();
+  });
+
+  /**
+   * Неизвестный преподаватель получает от ручки достижений не `404`,
+   * а пустую страницу: она фильтрует достижения по ссылке, а не проверяет
+   * карточку. Блок обязан молчать — «достижений нет» под надписью
+   * «преподаватель не найден» выглядело бы ответом на несуществующий вопрос.
+   */
+  it('на несуществующем преподавателе не рисует блок достижений', async () => {
+    renderCard(9000);
+
+    expect(await screen.findByText('Преподаватель не найден')).toBeInTheDocument();
+    expect(screen.queryByText('Достижения преподавателя')).not.toBeInTheDocument();
   });
 
   it('на несуществующей карточке объясняет и ведёт к списку', async () => {

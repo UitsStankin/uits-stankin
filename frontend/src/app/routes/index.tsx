@@ -7,6 +7,7 @@ import AuthLayout from '../layouts/AuthLayout';
 
 import Loader from '@shared/ui/Loader';
 import {
+  ACHIEVEMENTS_ROUTE,
   ANNOUNCEMENTS_ROUTE,
   CONFERENCES_ROUTE,
   HELPERS_ROUTE,
@@ -27,6 +28,8 @@ import TeacherDetailPage from '@pages/TeacherDetailPage';
 import HelpersPage from '@pages/HelpersPage';
 import ConferencesPage from '@pages/ConferencesPage';
 import ConferenceDetailPage from '@pages/ConferenceDetailPage';
+import AchievementsPage from '@pages/AchievementsPage';
+import AchievementDetailPage from '@pages/AchievementDetailPage';
 import EditablePagePage from '@pages/EditablePagePage';
 import type { EditablePageSlug } from '@shared/types';
 import ProtectedRoute from './protectedRoute';
@@ -181,6 +184,19 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <ConferencesPage />, errorElement: <RouteError /> },
           { path: ':id', element: <ConferenceDetailPage />, errorElement: <RouteError /> },
+        ],
+      },
+      // Достижения кафедры. Публичные: ручка `GET /api/public/achievements`
+      // открыта всем. Детальная — вложенным роутом по тем же причинам,
+      // что у новостей: адрес раздела объявлен один раз, и переименование
+      // не оставит детальную страницу на старом пути. Отдельного роута
+      // «достижения преподавателя» нет намеренно: та ручка рисует блок
+      // на карточке ППС, а сами достижения открываются здесь же (F-25).
+      {
+        path: ACHIEVEMENTS_ROUTE,
+        children: [
+          { index: true, element: <AchievementsPage />, errorElement: <RouteError /> },
+          { path: ':id', element: <AchievementDetailPage />, errorElement: <RouteError /> },
         ],
       },
       // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`
