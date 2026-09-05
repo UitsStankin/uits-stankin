@@ -27,6 +27,10 @@ import ru.stankin.uits.module.gradesheets.dto.ParsedGradeSheetsDto;
 import ru.stankin.uits.module.gradesheets.entity.GradeSheet;
 import ru.stankin.uits.module.gradesheets.entity.GradeSheetStudent;
 import ru.stankin.uits.module.gradesheets.repository.GradeSheetRepository;
+import ru.stankin.uits.module.staff.entity.Subject;
+import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.staff.repository.SubjectRepository;
+import ru.stankin.uits.module.staff.repository.TeacherRepository;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -50,14 +54,28 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
     private GradeSheetRepository gradeSheetRepository;
 
     @Autowired
+    private TeacherRepository teacherRepository;
+
+    @Autowired
+    private SubjectRepository subjectRepository;
+
+    @Autowired
     private JdbcTemplate jdbc;
 
     private String adminToken;
+    private Teacher chekanin;
+    private Subject subject;
 
     @BeforeEach
     void setUp() {
         createUser("gradesheet-admin", TestRole.ADMIN);
         adminToken = login("gradesheet-admin");
+        chekanin = teacherRepository.save(Teacher.builder()
+                .lastName("Чеканин")
+                .firstName("Владислав")
+                .patronymic("Алексеевич")
+                .build());
+        subject = subjectRepository.save(Subject.builder().name(DISCIPLINE).build());
     }
 
     private static ParsedGradeSheetMarkDto score(String block, String value) {
@@ -152,6 +170,8 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
         assertThat(imported.getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(imported.getSemester()).isEqualTo(SEMESTER);
         assertThat(imported.getStudentCount()).isEqualTo(1);
+        assertThat(imported.getTeacherId()).isEqualTo(chekanin.getId());
+        assertThat(imported.getSubjectId()).isEqualTo(subject.getId());
         assertThat(imported.getWarnings()).containsExactly(WARNING);
     }
 
@@ -168,8 +188,8 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
         assertThat(stored.getImportedTeachers()).isEqualTo("Чеканин В.А., Ступивцев А.В.");
         assertThat(stored.getImportedFileName()).isEqualTo("gradesheet-idb-25-tsis.xlsx");
         assertThat(stored.getImportedAt()).isNotNull();
-        assertThat(stored.getTeacher()).isNull();
-        assertThat(stored.getSubject()).isNull();
+        assertThat(stored.getTeacher().getId()).isEqualTo(chekanin.getId());
+        assertThat(stored.getSubject().getId()).isEqualTo(subject.getId());
     }
 
     @Test
@@ -277,6 +297,102 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<String> response = importWorkbook(adminToken, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void unknownTeacherIsReportedAndLeavesTheLinkEmpty() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                ParsedGradeSheetDto.builder()
+                        .sheetName("ИДБ-25-11")
+                        .group("ИДБ-25-11")
+                        .discipline(DISCIPLINE)
+                        .semester(SEMESTER)
+                        .teachers(List.of("Неизвестнов А.А."))
+                        .students(List.of(student(1, "Абрамов")))
+                        .build()));
+
+        ImportedGradeSheetDto imported =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class)
+                        .getBody().getSheets().getFirst();
+
+        assertThat(imported.getTeacherId()).isNull();
+        assertThat(imported.getWarnings())
+                .anyMatch(warning -> warning.contains("Неизвестнов А.А.")
+                        && warning.contains("не найден"));
+    }
+
+    @Test
+    void initialsMustMatchTheCard() {
+        teacherRepository.save(Teacher.builder()
+                .lastName("Ступивцев")
+                .firstName("Пётр")
+                .patronymic("Петрович")
+                .build());
+
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                ParsedGradeSheetDto.builder()
+                        .sheetName("ИДБ-25-11")
+                        .group("ИДБ-25-11")
+                        .discipline(DISCIPLINE)
+                        .semester(SEMESTER)
+                        .teachers(List.of("Ступивцев А.В."))
+                        .students(List.of(student(1, "Абрамов")))
+                        .build()));
+
+        ImportedGradeSheetDto imported =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class)
+                        .getBody().getSheets().getFirst();
+
+        assertThat(imported.getTeacherId()).isNull();
+    }
+
+    @Test
+    void ambiguousTeacherIsNotLinked() {
+        teacherRepository.save(Teacher.builder()
+                .lastName("Чеканин")
+                .firstName("Виктор")
+                .patronymic("Андреевич")
+                .build());
+
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                ParsedGradeSheetDto.builder()
+                        .sheetName("ИДБ-25-11")
+                        .group("ИДБ-25-11")
+                        .discipline(DISCIPLINE)
+                        .semester(SEMESTER)
+                        .teachers(List.of("Чеканин В."))
+                        .students(List.of(student(1, "Абрамов")))
+                        .build()));
+
+        ImportedGradeSheetDto imported =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class)
+                        .getBody().getSheets().getFirst();
+
+        assertThat(imported.getTeacherId()).isNull();
+        assertThat(imported.getWarnings())
+                .anyMatch(warning -> warning.contains("несколько карточек"));
+    }
+
+    @Test
+    void unknownDisciplineIsReportedAndLeavesTheLinkEmpty() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                ParsedGradeSheetDto.builder()
+                        .sheetName("ИДБ-25-11")
+                        .group("ИДБ-25-11")
+                        .discipline("Дисциплина, которой нет в справочнике")
+                        .semester(SEMESTER)
+                        .teachers(List.of("Чеканин В.А."))
+                        .students(List.of(student(1, "Абрамов")))
+                        .build()));
+
+        ImportedGradeSheetDto imported =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class)
+                        .getBody().getSheets().getFirst();
+
+        assertThat(imported.getSubjectId()).isNull();
+        assertThat(imported.getTeacherId()).isEqualTo(chekanin.getId());
+        assertThat(imported.getWarnings())
+                .anyMatch(warning -> warning.contains("не найдена в справочнике"));
     }
 
     @Test

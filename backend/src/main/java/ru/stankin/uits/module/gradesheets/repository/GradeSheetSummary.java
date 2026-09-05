@@ -18,6 +18,10 @@ public interface GradeSheetSummary {
 
     String getTeachers();
 
+    Long getTeacherId();
+
+    Long getSubjectId();
+
     int getStudentCount();
 
     String getImportedFileName();

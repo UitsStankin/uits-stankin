@@ -20,6 +20,8 @@ public class GradeSheetDetailsResponseDto {
     String department;
     String direction;
     String teachers;
+    Long teacherId;
+    Long subjectId;
     String importedFileName;
     OffsetDateTime importedAt;
     List<String> blocks;

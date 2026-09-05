@@ -53,6 +53,8 @@ public class GradeSheetService {
                 .department(summary.getDepartment())
                 .direction(summary.getDirection())
                 .teachers(summary.getTeachers())
+                .teacherId(summary.getTeacherId())
+                .subjectId(summary.getSubjectId())
                 .studentCount(summary.getStudentCount())
                 .importedFileName(summary.getImportedFileName())
                 .importedAt(summary.getImportedAt())

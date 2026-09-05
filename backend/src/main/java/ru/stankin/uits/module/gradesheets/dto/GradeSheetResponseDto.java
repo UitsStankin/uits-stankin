@@ -19,6 +19,8 @@ public class GradeSheetResponseDto {
     String department;
     String direction;
     String teachers;
+    Long teacherId;
+    Long subjectId;
     int studentCount;
     String importedFileName;
     OffsetDateTime importedAt;

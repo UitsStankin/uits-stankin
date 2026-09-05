@@ -32,10 +32,14 @@ public interface GradeSheetRepository extends JpaRepository<GradeSheet, Long> {
                    g.department as department,
                    g.direction as direction,
                    g.importedTeachers as teachers,
+                   teacher.id as teacherId,
+                   subject.id as subjectId,
                    size(g.students) as studentCount,
                    g.importedFileName as importedFileName,
                    g.importedAt as importedAt
             from GradeSheet g
+            left join g.teacher teacher
+            left join g.subject subject
             where (:group is null or lower(g.group) = lower(cast(:group as string)))
               and (:discipline is null
                    or lower(g.disciplineName) like lower(concat('%', cast(:discipline as string), '%')) escape '\\')

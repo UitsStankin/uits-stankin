@@ -18,5 +18,7 @@ public class ImportedGradeSheetDto {
     String group;
     String semester;
     int studentCount;
+    Long teacherId;
+    Long subjectId;
     List<String> warnings;
 }
