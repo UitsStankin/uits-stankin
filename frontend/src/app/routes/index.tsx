@@ -18,6 +18,7 @@ import {
 } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
+import HistoryPage from '@pages/HistoryPage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
@@ -128,6 +129,24 @@ export const routes: RouteObject[] = [
       {
         index: true,
         element: <HomePage />,
+        errorElement: <RouteError />,
+      },
+      // История кафедры. Статическая: ручки нет и не будет, содержимое лежит
+      // в коде страницы. Адрес взят из меню (`shared/config/navigation.ts`,
+      // пункт `about/history`) и повторяет старый портал — как и остальные
+      // перенесённые разделы, это экономит строку в карте редиректов nginx
+      // при переезде.
+      //
+      // Строкой здесь, а не константой в `shared/config/routes.ts`: адрес
+      // знает один роутер. В меню он лежит своей записью, как у всех
+      // разделов, а больше собирать его некому — ссылок на историю
+      // из кода нет.
+      //
+      // `errorElement` — по той же причине, что у соседей: без него падение
+      // страницы унесло бы шапку с меню, и уйти можно было бы только «назад».
+      {
+        path: '/about/history-of-department',
+        element: <HistoryPage />,
         errorElement: <RouteError />,
       },
       // Новости. Публичные: ручка `GET /api/public/news` открыта всем,
