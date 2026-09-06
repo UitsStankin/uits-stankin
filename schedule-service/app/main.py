@@ -47,6 +47,38 @@ def _declared_content_length(scope: Scope) -> int | None:
     return None
 
 
+class _RequestBodyGuard:
+    def __init__(self, scope: Scope, receive: Receive, send: Send):
+        self._scope = scope
+        self._receive = receive
+        self._send = send
+        self._received = 0
+        self._response_started = False
+        self.rejected = False
+
+    async def send(self, message: Message) -> None:
+        if self.rejected:
+            return
+        if message["type"] == "http.response.start":
+            self._response_started = True
+        await self._send(message)
+
+    async def receive(self) -> Message:
+        message = await self._receive()
+        if message["type"] != "http.request":
+            return message
+        self._received += len(message.get("body", b""))
+        if self._received > MAX_REQUEST_BYTES:
+            await self._reject()
+        return message
+
+    async def _reject(self) -> None:
+        self.rejected = True
+        if not self._response_started:
+            await _too_large_response()(self._scope, self._receive, self._send)
+        raise _RequestBodyTooLarge
+
+
 class BodySizeLimitMiddleware:
     def __init__(self, app: ASGIApp):
         self.app = app
@@ -60,34 +92,11 @@ class BodySizeLimitMiddleware:
             await _too_large_response()(scope, receive, send)
             return
 
-        received = 0
-        response_started = False
-        rejected = False
-
-        async def guarded_send(message: Message) -> None:
-            nonlocal response_started
-            if rejected:
-                return
-            if message["type"] == "http.response.start":
-                response_started = True
-            await send(message)
-
-        async def counting_receive() -> Message:
-            nonlocal received, rejected
-            message = await receive()
-            if message["type"] == "http.request":
-                received += len(message.get("body", b""))
-                if received > MAX_REQUEST_BYTES:
-                    rejected = True
-                    if not response_started:
-                        await _too_large_response()(scope, receive, send)
-                    raise _RequestBodyTooLarge
-            return message
-
+        guard = _RequestBodyGuard(scope, receive, send)
         try:
-            await self.app(scope, counting_receive, guarded_send)
+            await self.app(scope, guard.receive, guard.send)
         except Exception:
-            if not rejected:
+            if not guard.rejected:
                 raise
 
 

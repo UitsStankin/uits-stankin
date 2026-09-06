@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Any, BinaryIO, NamedTuple
 
 import openpyxl
+from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import ValidationError
 
@@ -145,20 +146,24 @@ def _parse_meta(sheet: Worksheet, header_row: int) -> dict[str, str]:
     meta: dict[str, str] = {}
     for row in range(1, header_row):
         for cell in sheet[row]:
-            title = _title(cell.value)
-            if title in META_TITLES:
-                value = _value_right_of(sheet, row, cell.column)
-                if value:
-                    meta.setdefault(META_TITLES[title], value)
-                continue
-            text = _text(cell.value)
-            if not text:
-                continue
-            if "semester" not in meta and SEMESTER_RE.search(text):
-                meta["semester"] = text
-            elif "direction" not in meta and DIRECTION_RE.match(text):
-                meta["direction"] = text
+            _collect_meta(meta, sheet, row, cell)
     return meta
+
+
+def _collect_meta(meta: dict[str, str], sheet: Worksheet, row: int, cell: Cell) -> None:
+    title = _title(cell.value)
+    if title in META_TITLES:
+        value = _value_right_of(sheet, row, cell.column)
+        if value:
+            meta.setdefault(META_TITLES[title], value)
+        return
+    text = _text(cell.value)
+    if not text:
+        return
+    if "semester" not in meta and SEMESTER_RE.search(text):
+        meta["semester"] = text
+    elif "direction" not in meta and DIRECTION_RE.match(text):
+        meta["direction"] = text
 
 
 def _value_right_of(sheet: Worksheet, row: int, column: int) -> str | None:
@@ -192,16 +197,7 @@ def _parse_blocks(
         title = _text(cell.value)
         if not title:
             continue
-        subcolumns: dict[str, int] = {}
-        unknown: list[str] = []
-        for column in range(cell.column, spans.get(cell.column, cell.column) + 1):
-            subtitle = _title(sheet.cell(row=header_row + 1, column=column).value)
-            if subtitle is None:
-                continue
-            if subtitle in SUBCOLUMN_TITLES:
-                subcolumns.setdefault(subtitle, column)
-            else:
-                unknown.append(subtitle)
+        subcolumns, unknown = _block_columns(sheet, header_row, cell, spans)
         for subtitle in unknown:
             warnings.append(
                 f"в блоке '{title}' неизвестная колонка '{subtitle}', её значения пропущены"
@@ -216,6 +212,22 @@ def _parse_blocks(
             )
         )
     return blocks, header_end
+
+
+def _block_columns(
+    sheet: Worksheet, header_row: int, cell: Cell, spans: dict[int, int]
+) -> tuple[dict[str, int], list[str]]:
+    subcolumns: dict[str, int] = {}
+    unknown: list[str] = []
+    for column in range(cell.column, spans.get(cell.column, cell.column) + 1):
+        subtitle = _title(sheet.cell(row=header_row + 1, column=column).value)
+        if subtitle is None:
+            continue
+        if subtitle in SUBCOLUMN_TITLES:
+            subcolumns.setdefault(subtitle, column)
+        else:
+            unknown.append(subtitle)
+    return subcolumns, unknown
 
 
 def _parse_students(
