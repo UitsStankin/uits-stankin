@@ -57,7 +57,7 @@ public class TeacherService {
     public TeacherDetailsResponseDto getTeacherDetails(Long id) {
         return teacherRepository.findById(id)
                 .map(teacherMapper::toDetailsDto)
-                .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+                .orElseThrow(() -> teacherNotFound(id));
     }
 
     @Transactional(readOnly = true)
@@ -91,7 +91,7 @@ public class TeacherService {
     @Transactional
     public TeacherDetailsResponseDto updateTeacher(Long id, TeacherRequestDto request) {
         Teacher teacher = teacherRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+                .orElseThrow(() -> teacherNotFound(id));
 
         applyUpdate(teacher, request);
         teacher.setUser(resolveUser(request.getUserId(), teacher.getId()));
@@ -104,7 +104,7 @@ public class TeacherService {
     @Transactional
     public void deleteTeacher(Long id) {
         Teacher teacher = teacherRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+                .orElseThrow(() -> teacherNotFound(id));
         String avatarKey = teacher.getAvatar();
 
         teacherRepository.delete(teacher);
@@ -212,5 +212,9 @@ public class TeacherService {
         if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
             throw new InvalidFileException("Файл аватара не найден: " + key);
         }
+    }
+
+    private NotFoundException teacherNotFound(Long id) {
+        return new NotFoundException("Преподаватель id=" + id + " не найден");
     }
 }

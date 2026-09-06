@@ -35,7 +35,7 @@ public class HelpersEmployeeService {
     @Transactional(readOnly = true)
     public HelpersEmployeeResponseDto getHelper(Long id) {
         return helpersEmployeeMapper.toDto(helpersEmployeeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Сотрудник УВП id=" + id + " не найден")));
+                .orElseThrow(() -> helperNotFound(id)));
     }
 
     @Transactional
@@ -49,7 +49,7 @@ public class HelpersEmployeeService {
     @Transactional
     public HelpersEmployeeResponseDto updateHelper(Long id, HelpersEmployeeRequestDto request) {
         HelpersEmployee employee = helpersEmployeeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Сотрудник УВП id=" + id + " не найден"));
+                .orElseThrow(() -> helperNotFound(id));
         validateAvatar(request);
 
         String oldAvatarKey = employee.getAvatar();
@@ -65,7 +65,7 @@ public class HelpersEmployeeService {
     @Transactional
     public void deleteHelper(Long id) {
         HelpersEmployee employee = helpersEmployeeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Сотрудник УВП id=" + id + " не найден"));
+                .orElseThrow(() -> helperNotFound(id));
         String avatarKey = employee.getAvatar();
 
         helpersEmployeeRepository.delete(employee);
@@ -80,5 +80,9 @@ public class HelpersEmployeeService {
         if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
             throw new InvalidFileException("Файл аватара не найден: " + key);
         }
+    }
+
+    private NotFoundException helperNotFound(Long id) {
+        return new NotFoundException("Сотрудник УВП id=" + id + " не найден");
     }
 }

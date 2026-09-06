@@ -127,13 +127,13 @@ public class NewsService {
     public NewsResponseDto getNewsById(Long id) {
         return newsRepository.findById(id)
                 .map(newsMapper::toDto)
-                .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+                .orElseThrow(() -> newsNotFound(id));
     }
 
     @Transactional
     public NewsResponseDto updateNews(Long id, NewsRequestDto request) {
         NewsPost newsPost = newsRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+                .orElseThrow(() -> newsNotFound(id));
         request.setContent(HtmlSanitizer.sanitize(request.getContent()));
         validatePreviewImage(request);
 
@@ -158,7 +158,7 @@ public class NewsService {
     @Transactional
     public void deleteNews(Long id) {
         NewsPost newsPost = newsRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Новость id=" + id + " не найдена"));
+                .orElseThrow(() -> newsNotFound(id));
         String key = newsPost.getPreviewImage();
         String thumbnail = newsPost.getPreviewThumbnail();
 
@@ -185,5 +185,9 @@ public class NewsService {
         if (key != null && !fileStorage.existsInCategory(key, NEWS_CATEGORY)) {
             throw new InvalidFileException("Файл обложки не найден: " + key);
         }
+    }
+
+    private NotFoundException newsNotFound(Long id) {
+        return new NotFoundException("Новость id=" + id + " не найдена");
     }
 }

@@ -52,7 +52,7 @@ public class ConferenceService {
     public ConferenceResponseDto getConferenceById(Long id) {
         return conferenceRepository.findById(id)
                 .map(conferenceMapper::toDto)
-                .orElseThrow(() -> new NotFoundException("Конференция id=" + id + " не найдена"));
+                .orElseThrow(() -> conferenceNotFound(id));
     }
 
     @Transactional
@@ -66,7 +66,7 @@ public class ConferenceService {
     @Transactional
     public ConferenceResponseDto updateConference(Long id, ConferenceRequestDto request) {
         ConferenceAnnouncement conference = conferenceRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Конференция id=" + id + " не найдена"));
+                .orElseThrow(() -> conferenceNotFound(id));
         prepare(request);
 
         String oldKey = conference.getPreviewImage();
@@ -82,7 +82,7 @@ public class ConferenceService {
     @Transactional
     public void deleteConference(Long id) {
         ConferenceAnnouncement conference = conferenceRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Конференция id=" + id + " не найдена"));
+                .orElseThrow(() -> conferenceNotFound(id));
         String key = conference.getPreviewImage();
 
         conferenceRepository.delete(conference);
@@ -98,8 +98,10 @@ public class ConferenceService {
      * и ориентир «перед сохранением» там не за что зацепить.
      */
     private void prepare(ConferenceRequestDto request) {
-        if (request.getContent() != null) {
-            String cleaned = HtmlSanitizer.sanitize(request.getContent());
+        String content = request.getContent();
+
+        if (content != null) {
+            String cleaned = HtmlSanitizer.sanitize(content);
             request.setContent(cleaned.isBlank() ? null : cleaned);
         }
 
@@ -119,5 +121,9 @@ public class ConferenceService {
         if (key != null && !fileStorage.existsInCategory(key, NEWS_CATEGORY)) {
             throw new InvalidFileException("Файл обложки не найден: " + key);
         }
+    }
+
+    private NotFoundException conferenceNotFound(Long id) {
+        return new NotFoundException("Конференция id=" + id + " не найдена");
     }
 }

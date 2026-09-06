@@ -70,7 +70,7 @@ public class PublicationService {
     public PublicationResponseDto getPublication(Long id) {
         return publicationRepository.findById(id)
                 .map(publicationMapper::toDto)
-                .orElseThrow(() -> new NotFoundException("Публикация id=" + id + " не найдена"));
+                .orElseThrow(() -> publicationNotFound(id));
     }
 
     @Transactional
@@ -85,7 +85,7 @@ public class PublicationService {
     @Transactional
     public PublicationResponseDto updatePublication(Long id, PublicationRequestDto request) {
         ScientificPublication publication = publicationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Публикация id=" + id + " не найдена"));
+                .orElseThrow(() -> publicationNotFound(id));
         validateFile(request.getFile());
         Set<Tag> tags = resolveTags(request.getTagIds());
 
@@ -103,7 +103,7 @@ public class PublicationService {
     @Transactional
     public void deletePublication(Long id) {
         ScientificPublication publication = publicationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Публикация id=" + id + " не найдена"));
+                .orElseThrow(() -> publicationNotFound(id));
         String key = publication.getFile();
 
         publicationRepository.delete(publication);
@@ -168,5 +168,9 @@ public class PublicationService {
         }
 
         return author.trim();
+    }
+
+    private NotFoundException publicationNotFound(Long id) {
+        return new NotFoundException("Публикация id=" + id + " не найдена");
     }
 }
