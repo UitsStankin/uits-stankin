@@ -3,6 +3,7 @@ plugins {
 	jacoco
 	id("org.springframework.boot") version "4.1.1"
 	id("io.spring.dependency-management") version "1.1.7"
+	id("org.sonarqube") version "7.4.0.8496"
 }
 
 group = "ru.stankin"
@@ -79,5 +80,17 @@ tasks.jacocoTestReport {
 	reports {
 		xml.required = true
 		html.required = true
+	}
+}
+
+sonar {
+	properties {
+		property("sonar.projectKey", "UitsStankin_uits-stankin")
+		property("sonar.organization", "uitsstankin")
+		property("sonar.host.url", "https://sonarcloud.io")
+		property(
+			"sonar.coverage.jacoco.xmlReportPaths",
+			layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml").get().asFile.path
+		)
 	}
 }

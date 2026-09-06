@@ -10,6 +10,8 @@
 [![backend CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/ci.yml)
 [![schedule-service CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/schedule-service.yml)
 [![frontend CI](https://github.com/UitsStankin/uits-stankin/actions/workflows/frontend.yml/badge.svg?branch=dev)](https://github.com/UitsStankin/uits-stankin/actions/workflows/frontend.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=UitsStankin_uits-stankin&metric=alert_status)](https://sonarcloud.io/summary/overall?id=UitsStankin_uits-stankin)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=UitsStankin_uits-stankin&metric=coverage)](https://sonarcloud.io/component_measures?id=UitsStankin_uits-stankin&metric=coverage)
 
 Сайт кафедры «Управление и информатика в технических системах» МГТУ «СТАНКИН»:
 новости и объявления, карточки преподавателей, расписания, научные публикации,
