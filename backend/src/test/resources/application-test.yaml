@@ -5,3 +5,6 @@ application:
       username-attempts: 100000
     upload-rate-limit:
       attempts: 100000
+
+  serper:
+    key: ""

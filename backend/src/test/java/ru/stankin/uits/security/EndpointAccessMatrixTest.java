@@ -51,6 +51,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -226,6 +227,7 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/publications", EDITORS),
             controller(HttpMethod.PUT, "/api/publications/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/publications/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/publications/scholar", EDITORS),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
@@ -380,7 +382,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .replace("{id}", String.valueOf(fixture.newsId()))
                 .replace("{teacherId}", TEACHER_ID)
                 .replace("{key}", MEDIA_KEY)
-                .replace("{slug}", PAGE_SLUG);
+                .replace("{slug}", PAGE_SLUG)
+                + query(endpoint);
 
         HttpHeaders headers = new HttpHeaders();
 
@@ -399,6 +402,14 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
      * с 400 на отсутствующем multipart, так и не дойдя до проверки роли,
      * и клетка «обычный пользователь → 403» стала бы зелёной по ошибке.
      */
+    private String query(Endpoint endpoint) {
+        return switch (endpoint.key()) {
+            case "GET /api/publications/scholar" ->
+                    "?q=" + URLEncoder.encode("Чеканин", StandardCharsets.UTF_8);
+            default -> "";
+        };
+    }
+
     private HttpEntity<?> request(Endpoint endpoint, Fixture fixture, HttpHeaders headers) {
         return switch (endpoint.key()) {
             case "POST /api/users/auth/login" ->
