@@ -34,10 +34,10 @@ jobs:
       # На сервер уезжает только compose-файл: собирать там больше нечего,
       # приложение приходит готовым образом из registry
       - name: Checkout кода
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.0.0
 
       - name: Копируем compose-файл на сервер
-        uses: appleboy/scp-action@v1.0.0
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345  # v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -47,7 +47,7 @@ jobs:
           target: "/opt/uits/"
 
       - name: Запуск на сервере
-        uses: appleboy/ssh-action@v1.2.5
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5
         env:
           IMAGE_TAG: ${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
