@@ -87,6 +87,14 @@ jobs:
         # Тесты с Testcontainers работают в GitHub Actions из коробки:
         # Docker уже установлен на ubuntu-latest runners
 
+      - name: Отчёт о покрытии
+        if: always() && steps.gate.outputs.build == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-report
+          path: backend/build/reports/jacoco/test/
+          retention-days: 7
+
       # При падении сборки HTML-отчёт и XML-результаты тестов сохраняются
       # артефактом — иначе причину падения видно только в сыром логе Gradle
       - name: Отчёты тестов при падении
