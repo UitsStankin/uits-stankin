@@ -716,8 +716,8 @@ class NewsIntegrationTest extends AbstractIntegrationTest {
         assertThat(collected)
                 .doesNotHaveDuplicates()
                 .containsExactlyInAnyOrderElementsOf(
-                        newsRepository.findAll().stream().map(NewsPost::getId).toList());
-        assertThat(collected).isSortedAccordingTo(java.util.Comparator.reverseOrder());
+                        newsRepository.findAll().stream().map(NewsPost::getId).toList())
+                .isSortedAccordingTo(java.util.Comparator.reverseOrder());
     }
 
     @Test
