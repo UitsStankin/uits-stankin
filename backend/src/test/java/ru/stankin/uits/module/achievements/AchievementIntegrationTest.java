@@ -359,8 +359,7 @@ class AchievementIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String stored = achievementRepository.findAll().getFirst().getContent();
-        assertThat(stored).contains("Награда кафедры");
-        assertThat(stored).doesNotContain("script");
+        assertThat(stored).contains("Награда кафедры").doesNotContain("script");
     }
 
     /**
@@ -381,8 +380,7 @@ class AchievementIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         String stored = achievementRepository.findById(saved.getId()).orElseThrow().getContent();
-        assertThat(stored).contains("Обновлено");
-        assertThat(stored).doesNotContain("onerror");
+        assertThat(stored).contains("Обновлено").doesNotContain("onerror");
     }
 
     /**

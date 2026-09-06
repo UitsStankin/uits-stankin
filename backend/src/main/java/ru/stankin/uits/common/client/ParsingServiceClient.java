@@ -3,6 +3,7 @@ package ru.stankin.uits.common.client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.LinkedMultiValueMap;
@@ -50,7 +51,7 @@ public class ParsingServiceClient {
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(multipartBody(file, filename))
                     .retrieve()
-                    .onStatus(status -> status.isError(), (request, response) -> translate(response))
+                    .onStatus(HttpStatusCode::isError, (request, response) -> translate(response))
                     .body(responseType);
         } catch (ResourceAccessException e) {
             throw new ScheduleServiceUnavailableException(

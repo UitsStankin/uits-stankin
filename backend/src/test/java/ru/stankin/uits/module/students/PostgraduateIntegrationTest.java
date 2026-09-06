@@ -59,8 +59,8 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
         chekanin = teacher("Чеканин", "Владимир", "Алексеевич");
         razumovskiy = teacher("Разумовский", "Алексей", "Игоревич");
 
-        yakovlev = record(student("Яковлев", "Иван", "2.3.1"), chekanin);
-        abramov = record(student("Абрамов", "Пётр", "1.2.2"), razumovskiy);
+        yakovlev = postgraduateRecord(student("Яковлев", "Иван", "2.3.1"), chekanin);
+        abramov = postgraduateRecord(student("Абрамов", "Пётр", "1.2.2"), razumovskiy);
     }
 
     private Teacher teacher(String lastName, String firstName, String patronymic) {
@@ -83,7 +83,7 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
                 .build());
     }
 
-    private Postgraduate record(Student student, Teacher teacher) {
+    private Postgraduate postgraduateRecord(Student student, Teacher teacher) {
         return postgraduateRepository.save(Postgraduate.builder()
                 .student(student)
                 .teacher(teacher)

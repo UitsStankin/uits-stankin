@@ -189,7 +189,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         public ServletInputStream getInputStream() throws IOException {
             InputStream cached = new ByteArrayInputStream(body);
             InputStream delegate = overflow()
-                    ? new SequenceInputStream(cached, ((HttpServletRequest) getRequest()).getInputStream())
+                    ? new SequenceInputStream(cached, getRequest().getInputStream())
                     : cached;
 
             return new ServletInputStream() {
