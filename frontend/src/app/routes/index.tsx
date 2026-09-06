@@ -19,6 +19,7 @@ import {
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
+import ContactsPage from '@pages/ContactsPage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
@@ -44,9 +45,10 @@ import RouteError from './RouteError';
  * Редактируемые разделы: адрес → слаг раздела и заголовок страницы.
  *
  * Девять из тринадцати. У `home-before` и `home-after` собственного адреса
- * нет по контракту — их рисует главная. Контакты и аспирантура ждут свои
- * страницы (F-32, F-34): в оригинале вокруг их редактируемых блоков была
- * своя вёрстка — карта с соцсетями и таблица аспирантов.
+ * нет по контракту — их рисует главная. Контакты (F-32) стоят отдельной
+ * записью ниже, а аспирантура ждёт свою (F-34): в оригинале вокруг их
+ * редактируемых блоков была своя вёрстка — карта с соцсетями и таблица
+ * аспирантов, — и парой «слаг + заголовок» такая страница не описывается.
  *
  * Адреса взяты из меню (`shared/config/navigation.ts`) и повторяют старый
  * портал. Заголовки — формулировки подписей из сида
@@ -147,6 +149,21 @@ export const routes: RouteObject[] = [
       {
         path: '/about/history-of-department',
         element: <HistoryPage />,
+        errorElement: <RouteError />,
+      },
+      // Контакты. Смешанная страница, и потому своей записью, а не строкой
+      // в `EDITABLE_PAGES` выше: текст приходит редактируемым разделом
+      // `contacts`, но карта и чат вокруг него свёрстаны руками, и одним
+      // слагом с заголовком, как девять разделов F-23, она не описывается.
+      //
+      // Адрес взят из меню (`shared/config/navigation.ts`, пункт
+      // `about/contacts`) и повторяет старый портал. Строкой здесь, а не
+      // константой в `shared/config/routes.ts`, по той же причине, что
+      // у истории: адрес знает один роутер, в меню он лежит своей записью,
+      // а больше собирать его некому.
+      {
+        path: '/about/contacts',
+        element: <ContactsPage />,
         errorElement: <RouteError />,
       },
       // Новости. Публичные: ручка `GET /api/public/news` открыта всем,
