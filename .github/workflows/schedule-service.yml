@@ -55,7 +55,7 @@ jobs:
 
       - name: Установка зависимостей
         if: steps.gate.outputs.run == 'true'
-        run: pip install -r requirements-dev.txt
+        run: pip install --only-binary :all: -r requirements-dev.txt
         working-directory: schedule-service
 
       - name: Тесты

@@ -103,7 +103,7 @@ jobs:
       - name: Тесты schedule-service с покрытием
         if: steps.gate.outputs.build == 'true'
         run: |
-          pip install -r requirements-dev.txt
+          pip install --only-binary :all: -r requirements-dev.txt
           python -m pytest --cov=app --cov-report=xml
         working-directory: schedule-service
 
