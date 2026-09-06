@@ -47,6 +47,7 @@ services:
       # Обязательно: без прод-профиля сработает профиль по умолчанию dev,
       # и DevDataSeeder зальёт тестовые учётки в боевую базу
       SPRING_PROFILES_ACTIVE: prod
+      TZ: ${TZ:-Europe/Moscow}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-uits_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?не задан POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD}
@@ -61,6 +62,7 @@ services:
       # и получит отказ на каждом запросе
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
       STORAGE_ROOT: /app/media
+      SCHEDULE_SERVICE_URL: http://schedule-service:8000
       # Куча — 70% предела контейнера, а не 100: рядом с ней живут metaspace,
       # стеки потоков и прямые буферы. Без флага JVM берёт четверть предела
       # (под 1536m это 384 МБ) и упирается в неё задолго до лимита.
@@ -70,6 +72,25 @@ services:
     mem_limit: 1536m
     volumes:
       - media_data:/app/media
+    networks:
+      - uits_network
+
+  # Разбор PDF расписаний и книг Excel. Порт наружу не пробрасывается: сервис
+  # вызывает только бэкенд изнутри сети. В depends_on бэкенда не добавлен
+  # намеренно — портал обязан подниматься и работать, когда разбор недоступен.
+  schedule-service:
+    image: ghcr.io/uitsstankin/uits-schedule-service:${IMAGE_TAG:?не задан IMAGE_TAG}
+    container_name: uits_schedule_service
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Moscow}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    mem_limit: 512m
     networks:
       - uits_network
 

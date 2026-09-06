@@ -20,7 +20,7 @@ import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
+class JwtSecurityIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 

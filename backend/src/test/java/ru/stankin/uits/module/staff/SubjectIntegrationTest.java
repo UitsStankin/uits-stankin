@@ -22,7 +22,7 @@ import ru.stankin.uits.module.staff.repository.TeacherRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class SubjectIntegrationTest extends AbstractIntegrationTest {
+class SubjectIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private SubjectRepository subjectRepository;

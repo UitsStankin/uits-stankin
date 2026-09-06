@@ -6,7 +6,7 @@ import pdfplumber
 import pytest
 
 from app.errors import ScheduleParseError
-from app.exams import EXAM_HEAD_RE, _parse_lines, parse_exams
+from app.exams import _parse_lines, parse_exams
 from app.models import Consultation
 
 
@@ -230,7 +230,7 @@ class TestLineParsing:
 
     def test_extra_token_after_group_is_rejected(self):
         head = "09.01.2025 8:30 - 14:00 ауд. 209 ИДБ-21-10 хвост"
-        with pytest.raises(ScheduleParseError, match="строка не похожа"):
+        with pytest.raises(ScheduleParseError, match="не похож на код группы"):
             _parse_lines([head, self.TAIL])
 
     def test_empty_line_list(self):
@@ -240,5 +240,6 @@ class TestLineParsing:
     def test_hostile_group_list_fails_fast(self):
         line = "09.01.2025 8:30 - 14:00 ауд. 209 " + "ИДБ-21-10," * 30 + " хвост хвост"
         started = time.perf_counter()
-        assert EXAM_HEAD_RE.match(line) is None
+        with pytest.raises(ScheduleParseError, match="не похож на код группы"):
+            _parse_lines([line, self.TAIL])
         assert time.perf_counter() - started < 0.5

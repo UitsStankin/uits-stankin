@@ -265,10 +265,13 @@ class GradeSheetEntityMappingTest extends AbstractIntegrationTest {
         persistGradeSheet();
         Long studentId = student("Абрамов").getId();
 
-        assertThatThrownBy(() -> jdbc.update("""
+        String sql = """
                 insert into gradesheet_mark (student_id, block, score, mark_text)
                 values (?, ?, ?, ?)
-                """, studentId, "М2", new BigDecimal("25.00"), "не допущен"))
+                """;
+        Object[] args = {studentId, "М2", new BigDecimal("25.00"), "не допущен"};
+
+        assertThatThrownBy(() -> jdbc.update(sql, args))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("ck_gradesheet_mark_score_or_text");
     }

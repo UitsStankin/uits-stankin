@@ -132,16 +132,16 @@ async def _read_upload(file: UploadFile) -> bytes:
     return content
 
 
-@app.post("/parse", response_model=ParsedSchedule)
+@app.post("/parse")
 async def parse(file: Annotated[UploadFile, File()]) -> ParsedSchedule:
     return await run_in_threadpool(parse_schedule, await _read_upload(file))
 
 
-@app.post("/parse-exams", response_model=ParsedExams)
+@app.post("/parse-exams")
 async def exams(file: Annotated[UploadFile, File()]) -> ParsedExams:
     return await run_in_threadpool(parse_exams, await _read_upload(file))
 
 
-@app.post("/parse-gradesheet", response_model=ParsedGradeSheets)
+@app.post("/parse-gradesheet")
 async def gradesheet(file: Annotated[UploadFile, File()]) -> ParsedGradeSheets:
     return await run_in_threadpool(parse_gradesheets, await _read_upload(file))

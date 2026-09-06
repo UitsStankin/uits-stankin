@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * редактируемого раздела. Уборка после правки новости обязана видеть вторую ссылку,
  * иначе раздел останется с битой картинкой.
  */
-public class PageImageRetentionIntegrationTest extends AbstractIntegrationTest {
+class PageImageRetentionIntegrationTest extends AbstractIntegrationTest {
 
     private static final String WRITABLE_SLUG = "home-after";
 

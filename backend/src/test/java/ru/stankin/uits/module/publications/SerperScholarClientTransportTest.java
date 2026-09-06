@@ -134,7 +134,8 @@ class SerperScholarClientTransportTest {
 
     @Test
     void blankKeyFailsWithoutRequest() {
-        assertThatThrownBy(() -> client("").search("Чеканин", 0))
+        var scholarClient = client("");
+        assertThatThrownBy(() -> scholarClient.search("Чеканин", 0))
                 .isInstanceOf(ScholarUnavailableException.class);
 
         assertThat(requestBody.get()).isNull();

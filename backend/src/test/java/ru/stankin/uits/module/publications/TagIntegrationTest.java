@@ -131,7 +131,8 @@ class TagIntegrationTest extends AbstractIntegrationTest {
     void duplicateNameIgnoringCaseIsRejectedByDatabase() {
         tagRepository.saveAndFlush(Tag.builder().name("Machine learning").build());
 
-        assertThatThrownBy(() -> tagRepository.saveAndFlush(Tag.builder().name("MACHINE LEARNING").build()))
+        Tag duplicate = Tag.builder().name("MACHINE LEARNING").build();
+        assertThatThrownBy(() -> tagRepository.saveAndFlush(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("uq_tag_name_lower");
     }

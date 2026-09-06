@@ -22,7 +22,7 @@ import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
+class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private HelpersEmployeeRepository helpersEmployeeRepository;
