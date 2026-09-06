@@ -9,6 +9,13 @@ services:
       # приложение обязано ходить в базу под своей учёткой
       POSTGRES_USER: ${POSTGRES_USER:?не задан POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD}
+    # Предел памяти: без него контейнер может съесть всю машину, и ядро убьёт
+    # не виновника всплеска, а самый крупный процесс — обычно саму базу.
+    mem_limit: 512m
+    # Отдельно от mem_limit: Postgres кладёт в разделяемую память параллельные
+    # запросы, а Docker по умолчанию даёт под неё 64 МБ. Симптом нехватки —
+    # «could not resize shared memory segment» на тяжёлых запросах.
+    shm_size: 256m
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # -h 127.0.0.1 обязателен: по unix-сокету pg_isready отвечает OK уже во время
@@ -54,8 +61,13 @@ services:
       # и получит отказ на каждом запросе
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
       STORAGE_ROOT: /app/media
+      # Куча — 70% предела контейнера, а не 100: рядом с ней живут metaspace,
+      # стеки потоков и прямые буферы. Без флага JVM берёт четверть предела
+      # (под 1536m это 384 МБ) и упирается в неё задолго до лимита.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
       ORPHAN_CLEANUP_MIN_AGE: ${ORPHAN_CLEANUP_MIN_AGE:-86400000}
       ORPHAN_CLEANUP_CATEGORIES: ${ORPHAN_CLEANUP_CATEGORIES:-news,avatars,achievements,publications}
+    mem_limit: 1536m
     volumes:
       - media_data:/app/media
     networks:
