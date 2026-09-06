@@ -85,12 +85,37 @@ tasks.jacocoTestReport {
 
 sonar {
 	properties {
+		val repoRoot = rootDir.parentFile
+
 		property("sonar.projectKey", "UitsStankin_uits-stankin")
 		property("sonar.organization", "uitsstankin")
 		property("sonar.host.url", "https://sonarcloud.io")
+		property("sonar.projectBaseDir", repoRoot.path)
+		property(
+			"sonar.sources",
+			listOf(
+				"backend/src/main/java",
+				"backend/src/main/resources",
+				"backend/Dockerfile",
+				"backend/docker-compose.yml",
+				"backend/docker-compose.prod.yml",
+				"schedule-service/app",
+				"schedule-service/Dockerfile",
+				".github/workflows"
+			).joinToString(",")
+		)
+		property(
+			"sonar.tests",
+			listOf("backend/src/test/java", "schedule-service/tests").joinToString(",")
+		)
+		property("sonar.exclusions", "frontend/**,.github/workflows/frontend.yml,**/.venv/**")
 		property(
 			"sonar.coverage.jacoco.xmlReportPaths",
 			layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml").get().asFile.path
+		)
+		property(
+			"sonar.python.coverage.reportPaths",
+			repoRoot.resolve("schedule-service/coverage.xml").path
 		)
 	}
 }
