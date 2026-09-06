@@ -239,41 +239,49 @@ class TestRejectedBooks:
             parse_gradesheets(b"definitely not a workbook")
 
     def test_sheet_without_a_header_row(self):
+        book = build_book([[1, "Петров"]], header=("№ п/п",))
         with pytest.raises(ScheduleParseError, match="Фамилия"):
-            parse_gradesheets(build_book([[1, "Петров"]], header=("№ п/п",)))
+            parse_gradesheets(book)
 
     def test_sheet_without_a_group(self):
+        book = build_book([[1, "Петров", "Пётр", "Петрович", 42]], group="")
         with pytest.raises(ScheduleParseError, match="Группа:"):
-            parse_gradesheets(build_book([[1, "Петров", "Пётр", "Петрович", 42]], group=""))
+            parse_gradesheets(book)
 
     def test_sheet_without_a_discipline(self):
+        book = build_book([[1, "Петров", "Пётр", "Петрович", 42]], discipline="")
         with pytest.raises(ScheduleParseError, match="Дисциплина:"):
-            parse_gradesheets(build_book([[1, "Петров", "Пётр", "Петрович", 42]], discipline=""))
+            parse_gradesheets(book)
 
     def test_sheet_without_blocks(self):
+        book = build_book([[1, "Петров", "Пётр", "Петрович"]], blocks=())
         with pytest.raises(ScheduleParseError, match="блока оценок"):
-            parse_gradesheets(build_book([[1, "Петров", "Пётр", "Петрович"]], blocks=()))
+            parse_gradesheets(book)
 
     def test_sheet_without_students(self):
+        book = build_book([])
         with pytest.raises(ScheduleParseError, match="нет ни одной строки с фамилией"):
-            parse_gradesheets(build_book([]))
+            parse_gradesheets(book)
 
     def test_empty_book(self):
+        book = dump(openpyxl.Workbook())
         with pytest.raises(ScheduleParseError, match="нет ни одного листа с ведомостью"):
-            parse_gradesheets(dump(openpyxl.Workbook()))
+            parse_gradesheets(book)
 
     def test_book_over_the_sheet_limit(self):
         workbook = openpyxl.Workbook()
         for index in range(MAX_SHEETS):
             workbook.create_sheet(f"Лист {index}")
+        book = dump(workbook)
         with pytest.raises(ScheduleParseError, match=f"при пределе {MAX_SHEETS}"):
-            parse_gradesheets(dump(workbook))
+            parse_gradesheets(book)
 
     def test_sheet_over_the_row_limit(self):
         workbook = openpyxl.Workbook()
         workbook.active.cell(row=MAX_ROWS + 1, column=1, value="хвост")
+        book = dump(workbook)
         with pytest.raises(ScheduleParseError, match=f"при пределе {MAX_ROWS}"):
-            parse_gradesheets(dump(workbook))
+            parse_gradesheets(book)
 
 
 class TestEmptySheetsAreSkipped:

@@ -26,7 +26,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-public class EditablePageIntegrationTest extends AbstractIntegrationTest {
+class EditablePageIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private EditablePageRepository editablePageRepository;

@@ -91,7 +91,8 @@ class ScheduleServiceClientTransportTest {
                     Duration.ofMillis(200));
             ScheduleServiceClient client = new ScheduleServiceClient(restClient, JsonMapper.builder().build());
 
-            assertThatThrownBy(() -> client.parse("%PDF-1.4".getBytes(StandardCharsets.UTF_8), "chekanin.pdf"))
+            byte[] pdf = "%PDF-1.4".getBytes(StandardCharsets.UTF_8);
+            assertThatThrownBy(() -> client.parse(pdf, "chekanin.pdf"))
                     .isInstanceOf(ScheduleServiceUnavailableException.class);
         } finally {
             slow.stop(0);

@@ -20,7 +20,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class NewsIntegrationTest extends AbstractIntegrationTest {
+class NewsIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private NewsRepository newsRepository;
 

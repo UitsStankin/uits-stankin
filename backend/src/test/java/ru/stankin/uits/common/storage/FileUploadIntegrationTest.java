@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * по возвращённому адресу. Каталог хранилища подменяется на временный, чтобы тесты
  * не писали в рабочую папку проекта.
  */
-public class FileUploadIntegrationTest extends AbstractIntegrationTest {
+class FileUploadIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void upload_WhenAdmin_Returns201AndWritesFile() throws IOException {

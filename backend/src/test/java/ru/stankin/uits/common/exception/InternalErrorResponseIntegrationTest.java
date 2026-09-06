@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * не требует для неё строку в матрице доступа.
  */
 @Import(InternalErrorResponseIntegrationTest.FailingEndpointConfiguration.class)
-public class InternalErrorResponseIntegrationTest extends AbstractIntegrationTest {
+class InternalErrorResponseIntegrationTest extends AbstractIntegrationTest {
 
     private static final String SECRET_MARKER = "секретный-маркер-12345";
 

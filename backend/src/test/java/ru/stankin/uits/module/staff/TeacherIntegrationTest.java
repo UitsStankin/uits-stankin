@@ -30,7 +30,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TeacherIntegrationTest extends AbstractIntegrationTest {
+class TeacherIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private TeacherRepository teacherRepository;

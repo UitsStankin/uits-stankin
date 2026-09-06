@@ -82,7 +82,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * без строки в таблице роняет сборку, и решение о её доступности приходится
  * принимать явно.
  */
-public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
+class EndpointAccessMatrixTest extends AbstractIntegrationTest {
 
     @Autowired
     private NewsRepository newsRepository;

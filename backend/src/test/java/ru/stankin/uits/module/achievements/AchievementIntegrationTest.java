@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * и санитизация rich-text. Уборка файлов обложки живёт отдельно
  * в {@code AchievementPreviewImageIntegrationTest}.
  */
-public class AchievementIntegrationTest extends AbstractIntegrationTest {
+class AchievementIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private AchievementRepository achievementRepository;

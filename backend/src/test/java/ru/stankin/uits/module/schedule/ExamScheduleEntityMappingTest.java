@@ -168,15 +168,19 @@ class ExamScheduleEntityMappingTest extends AbstractIntegrationTest {
         entityManager.persist(schedule);
         entityManager.flush();
 
-        assertThatThrownBy(() -> jdbc.update("""
+        String sql = """
                 insert into schedule_exam
                     (exam_date, time_start, time_end, "group", name, cabinet,
                      consultation_date, exam_schedule_id)
                 values (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+                """;
+        Object[] args = {
                 LocalDate.of(2025, 5, 19), LocalTime.of(8, 30), LocalTime.of(14, 0),
                 "ИДБ-21-10", "Системы интеллектуального анализа данных", "308",
-                LocalDate.of(2025, 5, 17), schedule.getId()))
+                LocalDate.of(2025, 5, 17), schedule.getId()
+        };
+
+        assertThatThrownBy(() -> jdbc.update(sql, args))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("ck_exam_consultation_all_or_none");
     }

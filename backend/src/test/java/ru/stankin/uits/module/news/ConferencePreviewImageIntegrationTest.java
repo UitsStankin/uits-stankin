@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Фикстуры кладутся на диск напрямую: ручка загрузки проверяется отдельно
  * в {@code FileUploadIntegrationTest}, здесь она была бы лишним звеном.
  */
-public class ConferencePreviewImageIntegrationTest extends AbstractIntegrationTest {
+class ConferencePreviewImageIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ConferenceRepository conferenceRepository;

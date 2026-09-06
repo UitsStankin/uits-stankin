@@ -28,6 +28,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class ScheduleServiceClientTest {
 
+    private static final byte[] PDF = "pdf".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
     private static final String BODY = """
             {"lessons": [
               {"week_day": 1, "class_time": 1, "group": "ИДБ-25-11",
@@ -68,7 +70,7 @@ class ScheduleServiceClientTest {
     void mapsSnakeCaseResponseToDto() {
         expectParse(withSuccess(BODY, MediaType.APPLICATION_JSON));
 
-        ParsedScheduleDto parsed = client.parse("pdf".getBytes(), "chekanin.pdf");
+        ParsedScheduleDto parsed = client.parse(PDF, "chekanin.pdf");
 
         assertThat(parsed.getLessons()).hasSize(1);
         ParsedLessonDto lesson = parsed.getLessons().getFirst();
@@ -87,7 +89,7 @@ class ScheduleServiceClientTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"error\": \"schedule_parse_error\", \"detail\": \"в PDF не найдено ни одной таблицы расписания\"}"));
 
-        assertThatThrownBy(() -> client.parse("pdf".getBytes(), "wrong.pdf"))
+        assertThatThrownBy(() -> client.parse(PDF, "wrong.pdf"))
                 .isInstanceOf(InvalidFileException.class)
                 .hasMessage("в PDF не найдено ни одной таблицы расписания");
     }
@@ -98,7 +100,7 @@ class ScheduleServiceClientTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"error\": \"file_too_large\", \"detail\": \"файл больше допустимых 5 МБ\"}"));
 
-        assertThatThrownBy(() -> client.parse("pdf".getBytes(), "huge.pdf"))
+        assertThatThrownBy(() -> client.parse(PDF, "huge.pdf"))
                 .isInstanceOf(InvalidFileException.class);
     }
 
@@ -108,7 +110,7 @@ class ScheduleServiceClientTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"error\": \"internal_error\", \"detail\": \"внутренняя ошибка сервиса\"}"));
 
-        assertThatThrownBy(() -> client.parse("pdf".getBytes(), "chekanin.pdf"))
+        assertThatThrownBy(() -> client.parse(PDF, "chekanin.pdf"))
                 .isInstanceOf(ScheduleServiceUnavailableException.class);
     }
 
@@ -118,7 +120,7 @@ class ScheduleServiceClientTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"error\": \"invalid_request\", \"detail\": \"ожидается multipart-поле file с PDF-файлом\"}"));
 
-        assertThatThrownBy(() -> client.parse("pdf".getBytes(), "chekanin.pdf"))
+        assertThatThrownBy(() -> client.parse(PDF, "chekanin.pdf"))
                 .isInstanceOf(ScheduleServiceUnavailableException.class);
     }
 
@@ -126,7 +128,7 @@ class ScheduleServiceClientTest {
     void connectionFailureBecomesUnavailable() {
         expectParse(withException(new IOException("connection refused")));
 
-        assertThatThrownBy(() -> client.parse("pdf".getBytes(), "chekanin.pdf"))
+        assertThatThrownBy(() -> client.parse(PDF, "chekanin.pdf"))
                 .isInstanceOf(ScheduleServiceUnavailableException.class)
                 .hasMessageContaining("не отвечает");
     }
@@ -142,7 +144,7 @@ class ScheduleServiceClientTest {
     void mapsExamsResponseToDto() {
         expectParseExams(withSuccess(EXAMS_BODY, MediaType.APPLICATION_JSON));
 
-        ParsedExamsDto parsed = client.parseExams("pdf".getBytes(), "exams-ibatulin-myu.pdf");
+        ParsedExamsDto parsed = client.parseExams(PDF, "exams-ibatulin-myu.pdf");
 
         assertThat(parsed.getExams()).hasSize(1);
         ParsedExamDto exam = parsed.getExams().getFirst();
@@ -170,7 +172,7 @@ class ScheduleServiceClientTest {
                 ]}
                 """, MediaType.APPLICATION_JSON));
 
-        ParsedExamsDto parsed = client.parseExams("pdf".getBytes(), "exams.pdf");
+        ParsedExamsDto parsed = client.parseExams(PDF, "exams.pdf");
 
         assertThat(parsed.getExams().getFirst().getConsultation()).isNull();
         server.verify();
@@ -182,7 +184,7 @@ class ScheduleServiceClientTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"error\": \"schedule_parse_error\", \"detail\": \"в PDF не найдено ни одной таблицы экзаменов\"}"));
 
-        assertThatThrownBy(() -> client.parseExams("pdf".getBytes(), "wrong.pdf"))
+        assertThatThrownBy(() -> client.parseExams(PDF, "wrong.pdf"))
                 .isInstanceOf(InvalidFileException.class)
                 .hasMessage("в PDF не найдено ни одной таблицы экзаменов");
     }
@@ -193,7 +195,7 @@ class ScheduleServiceClientTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("не json вовсе"));
 
-        assertThatThrownBy(() -> client.parse("pdf".getBytes(), "chekanin.pdf"))
+        assertThatThrownBy(() -> client.parse(PDF, "chekanin.pdf"))
                 .isInstanceOf(InvalidFileException.class)
                 .hasMessage("Не удалось разобрать файл расписания.");
     }

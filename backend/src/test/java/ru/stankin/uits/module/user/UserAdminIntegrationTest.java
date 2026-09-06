@@ -27,7 +27,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class UserAdminIntegrationTest extends AbstractIntegrationTest {
+class UserAdminIntegrationTest extends AbstractIntegrationTest {
 
     private static final long MISSING_ID = 999_999L;
     private static final String NEW_PASSWORD = "brand_new_password";

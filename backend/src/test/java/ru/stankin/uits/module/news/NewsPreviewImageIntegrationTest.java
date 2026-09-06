@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * проверяется отдельно в {@code FileUploadIntegrationTest}, здесь она была бы лишним
  * звеном и лишним поводом для ложных падений.
  */
-public class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
+class NewsPreviewImageIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private NewsRepository newsRepository;

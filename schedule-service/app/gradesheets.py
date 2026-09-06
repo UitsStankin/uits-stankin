@@ -239,12 +239,21 @@ def _parse_students(
                 last_name=last_name,
                 first_name=_column_text(sheet, row, columns.get("first_name")),
                 patronymic=patronymic,
-                marks=[
-                    mark for block in blocks if (mark := _parse_mark(sheet, row, block, warnings))
-                ],
+                marks=_row_marks(sheet, row, blocks, warnings),
             )
         )
     return students
+
+
+def _row_marks(
+    sheet: Worksheet, row: int, blocks: list[_Block], warnings: list[str]
+) -> list[Mark]:
+    marks: list[Mark] = []
+    for block in blocks:
+        mark = _parse_mark(sheet, row, block, warnings)
+        if mark:
+            marks.append(mark)
+    return marks
 
 
 def _parse_mark(sheet: Worksheet, row: int, block: _Block, warnings: list[str]) -> Mark | None:
