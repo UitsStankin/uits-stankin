@@ -108,7 +108,10 @@ sonar {
 			"sonar.tests",
 			listOf("backend/src/test/java", "schedule-service/tests").joinToString(",")
 		)
-		property("sonar.exclusions", "frontend/**,.github/workflows/frontend.yml,**/.venv/**")
+		property("sonar.sourceEncoding", "UTF-8")
+		property("sonar.python.version", "3.13")
+		property("sonar.exclusions", "frontend/**,.github/workflows/frontend.yml,**/.venv/**,**/__pycache__/**")
+		property("sonar.test.exclusions", "schedule-service/tests/fixtures/**")
 		property(
 			"sonar.coverage.jacoco.xmlReportPaths",
 			layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml").get().asFile.path
