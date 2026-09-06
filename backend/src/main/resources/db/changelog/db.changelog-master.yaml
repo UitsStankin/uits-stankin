@@ -59,3 +59,5 @@ databaseChangeLog:
       file: db/changelog/changesets/029-create-gradesheet-tables.yml
   - include:
       file: db/changelog/changesets/030-create-gradesheet-blocks.yml
+  - include:
+      file: db/changelog/changesets/031-create-scholar-cache.yml

@@ -155,7 +155,7 @@ Markdown-страниц и таблицу `refresh_token` (см. §4.5).
 |---|---|---|
 | **Kafka** | ⛔ никогда (здесь) | Event-streaming для кафедрального портала — resume-driven development. Удвоит ops-поверхность, не решив ни одной реальной задачи. |
 | **RabbitMQ** | ⛔ нет | Все «очереди» проекта — это рассылка десятков Telegram-сообщений. Паттерн **transactional outbox в Postgres** (см. §4) даёт гарантию доставки без единого нового контейнера. |
-| **Redis** | ⛔ сейчас нет; 🔭 позже возможно | Кандидаты на кэш: ответы SerpApi (но квота — месячная, кэш должен переживать рестарт → таблица в Postgres лучше), rate-limit логина (bucket4j in-memory достаточно для одной ноды). Redis вернётся в разговор только при горизонтальном масштабировании, которого не будет. |
+| **Redis** | ⛔ сейчас нет; 🔭 позже возможно | Кандидаты на кэш: ответы поиска по Google Scholar (решено в T-73 таблицей `scholar_search_cache`: пакет запросов разовый, кэш обязан переживать рестарт), rate-limit логина (bucket4j in-memory достаточно для одной ноды). Redis вернётся в разговор только при горизонтальном масштабировании, которого не будет. |
 | **MinIO** | 🟡 не сейчас; интерфейс — сразу | Один VPS → файлы на диске (`/media` том) + раздача через nginx. Но в коде — **интерфейс `FileStorage`** (`store/delete/url` плюс проверки существования и обход) с `LocalFileStorage` сейчас; если захочется S3-семантики или второй ноды — дописывается `S3FileStorage` (MinIO/S3) без правки бизнес-кода. |
 
 **Правило:** каждый контейнер в проде — это то, что вам двоим патчить, мониторить и бэкапить ближайшие годы
@@ -185,7 +185,7 @@ module/
 ├── schedule       # Schedule/Lesson/LessonDate, импорт через schedule-service, сводное, экзамены
 ├── news           # Post (news|announcement), ConferenceAnnouncement
 ├── achievements
-├── publications   # ScientificPublication, Tag, SerpApi-клиент
+├── publications   # ScientificPublication, Tag, клиент Serper.dev (Google Scholar)
 ├── students       # Student, Postgraduate
 ├── pages          # EditablePage (13 markdown-слагов)
 ├── events         # UserEvent (календарь)
