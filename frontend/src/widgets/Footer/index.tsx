@@ -1,11 +1,9 @@
+import { TELEGRAM_CHAT_URL } from '@shared/config/contacts';
 import { cn } from '@shared/lib/cn';
 
 interface FooterProps {
   className?: string;
 }
-
-/** Чат кафедры. Ссылка из footer.component.html оригинала. */
-const TELEGRAM_URL = 'https://t.me/+WQVM050GSEFmZWUy';
 
 /**
  * Подвал — перенос footer из оригинала.
@@ -32,7 +30,7 @@ export default function Footer({ className }: FooterProps) {
         </p>
 
         <a
-          href={TELEGRAM_URL}
+          href={TELEGRAM_CHAT_URL}
           target="_blank"
           rel="noreferrer"
           aria-label="Телеграм-чат кафедры"
