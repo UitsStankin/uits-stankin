@@ -20,7 +20,7 @@
 | Парсинг Excel (ведомости) | pandas / openpyxl | Apache POI (или тот же микросервис) |
 | Rich-text / Markdown | django-quill / mdeditor | React-редактор (TipTap / md-editor) |
 | Изображения | django-imagekit | Thumbnailator + файловое/объектное хранилище |
-| Публикации | SerpApi (requests) | WebClient/RestClient → SerpApi |
+| Публикации | SerpApi (requests) | RestClient → Serper.dev (SerpApi недоступен из России, T-73) |
 | Frontend | Angular 14 (шаблон espire), NGXS | React 19, Vite, Tailwind 4, React Query, Zustand |
 | **Админка** | **Django Admin** (бесплатно) | **Кастомная React-админка** (делаем руками!) |
 | БД | PostgreSQL 15 | PostgreSQL **17** + Liquibase (не копировать 15: EOL 11.2027, `pg_dump` переносится между мажорами) |
@@ -376,8 +376,8 @@ from users_user u where u.teacher_id = t.id;
 ### 5.3 Напоминания
 `@Scheduled` (cron; Quartz не берём, состояние и так в БД — ARCHITECTURE.md §4.2): задачи выбирают события с `next_notification_at <= now` и шлют в Telegram назначенным через outbox. **Не** копировать баг `auto_now` на поле планирования.
 
-### 5.4 Google Scholar (SerpApi)
-`WebClient` → `engine=google_scholar&q=<urlencoded имя>`; пагинация по `serpapi_pagination.next`; ключ из конфигурации; маппинг в DTO. Файлы публикаций — в хранилище, не base64 в БД.
+### 5.4 Google Scholar (Serper.dev) — закрыто в T-73
+`RestClient` → `POST /scholar` с телом `{q, hl, page}` и ключом в заголовке `X-API-KEY`; страницы считаются с единицы, наружу отдаются с нуля, их не больше трёх. Ответы кэшируются в таблице `scholar_search_cache` на месяц: бесплатный пакет разовый и не пополняется. Поставщик заменён потому, что SerpApi требует телефонную верификацию, отвергающую российские номера, и иностранную карту для оплаты. Файлы публикаций — в хранилище, не base64 в БД.
 
 ---
 
@@ -398,7 +398,7 @@ from users_user u where u.teacher_id = t.id;
 2. `UserEvent.next_notification_at = auto_now=True` затирает плановую дату. Убрать `auto_now`.
 3. Парсер расписания берёт только последнюю страницу PDF (цикл перезаписывает `table`).
 4. Celery-интервалы фиксированы в секундах, «месяц» = 28 дней — переделать на нормальное расписание.
-5. SerpApi: `q={name}` без urlencode + ключ в URL — экранировать, вынести ключ.
+5. SerpApi: `q={name}` без urlencode + ключ в URL — экранировать, вынести ключ. ✅ закрыто в T-73: запрос уезжает JSON-телом, ключ в заголовке из конфигурации.
 6. Публикации хранят PDF как base64 в `TEXT` — выносить в хранилище.
 7. Десятки `print()`-отладок и сырые потоки на каждый апдейт/сообщение — заменить на логгер/`@Async`.
 8. `update_profile` писал всё, что не перечислено в `read_only_fields`, включая `is_staff` (любой пользователь мог выдать себе доступ в Django-админку) и `telegram_code`; заодно позволял менять `username` — то есть логин. В новом портале из ЛК правятся только имя, фамилия и аватар; логин и почта из профиля не меняются.
