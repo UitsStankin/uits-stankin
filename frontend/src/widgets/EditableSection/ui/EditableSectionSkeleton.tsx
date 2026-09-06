@@ -7,7 +7,7 @@
  * от незаполненного раздела. Три строки — минимальная честная догадка:
  * ровно так же угадывает высоту текста скелет статьи новости.
  */
-export function EditablePageSkeleton() {
+export function EditableSectionSkeleton() {
   return (
     <div role="status" className="animate-pulse rounded bg-white p-6 shadow-sm md:p-8">
       {/* Серые прямоугольники диктору ничего не говорят — для него
