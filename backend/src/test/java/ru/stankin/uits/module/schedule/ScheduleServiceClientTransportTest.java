@@ -6,9 +6,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
+import ru.stankin.uits.common.client.ScheduleServiceClientConfig;
 import ru.stankin.uits.common.exception.ScheduleServiceUnavailableException;
 import ru.stankin.uits.module.schedule.client.ScheduleServiceClient;
-import ru.stankin.uits.module.schedule.client.ScheduleServiceClientConfig;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;

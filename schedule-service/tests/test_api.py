@@ -19,6 +19,19 @@ def post_exams(client, content, **kwargs):
     return post_pdf(client, content, path="/parse-exams", **kwargs)
 
 
+def post_xlsx(client, content, field="file", filename="gradesheet.xlsx"):
+    return client.post(
+        "/parse-gradesheet",
+        files={
+            field: (
+                filename,
+                content,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+
 class TestHealth:
     def test_health(self, client):
         response = client.get("/health")
@@ -121,7 +134,86 @@ class TestParseExams:
         }
 
 
+class TestParseGradeSheet:
+    def test_valid_xlsx(self, client, gradesheet_xlsx):
+        response = post_xlsx(client, gradesheet_xlsx)
+        assert response.status_code == 200
+        assert len(response.json()["sheets"]) == 5
+
+    def test_response_matches_contract(self, client, gradesheet_xlsx):
+        sheet = post_xlsx(client, gradesheet_xlsx).json()["sheets"][0]
+        assert sheet["group"] == "ИДБ-25-11"
+        assert sheet["teachers"] == ["Чеканин В.А."]
+        assert sheet["blocks"][:2] == ["М1", "М2"]
+        assert sheet["students"][0] == {
+            "number": 1,
+            "last_name": "Абрамов",
+            "first_name": "Александр",
+            "patronymic": "Абдул-Керимович",
+            "marks": [
+                {
+                    "block": "М1",
+                    "score": 30.0,
+                    "text": None,
+                    "grade": None,
+                    "date": None,
+                    "teacher": None,
+                },
+                {
+                    "block": "М2",
+                    "score": 29.0,
+                    "text": None,
+                    "grade": None,
+                    "date": None,
+                    "teacher": None,
+                },
+                {
+                    "block": "Зачёт",
+                    "score": 30.0,
+                    "text": None,
+                    "grade": "зачтено",
+                    "date": "2026-06-02",
+                    "teacher": "Чеканин В.А.",
+                },
+            ],
+        }
+
+    def test_warnings_reach_the_client(self, client, gradesheet_xlsx):
+        sheets = post_xlsx(client, gradesheet_xlsx).json()["sheets"]
+        assert sheets[4]["warnings"] == [
+            "группа в шапке 'ИДБ-25-14' не совпадает с именем листа 'ИДБ-25-15'"
+        ]
+
+    def test_not_an_xlsx(self, client):
+        response = post_xlsx(client, b"definitely not a workbook")
+        assert response.status_code == 422
+        assert response.json() == {
+            "error": "schedule_parse_error",
+            "detail": "файл не удалось прочитать как книгу Excel",
+        }
+
+    def test_request_without_file(self, client):
+        response = client.post("/parse-gradesheet")
+        assert response.status_code == 400
+        assert response.json()["error"] == "invalid_request"
+
+    def test_file_over_limit(self, client):
+        response = post_xlsx(client, b"x" * (MAX_UPLOAD_BYTES + 1))
+        assert response.status_code == 413
+        assert response.json()["error"] == "file_too_large"
+
+
 class TestEndpointsDoNotAcceptEachOthersDocuments:
+    def test_gradesheet_sent_to_lessons(self, client, gradesheet_xlsx):
+        response = post_pdf(client, gradesheet_xlsx)
+        assert response.status_code == 422
+        assert response.json()["error"] == "schedule_parse_error"
+
+    def test_lesson_schedule_sent_to_gradesheets(self, client, chekanin_pdf):
+        response = post_xlsx(client, chekanin_pdf)
+        assert response.status_code == 422
+        assert response.json()["error"] == "schedule_parse_error"
+
     def test_lesson_schedule_sent_to_exams(self, client, chekanin_pdf):
         response = post_exams(client, chekanin_pdf)
         assert response.status_code == 422

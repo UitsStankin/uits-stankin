@@ -18,6 +18,8 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     Optional<Teacher> findByUserUsername(String username);
     Optional<Teacher> findByUserId(Long userId);
 
+    List<Teacher> findByLastNameIgnoreCase(String lastName);
+
     long countBySubjectsId(Long subjectId);
 
     @Query("""

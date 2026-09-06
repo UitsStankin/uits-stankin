@@ -45,3 +45,37 @@ class Exam(BaseModel):
 
 class ParsedExams(BaseModel):
     exams: list[Exam]
+
+
+class Mark(BaseModel):
+    block: str = Field(min_length=1)
+    score: float | None = None
+    text: str | None = None
+    grade: str | None = None
+    date: str | None = Field(default=None, pattern=ISO_DATE_PATTERN)
+    teacher: str | None = None
+
+
+class GradeSheetStudent(BaseModel):
+    number: int | None = Field(default=None, ge=1)
+    last_name: str = Field(min_length=1)
+    first_name: str | None = None
+    patronymic: str | None = None
+    marks: list[Mark]
+
+
+class GradeSheet(BaseModel):
+    sheet_name: str = Field(min_length=1)
+    group: str = Field(min_length=1)
+    discipline: str = Field(min_length=1)
+    department: str | None = None
+    teachers: list[str]
+    semester: str | None = None
+    direction: str | None = None
+    blocks: list[str]
+    students: list[GradeSheetStudent]
+    warnings: list[str]
+
+
+class ParsedGradeSheets(BaseModel):
+    sheets: list[GradeSheet]
