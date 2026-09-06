@@ -10,6 +10,7 @@ from app.errors import ScheduleParseError
 from app.models import Consultation, Exam, ParsedExams
 from app.parser import DAYS, GROUP_RE, MAX_PAGES
 
+WEEK_DAY_RE = re.compile(r"^[А-ЯЁ][а-яё]+$")
 CONSULTATION_RE = re.compile(
     r"^консультация:\s*(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2})\s+ауд\.\s*(\S+)$"
 )
@@ -17,7 +18,6 @@ EXAM_HEAD_RE = re.compile(
     r"^(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s+"
     r"ауд\.\s*(\S+)\s+(\S.*)$"
 )
-EXAM_TAIL_RE = re.compile(r"^([А-ЯЁ][а-яё]+)\s+(.+)$")
 
 
 def parse_exams(source: bytes | BinaryIO) -> ParsedExams:
@@ -80,8 +80,8 @@ def _parse_lines(lines: list[str]) -> list[Exam]:
             raise ScheduleParseError(
                 f"у экзамена '{line}' нет второй строки с днём недели и дисциплиной"
             )
-        tail = EXAM_TAIL_RE.match(lines[index + 1])
-        if not tail:
+        tail = lines[index + 1].split(maxsplit=1)
+        if len(tail) != 2 or not WEEK_DAY_RE.match(tail[0]):
             raise ScheduleParseError(
                 f"вторая строка экзамена не похожа на день недели и дисциплину: "
                 f"'{lines[index + 1]}'"
@@ -105,7 +105,7 @@ def _parse_consultation(match: re.Match[str]) -> Consultation:
 
 
 def _parse_exam(
-    head: re.Match[str], tail: re.Match[str], consultation: Consultation | None
+    head: re.Match[str], tail: list[str], consultation: Consultation | None
 ) -> Exam:
     exam_date = _parse_date(head.group(1))
     time_start = _parse_time(head.group(2))
@@ -117,12 +117,12 @@ def _parse_exam(
     group = _parse_groups(head.group(5))
     return Exam(
         date=exam_date.isoformat(),
-        week_day=_parse_week_day(tail.group(1), exam_date),
+        week_day=_parse_week_day(tail[0], exam_date),
         time_start=time_start,
         time_end=time_end,
         cabinet=head.group(4),
         group=group,
-        name=tail.group(2).strip(),
+        name=tail[1].strip(),
         consultation=consultation,
     )
 
