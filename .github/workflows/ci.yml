@@ -11,7 +11,7 @@ name: CI
 # не стартует, результата нет и PR остаётся в «Waiting for status» навсегда.
 # Возвращать paths в `on: pull_request` нельзя, пока чек обязателен.
 #
-# Markdown внутри backend/ из фильтра исключён: правка README поднимала
+# Markdown внутри backend/ и schedule-service/ из фильтра исключён: правка README поднимала
 # Testcontainers и гоняла весь набор тестов ради текста.
 on:
   pull_request:
@@ -20,6 +20,8 @@ on:
     paths:
       - "backend/**"
       - "!backend/**.md"
+      - "schedule-service/**"
+      - "!schedule-service/**.md"
       - ".github/workflows/**"
   workflow_call:
 
