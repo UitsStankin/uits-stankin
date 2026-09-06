@@ -60,7 +60,7 @@ public class AchievementService {
     public AchievementResponseDto getAchievementById(Long id) {
         return achievementRepository.findById(id)
                 .map(achievementMapper::toDto)
-                .orElseThrow(() -> new NotFoundException("Достижение id=" + id + " не найдено"));
+                .orElseThrow(() -> achievementNotFound(id));
     }
 
     @Transactional
@@ -75,7 +75,7 @@ public class AchievementService {
     @Transactional
     public AchievementResponseDto updateAchievement(Long id, AchievementRequestDto request) {
         Achievement achievement = achievementRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Достижение id=" + id + " не найдено"));
+                .orElseThrow(() -> achievementNotFound(id));
         prepare(request);
         Teacher teacher = resolveTeacher(request.getTeacherId());
 
@@ -93,7 +93,7 @@ public class AchievementService {
     @Transactional
     public void deleteAchievement(Long id) {
         Achievement achievement = achievementRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Достижение id=" + id + " не найдено"));
+                .orElseThrow(() -> achievementNotFound(id));
         String key = achievement.getPreviewImage();
 
         achievementRepository.delete(achievement);
@@ -129,5 +129,9 @@ public class AchievementService {
         if (!fileStorage.existsInCategory(key, ACHIEVEMENT_CATEGORY)) {
             throw new InvalidFileException("Файл обложки не найден: " + key);
         }
+    }
+
+    private NotFoundException achievementNotFound(Long id) {
+        return new NotFoundException("Достижение id=" + id + " не найдено");
     }
 }
