@@ -1,5 +1,6 @@
 plugins {
 	java
+	jacoco
 	id("org.springframework.boot") version "4.1.1"
 	id("io.spring.dependency-management") version "1.1.7"
 }
@@ -67,4 +68,16 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	classDirectories.setFrom(
+		classDirectories.files.map { fileTree(it) { exclude("ru/stankin/uits/config/DevDataSeeder*.class") } }
+	)
+	reports {
+		xml.required = true
+		html.required = true
+	}
 }
