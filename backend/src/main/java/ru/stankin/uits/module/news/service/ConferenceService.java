@@ -98,8 +98,10 @@ public class ConferenceService {
      * и ориентир «перед сохранением» там не за что зацепить.
      */
     private void prepare(ConferenceRequestDto request) {
-        if (request.getContent() != null) {
-            String cleaned = HtmlSanitizer.sanitize(request.getContent());
+        String content = request.getContent();
+
+        if (content != null) {
+            String cleaned = HtmlSanitizer.sanitize(content);
             request.setContent(cleaned.isBlank() ? null : cleaned);
         }
 

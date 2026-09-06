@@ -101,11 +101,13 @@ public class AchievementService {
     }
 
     private void prepare(AchievementRequestDto request) {
-        if (request.getContent() == null) {
+        String content = request.getContent();
+
+        if (content == null) {
             throw new InvalidRequestException("Содержание обязательно");
         }
 
-        String cleaned = HtmlSanitizer.sanitize(request.getContent());
+        String cleaned = HtmlSanitizer.sanitize(content);
 
         if (cleaned.isBlank()) {
             throw new InvalidRequestException("Содержание состоит только из запрещённой разметки");
