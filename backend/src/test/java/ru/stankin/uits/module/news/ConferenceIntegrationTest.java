@@ -269,8 +269,7 @@ class ConferenceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String stored = conferenceRepository.findAll().getFirst().getContent();
-        assertThat(stored).contains("Приглашаем");
-        assertThat(stored).doesNotContain("script");
+        assertThat(stored).contains("Приглашаем").doesNotContain("script");
     }
 
     /**
@@ -291,8 +290,7 @@ class ConferenceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         String stored = conferenceRepository.findById(saved.getId()).orElseThrow().getContent();
-        assertThat(stored).contains("Обновлено");
-        assertThat(stored).doesNotContain("onerror");
+        assertThat(stored).contains("Обновлено").doesNotContain("onerror");
     }
 
     /** Тело, вычищенное до пустоты, не должно давать второе представление пустого поля. */

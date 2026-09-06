@@ -40,15 +40,9 @@ public class OrphanFileCleanupTask {
         for (StoredFile file : fileStorage.listFiles()) {
             scanned++;
 
-            if (!sweptCategories.contains(categoryOf(file.key()))) {
-                continue;
-            }
-
-            if (file.lastModified().isAfter(threshold)) {
-                continue;
-            }
-
-            if (isUsed(file.key())) {
+            if (!sweptCategories.contains(categoryOf(file.key()))
+                    || file.lastModified().isAfter(threshold)
+                    || isUsed(file.key())) {
                 continue;
             }
 

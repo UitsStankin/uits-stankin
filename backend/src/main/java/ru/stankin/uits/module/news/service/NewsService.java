@@ -175,9 +175,8 @@ public class NewsService {
     private void validatePostType(String postType) {
         if (postType == null || postType.isBlank() || PostType.ALLOWED.contains(postType)) {
             return;
-        } else {
-            throw new InvalidRequestException("Неизвестный тип записи: " + postType);
         }
+        throw new InvalidRequestException("Неизвестный тип записи: " + postType);
     }
 
     private void validatePreviewImage(NewsRequestDto request) {

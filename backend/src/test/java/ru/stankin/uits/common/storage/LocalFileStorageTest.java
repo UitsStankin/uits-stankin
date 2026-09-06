@@ -36,8 +36,7 @@ class LocalFileStorageTest {
         String key = storage.store(content("содержимое картинки"), EXTENSION, CATEGORY);
 
         Path stored = root.resolve(key);
-        assertThat(stored).exists();
-        assertThat(stored).hasContent("содержимое картинки");
+        assertThat(stored).exists().hasContent("содержимое картинки");
     }
 
     @Test

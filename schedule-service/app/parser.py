@@ -78,24 +78,31 @@ def _parse_table(table: list[list[str | None]]) -> list[Lesson]:
     day: int | None = None
     for row in table[1:]:
         day_cell = row[0]
-        is_day_row = bool(day_cell)
-        if is_day_row:
+        if day_cell:
             day = _parse_day(day_cell)
-        carry: str | None = None
-        for class_time, cell in zip(slot_times, row[1:]):
-            if is_day_row and cell is None:
-                text = carry
-            else:
-                text = cell
-                carry = cell if cell else None
-            if not text:
-                continue
-            if day is None:
-                raise ScheduleParseError(
-                    "строка с занятиями встретилась раньше первой строки дня недели"
-                )
-            for entry in _parse_cell(text):
-                lessons.append(Lesson(week_day=day, class_time=class_time, **entry))
+        lessons.extend(_parse_row(row, slot_times, day, is_day_row=bool(day_cell)))
+    return lessons
+
+
+def _parse_row(
+    row: list[str | None], slot_times: list[int], day: int | None, *, is_day_row: bool
+) -> list[Lesson]:
+    lessons: list[Lesson] = []
+    carry: str | None = None
+    for class_time, cell in zip(slot_times, row[1:]):
+        if is_day_row and cell is None:
+            text = carry
+        else:
+            text = cell
+            carry = cell if cell else None
+        if not text:
+            continue
+        if day is None:
+            raise ScheduleParseError(
+                "строка с занятиями встретилась раньше первой строки дня недели"
+            )
+        for entry in _parse_cell(text):
+            lessons.append(Lesson(week_day=day, class_time=class_time, **entry))
     return lessons
 
 
@@ -131,28 +138,20 @@ def _parse_cell(text: str) -> list[dict]:
     return entries
 
 
-def _parse_entry(head: str, dates_raw: str) -> dict:
-    parts = [part.strip() for part in head.strip().split(". ")]
-    if len(parts) < 3:
-        raise ScheduleParseError(f"не удалось разобрать занятие: '{head.strip()}'")
-    group, name, lesson_type = parts[0], parts[1], parts[2].strip(" .")
-    if not group or not name:
-        raise ScheduleParseError(f"пустая группа или название занятия: '{head.strip()}'")
+def _validate_groups(group: str, head: str) -> None:
     for group_token in (token.strip() for token in group.split(",")):
         if not GROUP_RE.match(group_token):
             raise ScheduleParseError(
                 f"токен '{group_token}' не похож на код группы в '{head.strip()}'; "
                 f"если формат кодов групп изменился, поправить GROUP_RE"
             )
-    if lesson_type not in LESSON_TYPES:
-        raise ScheduleParseError(
-            f"неизвестный тип занятия '{lesson_type}' в '{head.strip()}'; "
-            f"если формат добавил новый тип, дополнить LESSON_TYPES"
-        )
+
+
+def _parse_entry_tail(tokens: list[str], head: str) -> tuple[str | None, str | None]:
     subgroup: str | None = None
     cabinet: str | None = None
-    for token in parts[3:]:
-        token = token.strip(" .")
+    for raw in tokens:
+        token = raw.strip(" .")
         if not token:
             continue
         subgroup_match = SUBGROUP_RE.match(token)
@@ -168,6 +167,23 @@ def _parse_entry(head: str, dates_raw: str) -> dict:
             if cabinet is not None:
                 raise ScheduleParseError(f"два кабинета в одном занятии: '{head.strip()}'")
             cabinet = token
+    return subgroup, cabinet
+
+
+def _parse_entry(head: str, dates_raw: str) -> dict:
+    parts = [part.strip() for part in head.strip().split(". ")]
+    if len(parts) < 3:
+        raise ScheduleParseError(f"не удалось разобрать занятие: '{head.strip()}'")
+    group, name, lesson_type = parts[0], parts[1], parts[2].strip(" .")
+    if not group or not name:
+        raise ScheduleParseError(f"пустая группа или название занятия: '{head.strip()}'")
+    _validate_groups(group, head)
+    if lesson_type not in LESSON_TYPES:
+        raise ScheduleParseError(
+            f"неизвестный тип занятия '{lesson_type}' в '{head.strip()}'; "
+            f"если формат добавил новый тип, дополнить LESSON_TYPES"
+        )
+    subgroup, cabinet = _parse_entry_tail(parts[3:], head)
     return {
         "group": group,
         "name": name,
