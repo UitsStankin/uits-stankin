@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout кода
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Изменения в backend
         id: changes
@@ -86,6 +88,13 @@ jobs:
         working-directory: backend
         # Тесты с Testcontainers работают в GitHub Actions из коробки:
         # Docker уже установлен на ubuntu-latest runners
+
+      - name: Анализ SonarQube
+        if: steps.gate.outputs.build == 'true'
+        run: ./gradlew sonar --no-daemon
+        working-directory: backend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Отчёт о покрытии
         if: always() && steps.gate.outputs.build == 'true'
