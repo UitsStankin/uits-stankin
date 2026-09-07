@@ -8,6 +8,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import Loader from '@shared/ui/Loader';
 import {
   ACHIEVEMENTS_ROUTE,
+  ADMIN_ROUTE,
   ANNOUNCEMENTS_ROUTE,
   CONFERENCES_ROUTE,
   HELPERS_ROUTE,
@@ -17,6 +18,7 @@ import {
   POSTGRADUATE_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
+import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
@@ -37,7 +39,12 @@ import AchievementsPage from '@pages/AchievementsPage';
 import AchievementDetailPage from '@pages/AchievementDetailPage';
 import EditablePagePage from '@pages/EditablePagePage';
 import type { EditablePageSlug } from '@shared/types';
+import AdminLayout from '../layouts/AdminLayout';
+import AdminHomePage from '@pages/admin/AdminHomePage';
+import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
+import SubjectsPage from '@pages/admin/SubjectsPage';
 import ProtectedRoute from './protectedRoute';
+import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
@@ -117,6 +124,27 @@ const EDITABLE_PAGES: ReadonlyArray<{
     heading: 'Магистратура: практики',
   },
 ];
+
+/**
+ * Экран раздела админки: настоящий, если он написан, иначе заглушка
+ * с номером тикета.
+ *
+ * Признак — `plannedIn` в конфиге разделов, а не второй список «что уже
+ * готово»: из такого списка однажды забудут вычеркнуть раздел ровно
+ * в тот день, когда его сделают.
+ */
+function adminSectionScreen(section: AdminSection) {
+  if (section.plannedIn) return <PlannedSectionPage section={section} />;
+
+  switch (section.key) {
+    case 'subjects':
+      return <SubjectsPage />;
+    default:
+      // Раздел объявлен готовым, а экрана для него нет — это ошибка
+      // конфига, и заглушка честнее пустой страницы.
+      return <PlannedSectionPage section={section} />;
+  }
+}
 
 // Базовые роуты
 export const routes: RouteObject[] = [
@@ -297,6 +325,43 @@ export const routes: RouteObject[] = [
             ),
             errorElement: <RouteError />,
           },
+        ],
+      },
+      // Админка. За `RoleRoute`: внутрь пускают админа и модератора,
+      // вошедший преподаватель видит отказ, а гость — форму входа.
+      //
+      // Внутри общего лейаута, как и личный кабинет: шапка с меню профиля
+      // нужна и здесь, а второй лейаут означал бы вторую шапку.
+      //
+      // Экраны разделов раскладываются из `ADMIN_SECTIONS` — того же
+      // списка, по которому рисуется меню слева: раздел, дописанный
+      // в конфиг, получает адрес сам, и меню с роутером не расходятся.
+      // Готовые разделы перечислены в `adminSectionScreen`, остальные
+      // показывают заглушку со своим номером тикета.
+      {
+        path: ADMIN_ROUTE,
+        element: (
+          <RoleRoute access="moderator">
+            <AdminLayout />
+          </RoleRoute>
+        ),
+        errorElement: <RouteError />,
+        children: [
+          { index: true, element: <AdminHomePage /> },
+          ...ADMIN_SECTIONS.map((section) => ({
+            path: section.path.slice(`${ADMIN_ROUTE}/`.length),
+            // Второй `RoleRoute` внутри первого — только там, где раздел
+            // строже лейаута: учётные записи закрыты от модератора,
+            // и без него он дошёл бы до экрана, а `403` получил уже
+            // от бэкенда, посреди пустой таблицы.
+            element:
+              section.access === 'admin' ? (
+                <RoleRoute access="admin">{adminSectionScreen(section)}</RoleRoute>
+              ) : (
+                adminSectionScreen(section)
+              ),
+            errorElement: <RouteError />,
+          })),
         ],
       },
       // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на

@@ -66,3 +66,37 @@ describe('pageHref', () => {
     expect(pageHref('/about/news', -3)).toBe('/about/news');
   });
 });
+
+/**
+ * Остальные параметры адреса — порядок сортировки в админке, дальше
+ * фильтры. Они обязаны переживать перелистывание: ссылка «страница 2»,
+ * сбрасывающая порядок, показывает не то, что человек листал.
+ */
+describe('pageHref с дополнительными параметрами', () => {
+  it('несёт параметр вместе с номером страницы', () => {
+    expect(pageHref('/admin/subjects', 2, { sort: 'name,desc' })).toBe(
+      '/admin/subjects?page=2&sort=name,desc',
+    );
+  });
+
+  it('несёт параметр и на первой странице, где номера нет', () => {
+    expect(pageHref('/admin/subjects', 1, { sort: 'name,desc' })).toBe(
+      '/admin/subjects?sort=name,desc',
+    );
+  });
+
+  /** `null` — «параметра нет»: так умолчание не попадает в адрес. */
+  it('пропускает параметр со значением null', () => {
+    expect(pageHref('/admin/subjects', 1, { sort: null })).toBe('/admin/subjects');
+    expect(pageHref('/admin/subjects', 3, { sort: null })).toBe('/admin/subjects?page=3');
+  });
+
+  /**
+   * Запятая в значении остаётся запятой. `URLSearchParams` экранирует её
+   * в `%2C`, хотя RFC 3986 разрешает её в query, — а адрес списка человек
+   * видит в строке браузера и пересылает коллеге.
+   */
+  it('не экранирует запятую в значении сортировки', () => {
+    expect(pageHref('/admin/subjects', 1, { sort: 'name,asc' })).not.toContain('%2C');
+  });
+});

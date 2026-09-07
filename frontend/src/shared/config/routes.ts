@@ -158,3 +158,22 @@ export function teacherRoute(id: number): string {
  * карточка целиком помещается в элементе списка (docs/API.md, «УВП»).
  */
 export const HELPERS_ROUTE = '/about/employee/uvp';
+
+/**
+ * Админка. Собственный раздел портала, а не отдельное приложение:
+ * в оригинале по этому адресу жила админка Django, и совпадение пути
+ * экономит строку в карте редиректов nginx при переезде — как
+ * и у `/corp/personal`.
+ *
+ * Знают трое: список роутов, меню профиля в шапке и меню самого раздела
+ * (`shared/config/adminNavigation.ts`), которое строит из него адреса
+ * подразделов.
+ */
+export const ADMIN_ROUTE = '/admin';
+
+/**
+ * Дисциплины в админке — единственный готовый раздел F-40. Знают двое:
+ * список разделов (`adminNavigation.ts`) и сама страница, собирающая
+ * адреса пагинатора и сортировки.
+ */
+export const ADMIN_SUBJECTS_ROUTE = `${ADMIN_ROUTE}/subjects`;

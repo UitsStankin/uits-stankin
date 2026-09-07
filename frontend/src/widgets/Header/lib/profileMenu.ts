@@ -1,6 +1,6 @@
 import { Command, LogOut, User, type LucideIcon } from 'lucide-react';
 
-import { PERSONAL_ROUTE } from '@shared/config/routes';
+import { ADMIN_ROUTE, PERSONAL_ROUTE } from '@shared/config/routes';
 
 interface ProfileMenuItemBase {
   key: string;
@@ -8,12 +8,20 @@ interface ProfileMenuItemBase {
   icon: LucideIcon;
 }
 
-/** Переход по адресу. */
+/**
+ * Переход по адресу. Все пункты меню ведут внутрь приложения, поэтому
+ * и признака «внешняя ссылка» здесь нет.
+ *
+ * Он был: админка Django жила вне SPA и открывалась в новой вкладке.
+ * С F-40 админка — раздел этого же приложения, и внешней ссылкой она
+ * перезагружала бы портал целиком, теряя access-токен из памяти вкладки:
+ * модератор попадал бы на форму входа вместо таблицы. Вместе с признаком
+ * убрана и его ветка в `UserMenu` — необязательное поле, которого никто
+ * не выставляет, только притворяется возможностью.
+ */
 export interface ProfileMenuLink extends ProfileMenuItemBase {
   kind: 'link';
   path: string;
-  /** Открывать в новой вкладке — админка живёт вне SPA. */
-  external?: boolean;
 }
 
 /**
@@ -60,9 +68,8 @@ export function buildProfileMenu({
       key: 'admin',
       kind: 'link',
       title: 'Админ-панель',
-      path: '/admin',
+      path: ADMIN_ROUTE,
       icon: Command,
-      external: true,
     });
   }
 

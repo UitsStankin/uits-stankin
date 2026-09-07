@@ -1,6 +1,8 @@
 import { setupWorker } from 'msw/browser';
 
+import { authHandlers } from './auth';
 import { handlers } from './handlers';
+import { makeProfile, profileHandlers } from './profile';
 
 /**
  * Перехватчик запросов для браузера. Включается флагом `VITE_ENABLE_MOCKS`
@@ -14,5 +16,21 @@ import { handlers } from './handlers';
  *
  * Воркер `public/mockServiceWorker.js` создан командой `msw init` и правится
  * только ею.
+ *
+ * К общему набору здесь добавлены вход и профиль — то, чего в наборе
+ * тестов нет намеренно (профиль по умолчанию означал бы вошедшего
+ * пользователя в каждом тесте страницы). В браузере всё наоборот: без
+ * входа портал на моках заканчивается формой логина, и ни личный кабинет,
+ * ни админку посмотреть нельзя. Пароль мок не проверяет — пускает любого,
+ * кто ввёл логин.
+ *
+ * Роль — модератор: под ней открыт весь раздел админки, кроме учётных
+ * записей (F-46), а личный кабинет и публичная часть выглядят так же,
+ * как у всех. Нужна другая роль — `worker.use(...profileHandlers(
+ * makeProfile({ superuser: true })))` в консоли браузера.
  */
-export const worker = setupWorker(...handlers);
+export const worker = setupWorker(
+  ...handlers,
+  ...authHandlers(),
+  ...profileHandlers(makeProfile({ moderator: true })),
+);
