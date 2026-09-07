@@ -4,6 +4,7 @@ import { editablePageHandlers } from './editablePages';
 import { publicHelperHandlers } from './helpers';
 import { newsHandlers } from './news';
 import { publicPostgraduateHandlers } from './postgraduates';
+import { subjectHandlers } from './subjects';
 import { publicTeacherHandlers, teacherHandlers } from './teachers';
 
 /**
@@ -18,6 +19,13 @@ import { publicTeacherHandlers, teacherHandlers } from './teachers';
  * Редактируемые разделы отдают пустой текст, потому что таковы они
  * на чистой базе. Заполненный блок главной в браузере — это
  * `worker.use(...editablePageHandlers({ 'home-before': '# Заголовок' }))`.
+ *
+ * Дисциплины здесь — единственная закрытая ручка набора, и стоят они
+ * тут ради браузера: под `VITE_ENABLE_MOCKS` раздел админки должен
+ * открываться и работать целиком, а не упираться в необработанный запрос.
+ * Публичным страницам они не мешают — за словарём никто из них не ходит.
+ * Профиль в набор по-прежнему не входит: он означал бы вошедшего
+ * пользователя в каждом тесте страницы.
  */
 export const handlers = [
   ...newsHandlers(),
@@ -28,4 +36,5 @@ export const handlers = [
   ...teacherHandlers(),
   ...publicHelperHandlers(),
   ...publicPostgraduateHandlers(),
+  ...subjectHandlers(),
 ];

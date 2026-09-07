@@ -44,6 +44,8 @@ export type {
   TeacherRank,
   TeacherUpsertRequest,
   Subject,
+  SubjectPage,
+  SubjectRequest,
   Helper,
   HelperPage,
 } from './staff.types';

@@ -26,4 +26,5 @@ export {
   teacherListItem,
   teachersFixture,
 } from './teachers';
+export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
 export { problemResponse } from './problemResponse';
