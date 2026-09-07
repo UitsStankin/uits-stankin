@@ -15,6 +15,11 @@ export { makeNews, newsFixture, newsHandlers } from './news';
 export { makeProfile, profileHandlers } from './profile';
 export { pageResponse } from './page';
 export {
+  makePostgraduate,
+  postgraduatesFixture,
+  publicPostgraduateHandlers,
+} from './postgraduates';
+export {
   makeTeacher,
   publicTeacherHandlers,
   teacherHandlers,
