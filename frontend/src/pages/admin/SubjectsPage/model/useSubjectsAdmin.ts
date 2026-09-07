@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import type { SortingState } from '@tanstack/react-table';
 
@@ -42,7 +42,8 @@ type Editing = { subject: Subject | null } | null;
  * завести отдельную ручку чтения одной записи, которой в контракте нет.
  */
 export function useSubjectsAdmin() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const page = parsePage(searchParams.get(PAGE_PARAM));
   const sorting = parseSort(searchParams.get(SORT_PARAM), SORTABLE_FIELDS, DEFAULT_SORTING);
@@ -90,18 +91,17 @@ export function useSubjectsAdmin() {
     /**
      * Смена порядка сбрасывает страницу: третья страница прежнего порядка
      * не имеет отношения к новому, и оставленный номер показал бы записи,
-     * которых человек не искал.
+     * которых человек не искал. Поэтому здесь тот же `pageHref` с первой
+     * страницей, а не правка `searchParams`: заодно адрес собирается
+     * одним способом на весь раздел — иначе ссылки пагинатора и адрес
+     * после клика по заголовку отличались бы экранированием запятой.
      */
     onSortingChange: (next: SortingState) => {
       const value = sortParam(next);
-      const params = new URLSearchParams(searchParams);
 
-      params.delete(PAGE_PARAM);
-
-      if (value === null || value === DEFAULT_SORT) params.delete(SORT_PARAM);
-      else params.set(SORT_PARAM, value);
-
-      setSearchParams(params);
+      void navigate(
+        pageHref(ADMIN_SUBJECTS_ROUTE, 1, { [SORT_PARAM]: value === DEFAULT_SORT ? null : value }),
+      );
     },
 
     editing,
