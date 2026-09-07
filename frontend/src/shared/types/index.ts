@@ -15,6 +15,7 @@ export type { Page, PageParams, FileCategory, FileUploadResponse } from './api.t
 
 // Аутентификация и профиль
 export type {
+  AdminAccess,
   Profile,
   LoginRequest,
   AccessTokenResponse,
