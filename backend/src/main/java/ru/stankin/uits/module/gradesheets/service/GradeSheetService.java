@@ -17,6 +17,10 @@ import ru.stankin.uits.module.gradesheets.repository.GradeSheetSummary;
 
 import java.util.Set;
 
+import static ru.stankin.uits.common.SortFields.validate;
+import static ru.stankin.uits.common.SearchText.escapeLike;
+import static ru.stankin.uits.common.SearchText.normalize;
+
 @Service
 @RequiredArgsConstructor
 public class GradeSheetService {
@@ -32,7 +36,7 @@ public class GradeSheetService {
                                                                  String discipline,
                                                                  String semester,
                                                                  Pageable pageable) {
-        validateSort(pageable.getSort());
+        validate(pageable.getSort(), SORT_FIELDS);
 
         return PageResponseDto.from(gradeSheetRepository.search(
                         normalize(group),
@@ -65,23 +69,5 @@ public class GradeSheetService {
                 .orElseThrow(() -> new NotFoundException("Ведомость не найдена: id=" + id));
 
         return gradeSheetMapper.toDetailsDto(gradeSheet);
-    }
-
-    private static void validateSort(Sort sort) {
-        for (Sort.Order order : sort) {
-            if (!SORT_FIELDS.contains(order.getProperty())) {
-                throw new InvalidRequestException("Неизвестное поле сортировки: " + order.getProperty());
-            }
-        }
-    }
-
-    private static String normalize(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    private static String escapeLike(String value) {
-        return value == null
-                ? null
-                : value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

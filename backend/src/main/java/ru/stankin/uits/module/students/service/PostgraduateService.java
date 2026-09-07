@@ -22,10 +22,20 @@ import ru.stankin.uits.module.students.repository.PostgraduateRepository;
 import ru.stankin.uits.module.students.repository.StudentRepository;
 
 import java.time.LocalDate;
+import java.util.Set;
+
+import static ru.stankin.uits.common.SearchText.escapeLike;
+import static ru.stankin.uits.common.SearchText.normalize;
+import static ru.stankin.uits.common.SortFields.validate;
 
 @Service
 @RequiredArgsConstructor
 public class PostgraduateService {
+
+    private static final Set<String> SORT_FIELDS = Set.of(
+            "id", "student.lastName", "student.firstName", "student.patronymic",
+            "student.speciality", "student.diplomaTheme", "student.admissionYear",
+            "teacher.lastName", "teacher.firstName");
 
     private final PostgraduateRepository postgraduateRepository;
     private final StudentRepository studentRepository;
@@ -33,10 +43,13 @@ public class PostgraduateService {
     private final TeacherService teacherService;
 
     @Transactional(readOnly = true)
-    public PageResponseDto<PostgraduateResponseDto> getPostgraduates(Long teacherId,
+    public PageResponseDto<PostgraduateResponseDto> getPostgraduates(String q,
+                                                                     Long teacherId,
                                                                      String speciality,
                                                                      Pageable pageable) {
-        Page<Postgraduate> page = select(teacherId, normalize(speciality), pageable);
+        validate(pageable.getSort(), SORT_FIELDS);
+        Page<Postgraduate> page = postgraduateRepository.search(
+                escapeLike(normalize(q)), teacherId, normalize(speciality), pageable);
 
         return PageResponseDto.from(page.map(postgraduateMapper::toDto));
     }
@@ -95,20 +108,6 @@ public class PostgraduateService {
         return new NotFoundException("Запись аспирантуры id=" + id + " не найдена");
     }
 
-    private Page<Postgraduate> select(Long teacherId, String speciality, Pageable pageable) {
-        if (teacherId != null && speciality != null) {
-            return postgraduateRepository.findByTeacherIdAndStudentSpeciality(teacherId, speciality, pageable);
-        }
-        if (teacherId != null) {
-            return postgraduateRepository.findByTeacherId(teacherId, pageable);
-        }
-        if (speciality != null) {
-            return postgraduateRepository.findByStudentSpeciality(speciality, pageable);
-        }
-
-        return postgraduateRepository.findAllBy(pageable);
-    }
-
     private StudentRequestDto validated(StudentRequestDto student) {
         if (student.getEducationLevel() != EducationLevel.POSTGRADUATE) {
             throw new InvalidRequestException("В записи аспирантуры уровень образования должен быть POSTGRADUATE");
@@ -128,13 +127,5 @@ public class PostgraduateService {
         }
 
         return teacherService.getTeacherEntity(teacherId);
-    }
-
-    private String normalize(String speciality) {
-        if (speciality == null || speciality.isBlank()) {
-            return null;
-        }
-
-        return speciality;
     }
 }
