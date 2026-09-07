@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 
-import { ADMIN_SECTIONS } from '@shared/config/adminNavigation';
+import { visibleAdminSections } from '@shared/config/adminNavigation';
 import { useAuth } from '@features/auth';
 
 /**
@@ -15,7 +15,7 @@ import { useAuth } from '@features/auth';
 export default function AdminHomePage() {
   const { isAdmin } = useAuth();
 
-  const sections = ADMIN_SECTIONS.filter((section) => section.access !== 'admin' || isAdmin);
+  const sections = visibleAdminSections(isAdmin);
 
   return (
     <div className="flex flex-col gap-gutter">
