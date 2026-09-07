@@ -97,17 +97,3 @@ export type TelegramUser = {
   /** Пользователь портала, к которому привязан чат. */
   assignedUser: number;
 };
-
-/**
- * Человек на странице «Благодарности» (тикет F-33).
- *
- * Ручки не будет вовсе: это статический список из десятка карточек,
- * он живёт в коде страницы рядом с фотографиями в `public/assets/images`.
- * Тип лежит здесь по той же причине — сверять его не с чем.
- */
-export type Contributor = {
-  id: number;
-  name: string;
-  description: string;
-  image: string;
-};
