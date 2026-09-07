@@ -3,6 +3,7 @@ import { conferenceHandlers } from './conferences';
 import { editablePageHandlers } from './editablePages';
 import { publicHelperHandlers } from './helpers';
 import { newsHandlers } from './news';
+import { publicPostgraduateHandlers } from './postgraduates';
 import { publicTeacherHandlers, teacherHandlers } from './teachers';
 
 /**
@@ -26,4 +27,5 @@ export const handlers = [
   ...publicTeacherHandlers(),
   ...teacherHandlers(),
   ...publicHelperHandlers(),
+  ...publicPostgraduateHandlers(),
 ];
