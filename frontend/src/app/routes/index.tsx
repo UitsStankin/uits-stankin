@@ -14,6 +14,7 @@ import {
   LOGIN_ROUTE,
   NEWS_ROUTE,
   PERSONAL_ROUTE,
+  POSTGRADUATE_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
 import Placeholder from '@pages/Placeholder';
@@ -21,6 +22,7 @@ import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
 import ContactsPage from '@pages/ContactsPage';
 import ContributorsPage from '@pages/ContributorsPage';
+import PostgraduatePage from '@pages/PostgraduatePage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
@@ -46,8 +48,8 @@ import RouteError from './RouteError';
  * Редактируемые разделы: адрес → слаг раздела и заголовок страницы.
  *
  * Девять из тринадцати. У `home-before` и `home-after` собственного адреса
- * нет по контракту — их рисует главная. Контакты (F-32) стоят отдельной
- * записью ниже, а аспирантура ждёт свою (F-34): в оригинале вокруг их
+ * нет по контракту — их рисует главная. Контакты (F-32) и аспирантура
+ * (F-34) стоят отдельными записями ниже: в оригинале вокруг их
  * редактируемых блоков была своя вёрстка — карта с соцсетями и таблица
  * аспирантов, — и парой «слаг + заголовок» такая страница не описывается.
  *
@@ -179,6 +181,20 @@ export const routes: RouteObject[] = [
       {
         path: '/about/contributors',
         element: <ContributorsPage />,
+        errorElement: <RouteError />,
+      },
+      // Аспирантура. Смешанная страница, как контакты: текст приходит
+      // редактируемым разделом `scientific-activity-postgraduate`,
+      // а таблица аспирантов рядом с ним — своим запросом
+      // к `GET /api/public/postgraduates`. Одним слагом с заголовком,
+      // как девять разделов F-23, она поэтому не описывается.
+      //
+      // Адрес — константой из `shared/config/routes.ts`, в отличие
+      // от истории, контактов и благодарностей: страница собирает адреса
+      // пагинатора, то есть знает его не только роутер.
+      {
+        path: POSTGRADUATE_ROUTE,
+        element: <PostgraduatePage />,
         errorElement: <RouteError />,
       },
       // Новости. Публичные: ручка `GET /api/public/news` открыта всем,
