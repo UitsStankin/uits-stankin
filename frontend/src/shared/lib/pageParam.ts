@@ -31,9 +31,36 @@ export function parsePage(raw: string | null): number {
   return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1;
 }
 
-/** Адрес списка с нужной страницей. */
-export function pageHref(route: string, page: number): string {
+/**
+ * Адрес списка с нужной страницей.
+ *
+ * `extra` — остальные параметры адреса, которые обязаны пережить
+ * перелистывание: порядок сортировки в админке, а дальше и фильтры.
+ * Без них ссылка «страница 2» сбрасывала бы порядок к умолчанию,
+ * и список менялся бы на ровном месте. `null` в значении означает
+ * «параметра нет» — так умолчание не попадает в адрес.
+ */
+export function pageHref(
+  route: string,
+  page: number,
+  extra: Record<string, string | null> = {},
+): string {
+  const params = new URLSearchParams();
+
   // Первая страница — без параметра: `?page=1` в адресе ничего не добавляет,
   // зато раздваивает канонический адрес списка на два разных.
-  return page <= 1 ? route : `${route}?${PAGE_PARAM}=${page}`;
+  if (page > 1) params.set(PAGE_PARAM, String(page));
+
+  for (const [name, value] of Object.entries(extra)) {
+    if (value !== null) params.set(name, value);
+  }
+
+  const query = params.toString();
+  if (query === '') return route;
+
+  // Запятая в значении сортировки (`name,desc`) экранируется в `%2C`,
+  // хотя по RFC 3986 она в query разрешена. Возвращаем её на место:
+  // адрес списка человек видит в строке браузера и пересылает коллеге,
+  // а `%2C` в нём выглядит поломкой.
+  return `${route}?${query.replace(/%2C/g, ',')}`;
 }
