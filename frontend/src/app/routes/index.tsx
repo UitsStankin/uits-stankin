@@ -18,7 +18,7 @@ import {
   POSTGRADUATE_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
-import { ADMIN_SECTIONS } from '@shared/config/adminNavigation';
+import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
@@ -42,6 +42,7 @@ import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
 import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
+import SubjectsPage from '@pages/admin/SubjectsPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -123,6 +124,27 @@ const EDITABLE_PAGES: ReadonlyArray<{
     heading: 'Магистратура: практики',
   },
 ];
+
+/**
+ * Экран раздела админки: настоящий, если он написан, иначе заглушка
+ * с номером тикета.
+ *
+ * Признак — `plannedIn` в конфиге разделов, а не второй список «что уже
+ * готово»: из такого списка однажды забудут вычеркнуть раздел ровно
+ * в тот день, когда его сделают.
+ */
+function adminSectionScreen(section: AdminSection) {
+  if (section.plannedIn) return <PlannedSectionPage section={section} />;
+
+  switch (section.key) {
+    case 'subjects':
+      return <SubjectsPage />;
+    default:
+      // Раздел объявлен готовым, а экрана для него нет — это ошибка
+      // конфига, и заглушка честнее пустой страницы.
+      return <PlannedSectionPage section={section} />;
+  }
+}
 
 // Базовые роуты
 export const routes: RouteObject[] = [
@@ -314,9 +336,8 @@ export const routes: RouteObject[] = [
       // Экраны разделов раскладываются из `ADMIN_SECTIONS` — того же
       // списка, по которому рисуется меню слева: раздел, дописанный
       // в конфиг, получает адрес сам, и меню с роутером не расходятся.
-      // Пока готовых разделов нет ни одного: каждый показывает заглушку
-      // со своим номером тикета. Первый настоящий экран приедет
-      // следующим коммитом, вместе с ним же — выбор экрана по разделу.
+      // Готовые разделы перечислены в `adminSectionScreen`, остальные
+      // показывают заглушку со своим номером тикета.
       {
         path: ADMIN_ROUTE,
         element: (
@@ -335,11 +356,9 @@ export const routes: RouteObject[] = [
             // от бэкенда, посреди пустой таблицы.
             element:
               section.access === 'admin' ? (
-                <RoleRoute access="admin">
-                  <PlannedSectionPage section={section} />
-                </RoleRoute>
+                <RoleRoute access="admin">{adminSectionScreen(section)}</RoleRoute>
               ) : (
-                <PlannedSectionPage section={section} />
+                adminSectionScreen(section)
               ),
             errorElement: <RouteError />,
           })),

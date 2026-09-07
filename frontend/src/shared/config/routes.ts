@@ -170,3 +170,10 @@ export const HELPERS_ROUTE = '/about/employee/uvp';
  * подразделов.
  */
 export const ADMIN_ROUTE = '/admin';
+
+/**
+ * Дисциплины в админке — единственный готовый раздел F-40. Знают двое:
+ * список разделов (`adminNavigation.ts`) и сама страница, собирающая
+ * адреса пагинатора и сортировки.
+ */
+export const ADMIN_SUBJECTS_ROUTE = `${ADMIN_ROUTE}/subjects`;

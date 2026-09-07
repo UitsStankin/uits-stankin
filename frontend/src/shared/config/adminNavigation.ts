@@ -12,7 +12,7 @@ import {
 
 import type { AdminAccess } from '@shared/types';
 
-import { ADMIN_ROUTE } from './routes';
+import { ADMIN_ROUTE, ADMIN_SUBJECTS_ROUTE } from './routes';
 
 export interface AdminSection {
   /** Последний сегмент адреса: `/admin/subjects` — это `subjects`. */
@@ -104,9 +104,8 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'subjects',
     title: 'Дисциплины',
     icon: BookOpen,
-    path: `${ADMIN_ROUTE}/subjects`,
+    path: ADMIN_SUBJECTS_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-40',
   },
   {
     key: 'pages',
