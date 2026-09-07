@@ -20,6 +20,7 @@ import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
 import ContactsPage from '@pages/ContactsPage';
+import ContributorsPage from '@pages/ContributorsPage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
 import NewsPage from '@pages/NewsPage';
@@ -164,6 +165,20 @@ export const routes: RouteObject[] = [
       {
         path: '/about/contacts',
         element: <ContactsPage />,
+        errorElement: <RouteError />,
+      },
+      // Благодарности. Статическая, как история: список тех, кто делал
+      // портал, лежит в коде страницы, ручки у него нет и не будет —
+      // он про работу над сайтом, а не про кафедру.
+      //
+      // Адрес взят из меню (`shared/config/navigation.ts`, пункт
+      // `about/contributors`) и повторяет старый портал. Строкой здесь,
+      // а не константой в `shared/config/routes.ts`, по той же причине,
+      // что у истории и контактов: адрес знает один роутер, в меню он
+      // лежит своей записью, а больше собирать его некому.
+      {
+        path: '/about/contributors',
+        element: <ContributorsPage />,
         errorElement: <RouteError />,
       },
       // Новости. Публичные: ручка `GET /api/public/news` открыта всем,
