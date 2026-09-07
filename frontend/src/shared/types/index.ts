@@ -15,6 +15,7 @@ export type { Page, PageParams, FileCategory, FileUploadResponse } from './api.t
 
 // Аутентификация и профиль
 export type {
+  AdminAccess,
   Profile,
   LoginRequest,
   AccessTokenResponse,
@@ -43,9 +44,14 @@ export type {
   TeacherRank,
   TeacherUpsertRequest,
   Subject,
+  SubjectPage,
+  SubjectRequest,
   Helper,
   HelperPage,
 } from './staff.types';
+
+// Аспирантура
+export type { Postgraduate, PostgraduatePage } from './students.types';
 
 // Навигация
 export type { NavItem } from './nav.types';

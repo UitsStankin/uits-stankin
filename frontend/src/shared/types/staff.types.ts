@@ -44,6 +44,25 @@ export type Subject = {
   description: string | null;
 };
 
+/** Страница словаря дисциплин — ответ `GET /api/subjects`. */
+export type SubjectPage = Page<Subject>;
+
+/**
+ * Тело `POST /api/subjects` и `PUT /api/subjects/{id}` — оно у них одно
+ * и то же, поэтому и тип один.
+ *
+ * `PUT` — полная замена, как у остальных карточек: тело без `description`
+ * очищает описание (docs/API.md, «Преподаватели», врезка про дисциплины).
+ * Поэтому поле не необязательное — `?` здесь означал бы «можно не слать»,
+ * а слать нужно всегда, просто иногда `null`.
+ */
+export type SubjectRequest = {
+  /** Обязательно, до 100 символов, уникально среди дисциплин. */
+  name: string;
+  /** `null` — очистить описание. */
+  description: string | null;
+};
+
 /** Короткая карточка — элемент `GET /api/public/teachers`. */
 export type TeacherListItem = {
   /** Идентификатор карточки; для ручек учётных записей не годится. */

@@ -6,6 +6,7 @@
  * `msw/node` в браузерный бандл.
  */
 export { handlers } from './handlers';
+export { authHandlers } from './auth';
 export { achievementHandlers, achievementsFixture, makeAchievement } from './achievements';
 export { conferenceHandlers, conferencesFixture, makeConference } from './conferences';
 export { editablePageHandlers } from './editablePages';
@@ -15,10 +16,16 @@ export { makeNews, newsFixture, newsHandlers } from './news';
 export { makeProfile, profileHandlers } from './profile';
 export { pageResponse } from './page';
 export {
+  makePostgraduate,
+  postgraduatesFixture,
+  publicPostgraduateHandlers,
+} from './postgraduates';
+export {
   makeTeacher,
   publicTeacherHandlers,
   teacherHandlers,
   teacherListItem,
   teachersFixture,
 } from './teachers';
+export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
 export { problemResponse } from './problemResponse';
