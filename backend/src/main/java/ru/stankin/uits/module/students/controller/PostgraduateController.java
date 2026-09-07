@@ -25,11 +25,12 @@ public class PostgraduateController {
 
     @GetMapping("/public/postgraduates")
     public PageResponseDto<PostgraduateResponseDto> getPostgraduates(
-            @RequestParam(name = "teacherId", required = false) Long teacherId,
-            @RequestParam(name = "speciality", required = false) String speciality,
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "teacherId", required = false) Long teacherId, // не используется
+            @RequestParam(name = "speciality", required = false) String speciality, // не используется
             @PageableDefault(size = 20, sort = {"student.lastName", "student.firstName", "id"}) Pageable pageable
     ) {
-        return postgraduateService.getPostgraduates(teacherId, speciality, pageable);
+        return postgraduateService.getPostgraduates(q, teacherId, speciality, pageable);
     }
 
     @GetMapping("/postgraduates/{id}")

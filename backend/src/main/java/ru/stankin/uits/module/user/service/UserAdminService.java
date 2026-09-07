@@ -21,6 +21,10 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
 
+import static ru.stankin.uits.common.SortFields.validate;
+import static ru.stankin.uits.common.SearchText.escapeLike;
+import static ru.stankin.uits.common.SearchText.normalize;
+
 @Service
 @RequiredArgsConstructor
 public class UserAdminService {
@@ -41,7 +45,7 @@ public class UserAdminService {
             String role,
             Pageable pageable
     ) {
-        validateSort(pageable.getSort());
+        validate(pageable.getSort(), SORT_FIELDS);
         RoleFilter filter = RoleFilter.of(role);
 
         return PageResponseDto.from(userRepository
@@ -118,24 +122,6 @@ public class UserAdminService {
             throw new ResourceInUseException(
                     "К учётной записи привязана карточка преподавателя id=" + cardId + ", сначала отвязать её");
         });
-    }
-
-    private static void validateSort(Sort sort) {
-        for (Sort.Order order : sort) {
-            if (!SORT_FIELDS.contains(order.getProperty())) {
-                throw new InvalidRequestException("Неизвестное поле сортировки: " + order.getProperty());
-            }
-        }
-    }
-
-    private static String normalize(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    private static String escapeLike(String value) {
-        return value == null
-                ? null
-                : value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private record RoleFilter(Boolean superuser, Boolean moderator, Boolean teacher) {

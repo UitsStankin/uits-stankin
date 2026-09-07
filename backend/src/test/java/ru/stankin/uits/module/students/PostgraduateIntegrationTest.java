@@ -206,6 +206,105 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void searchFindsByStudentLastName() {
+        assertThat(list("?q=абрамов"))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(abramov.getId());
+    }
+
+    @Test
+    void searchFindsBySupervisorLastName() {
+        assertThat(list("?q=чеканин"))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(yakovlev.getId());
+    }
+
+    @Test
+    void searchFindsByDiplomaTheme() {
+        assertThat(list("?q=тема яковлев"))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(yakovlev.getId());
+    }
+
+    @Test
+    void searchFindsBySpecialityAndAdmissionYear() {
+        assertThat(list("?q=2.3.1"))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(yakovlev.getId());
+        assertThat(list("?q=2024")).hasSize(2);
+    }
+
+    @Test
+    void searchIgnoresCase() {
+        assertThat(list("?q=АБРАМОВ"))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(abramov.getId());
+    }
+
+    @Test
+    void searchSpansNeighbouringFields() {
+        assertThat(list("?q=абрамов пётр"))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(abramov.getId());
+    }
+
+    @Test
+    void blankSearchIsTreatedAsNoFilter() {
+        assertThat(list("?q=")).hasSize(2);
+        assertThat(list("?q=   ")).hasSize(2);
+    }
+
+    @Test
+    void searchFindsRecordWithoutSupervisor() {
+        postgraduateRepository.save(Postgraduate.builder()
+                .student(student("Сидоров", "Олег", "1.2.2"))
+                .build());
+
+        assertThat(list("?q=сидоров"))
+                .extracting(PostgraduateResponseDto::getStudentName)
+                .containsExactly("Сидоров Олег");
+    }
+
+    @Test
+    void searchAppliesTogetherWithFilters() {
+        assertThat(list("?q=тема&teacherId=" + chekanin.getId()))
+                .extracting(PostgraduateResponseDto::getId)
+                .containsExactly(yakovlev.getId());
+        assertThat(list("?q=абрамов&teacherId=" + chekanin.getId())).isEmpty();
+    }
+
+    @Test
+    void searchTreatsLikeWildcardsAsPlainText() {
+        assertThat(list("?q=_")).isEmpty();
+    }
+
+    @Test
+    void searchDoesNotLookIntoStudentGroup() {
+        assertThat(list("?q=ИДМ")).isEmpty();
+    }
+
+    @Test
+    void sortBySupervisorKeepsRecordWithoutSupervisor() {
+        postgraduateRepository.save(Postgraduate.builder()
+                .student(student("Сидоров", "Олег", "1.2.2"))
+                .build());
+
+        assertThat(list("?sort=teacher.lastName,asc")).hasSize(3);
+    }
+
+    @Test
+    void unknownSortFieldReturns400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/public/postgraduates?sort=student.group",
+                HttpMethod.GET,
+                null,
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void listIsFetchedWithoutExtraQueries() {
         Statistics statistics = statistics();
         statistics.setStatisticsEnabled(true);
