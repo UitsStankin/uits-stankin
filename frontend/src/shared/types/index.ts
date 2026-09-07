@@ -47,5 +47,8 @@ export type {
   HelperPage,
 } from './staff.types';
 
+// Аспирантура
+export type { Postgraduate, PostgraduatePage } from './students.types';
+
 // Навигация
 export type { NavItem } from './nav.types';
