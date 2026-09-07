@@ -2,11 +2,9 @@ package ru.stankin.uits.module.gradesheets.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
-import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.module.gradesheets.dto.GradeSheetDetailsResponseDto;
 import ru.stankin.uits.module.gradesheets.dto.GradeSheetResponseDto;
