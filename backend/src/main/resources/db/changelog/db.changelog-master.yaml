@@ -61,3 +61,5 @@ databaseChangeLog:
       file: db/changelog/changesets/030-create-gradesheet-blocks.yml
   - include:
       file: db/changelog/changesets/031-create-scholar-cache.yml
+  - include:
+      file: db/changelog/changesets/032-subject-name-lower-unique.yml

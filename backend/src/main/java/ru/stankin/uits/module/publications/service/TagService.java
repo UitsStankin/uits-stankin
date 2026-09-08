@@ -42,8 +42,7 @@ public class TagService {
 
     @Transactional
     public TagDto updateTag(Long id, TagRequestDto request) {
-        Tag tag = tagRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Тег id=" + id + " не найден"));
+        Tag tag = findTag(id);
         String name = request.getName().trim();
 
         if (tagRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
@@ -57,9 +56,12 @@ public class TagService {
 
     @Transactional
     public void deleteTag(Long id) {
-        Tag tag = tagRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Тег id=" + id + " не найден"));
-
+        Tag tag = findTag(id);
         tagRepository.delete(tag);
+    }
+
+    private Tag findTag(Long id) {
+        return tagRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Тег id=" + id + " не найден"));
     }
 }
