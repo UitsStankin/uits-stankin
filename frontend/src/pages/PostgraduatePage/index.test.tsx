@@ -1,5 +1,6 @@
 import { onlineManager } from '@tanstack/react-query';
-import { screen, within } from '@testing-library/react';
+import { useLocation } from 'react-router';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -28,6 +29,49 @@ function respondWithServerError() {
     ),
   );
 }
+
+/**
+ * Адрес, видимый роутеру. `MemoryRouter` не трогает `window.location`,
+ * а проверять надо именно адрес: поиск обязан в нём оказаться, иначе его
+ * не переслать ссылкой и не вернуть кнопкой «назад».
+ */
+function LocationProbe() {
+  const { search } = useLocation();
+  return <span data-testid="location-search">{search}</span>;
+}
+
+/** Страница вместе с пробником адреса. */
+function renderPage(route: string = ROUTE) {
+  return renderWithProviders(
+    <>
+      <PostgraduatePage />
+      <LocationProbe />
+    </>,
+    { route },
+  );
+}
+
+/**
+ * Что сейчас в адресе после `?`, в читаемом виде: кириллицу роутер
+ * процентно кодирует, и сравнивать с `%D1%87%D0%B5...` нечитаемо.
+ */
+function locationSearch(): string {
+  return decodeURIComponent(screen.getByTestId('location-search').textContent ?? '');
+}
+
+/** Набор в поле поиска — одним событием, как вставка из буфера. */
+function typeSearch(value: string) {
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Поиск по таблице аспирантов' }), {
+    target: { value },
+  });
+}
+
+/**
+ * Ожидание длиннее обычного: между набором и запросом стоит пауза
+ * в 300 мс (`model/usePostgraduateSearch.ts`), и умолчания в 1000 мс
+ * на неё вместе с ответом мока хватает впритык.
+ */
+const AFTER_DEBOUNCE = { timeout: 3000 };
 
 /** Строка таблицы целиком — по имени аспиранта в её заголовке. */
 function rowOf(studentName: string): HTMLElement {
@@ -189,19 +233,144 @@ describe('PostgraduatePage', () => {
   });
 
   /**
-   * Поиска на странице нет намеренно, и это сторож, а не придирка.
-   * В оригинале строка поиска фильтровала весь список — там он приходил
-   * целиком; здесь список постраничный, а фильтра по тексту в контракте
-   * нет (только `?teacherId=` и `?speciality=`). Поле, фильтрующее
-   * двадцать загруженных записей из скольких-то, выглядело бы поиском
-   * по разделу и молча врало бы. Убрать сторож — когда на бэкенде
-   * появится поиск.
+   * Поиск серверный: запрос уезжает параметром `?q=`, а не фильтрует
+   * загруженную страницу. Сторож «поля поиска нет», стоявший здесь
+   * с F-34, снят вместе с приходом ручки (B-3, T-78) — искать по двадцати
+   * записям из двадцати трёх было нечестно, по всем двадцати трём честно.
    */
-  it('не показывает поле поиска, которое искало бы только по открытой странице', async () => {
-    renderWithProviders(<PostgraduatePage />, { route: ROUTE });
+  it('ищет по всему разделу и кладёт запрос в адрес', async () => {
+    renderPage();
 
     expect(await screen.findByText('Абдулов Тимур Русланович')).toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+    typeSearch('чернышёв');
+
+    expect(await screen.findByText('Чернышёв Родион Валерьевич', {}, AFTER_DEBOUNCE))
+      .toBeInTheDocument();
+    // Найденный лежал на второй странице: фильтруй страница сама себя,
+    // на первой его бы не нашлось вовсе.
+    expect(screen.queryByText('Абдулов Тимур Русланович')).not.toBeInTheDocument();
+    expect(locationSearch()).toBe('?q=чернышёв');
+    expect(screen.getByText('Найдено аспирантов: 1')).toBeInTheDocument();
+  });
+
+  /** Ищут не только по фамилии: контракт склеивает пять колонок в одну. */
+  it('находит по руководителю и по году поступления', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Абдулов Тимур Русланович')).toBeInTheDocument();
+
+    typeSearch('соколов денис');
+    expect(await screen.findByText('Найдено аспирантов: 4', {}, AFTER_DEBOUNCE))
+      .toBeInTheDocument();
+    expect(within(rowOf('Дорохова Алиса Игоревна')).getByText('Соколов Денис Игоревич'))
+      .toBeInTheDocument();
+
+    typeSearch('2026');
+    expect(await screen.findByText('Найдено аспирантов: 3', {}, AFTER_DEBOUNCE))
+      .toBeInTheDocument();
+  });
+
+  /** Адрес с запросом открывается сразу найденным — и поле не пустое. */
+  it('открывает поиск по адресу и подставляет запрос в поле', async () => {
+    renderPage(`${ROUTE}?q=цибулько`);
+
+    expect(await screen.findByText('Цибулько Аглая Романовна')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Поиск по таблице аспирантов' }))
+      .toHaveValue('цибулько');
+    expect(screen.queryByText('Абдулов Тимур Русланович')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Пустая выдача поиска — не пустой раздел. Записи есть, просто не эти,
+   * и предложить надо изменить запрос, а не ждать, пока их заведут.
+   */
+  it('на пустой выдаче поиска зовёт к полному списку, а не в пустой раздел', async () => {
+    renderPage(`${ROUTE}?q=бузина`);
+
+    expect(await screen.findByText('Ничего не найдено')).toBeInTheDocument();
+    expect(screen.getByText(/По запросу «бузина» аспирантов нет/)).toBeInTheDocument();
+    // Ноль тоже проговаривается: `role="status"` — единственное, что диктор
+    // скажет о результате набора, а блок ниже сам себя не объявляет.
+    expect(screen.getByText('Найдено аспирантов: 0')).toBeInTheDocument();
+    expect(screen.queryByText('Аспирантов пока нет')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Показать всех' }));
+
+    expect(await screen.findByText('Абдулов Тимур Русланович')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Поиск по таблице аспирантов' }))
+      .toHaveValue('');
+  });
+
+  /**
+   * Запрос переживает перелистывание. Без этого «страница 2» показывала бы
+   * вторую страницу полного списка — поиск терялся бы, хотя человек
+   * не нажимал ничего похожего на «сбросить».
+   */
+  it('сохраняет запрос в ссылках пагинатора', async () => {
+    // `202` есть в году поступления каждой записи — двадцать три штуки,
+    // то есть две страницы и живой пагинатор.
+    renderPage(`${ROUTE}?q=202`);
+
+    expect(await screen.findByText('Абдулов Тимур Русланович')).toBeInTheDocument();
+    expect(screen.getByText('Найдено аспирантов: 23')).toBeInTheDocument();
+
+    const pagination = screen.getByRole('navigation', { name: 'Постраничная навигация' });
+    expect(within(pagination).getByRole('link', { name: 'Страница 2' }))
+      .toHaveAttribute('href', '/scientific-activities/postgraduate?page=2&q=202');
+  });
+
+  /**
+   * Смена запроса сбрасывает страницу. Искать со второй бессмысленно:
+   * под новый запрос её может не быть вовсе, и вместо результатов
+   * человек получил бы «такой страницы нет».
+   */
+  it('сбрасывает номер страницы при новом запросе', async () => {
+    renderPage(`${ROUTE}?page=2`);
+
+    expect(await screen.findByText('Хайруллин Ильдар Маратович')).toBeInTheDocument();
+
+    typeSearch('верещагина');
+
+    expect(await screen.findByText('Верещагина Софья Андреевна', {}, AFTER_DEBOUNCE))
+      .toBeInTheDocument();
+    expect(locationSearch()).toBe('?q=верещагина');
+    expect(screen.queryByText('Такой страницы нет')).not.toBeInTheDocument();
+  });
+
+  /** Крестик очищает поиск сразу, не дожидаясь паузы набора. */
+  it('очищает поиск кнопкой и возвращает полный список', async () => {
+    renderPage(`${ROUTE}?q=цибулько`);
+
+    expect(await screen.findByText('Цибулько Аглая Романовна')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Очистить поиск' }));
+
+    expect(await screen.findByText('Абдулов Тимур Русланович')).toBeInTheDocument();
+    expect(locationSearch()).toBe('');
+    expect(screen.queryByText(/Найдено аспирантов/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Пробельный запрос — это отсутствие запроса, и на бэкенде тоже
+   * (`SearchText.normalize`). Иначе он дал бы отдельный ключ кэша, лишний
+   * запрос и надпись «найдено» над полным списком.
+   */
+  it('пробельный запрос в адресе не считает поиском', async () => {
+    renderPage(`${ROUTE}?q=%20%20`);
+
+    expect(await screen.findByText('Абдулов Тимур Русланович')).toBeInTheDocument();
+    expect(screen.queryByText(/Найдено аспирантов/)).not.toBeInTheDocument();
+  });
+
+  /** Искать не в чем — поля нет: раздел пуст целиком, а не по запросу. */
+  it('не показывает поле поиска в пустом разделе', async () => {
+    server.use(...publicPostgraduateHandlers([]));
+
+    renderPage();
+
+    expect(await screen.findByText('Аспирантов пока нет')).toBeInTheDocument();
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
   });
 

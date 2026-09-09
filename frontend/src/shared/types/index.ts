@@ -51,7 +51,11 @@ export type {
 } from './staff.types';
 
 // Аспирантура
-export type { Postgraduate, PostgraduatePage } from './students.types';
+export type {
+  Postgraduate,
+  PostgraduatePage,
+  PostgraduateListParams,
+} from './students.types';
 
 // Навигация
 export type { NavItem } from './nav.types';

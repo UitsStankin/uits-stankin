@@ -152,12 +152,46 @@ function pickTheme(index: number): string | null {
 }
 
 /**
- * Публичная ручка аспирантуры — страница записей.
+ * Строка, по которой ищет `?q=`, — та же склейка, что и на бэкенде:
+ * ФИО аспиранта, тема, специальность, год поступления, ФИО руководителя
+ * через пробел (`PostgraduateRepository.search`). Склейка тут не ради
+ * удобства: она меняет результат — `абрамов пётр` находит запись, хотя
+ * ни в одном отдельном поле такого текста нет, и мок, ищущий по каждому
+ * полю отдельно, тихо расходился бы с сервером именно на таких запросах.
  *
- * Фильтры `?teacherId=` и `?speciality=` контракта здесь не разобраны
- * намеренно: фронт их не отправляет (`entities/postgraduate`), и мок
- * фильтра, который никто не проверяет, — не задел, а вторая выдумка
+ * Незаполненные поля дают пустое место между пробелами — как `coalesce`
+ * в запросе, а не выпадают из строки: иначе `2.3.1 2025` находилось бы
+ * там, где у сервера между специальностью и годом стоит пустая тема.
+ */
+function searchableText(item: Postgraduate): string {
+  return [
+    item.studentName,
+    item.diplomaTheme ?? '',
+    item.speciality ?? '',
+    String(item.admissionYear),
+    item.teacherName ?? '',
+  ]
+    .join(' ')
+    .toLowerCase();
+}
+
+/**
+ * Публичная ручка аспирантуры — страница записей с поиском.
+ *
+ * `q` разобран, потому что фронт его отправляет: поиск приехал с T-78
+ * по заявке B-3 и стал единственным способом искать по разделу.
+ * Регистр не учитывается, `%` и `_` — обычные символы (бэкенд экранирует
+ * их перед `like`), пустой и пробельный запрос равносилен отсутствию
+ * фильтра.
+ *
+ * Фильтры `?teacherId=` и `?speciality=` контракта по-прежнему не
+ * разобраны намеренно: фронт их не отправляет (`entities/postgraduate`),
+ * и мок фильтра, который никто не проверяет, — не задел, а вторая выдумка
  * рядом с первой. Заведутся вместе со своим потребителем.
+ *
+ * Счётчики страницы считаются **после** поиска, а не по всей фикстуре:
+ * `totalElements` контракта — «сколько всего с учётом фильтров», и на
+ * этом стоит и пагинатор, и надпись «найдено».
  *
  * Список берётся аргументом, чтобы тест пустого раздела был одной строкой
  * `server.use(...publicPostgraduateHandlers([]))`, а не копией хендлера
@@ -167,8 +201,14 @@ export function publicPostgraduateHandlers(
   items: readonly Postgraduate[] = postgraduatesFixture,
 ) {
   return [
-    http.get(PUBLIC_POSTGRADUATES, ({ request }) =>
-      HttpResponse.json(pageFromUrl(items, new URL(request.url))),
-    ),
+    http.get(PUBLIC_POSTGRADUATES, ({ request }) => {
+      const url = new URL(request.url);
+      const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+
+      const found =
+        q === '' ? items : items.filter((item) => searchableText(item).includes(q));
+
+      return HttpResponse.json(pageFromUrl(found, url));
+    }),
   ];
 }
