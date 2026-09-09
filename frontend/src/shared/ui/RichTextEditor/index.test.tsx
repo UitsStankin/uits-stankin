@@ -435,6 +435,35 @@ describe('RichTextEditor, картинки', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Изображение больше 25 мегапикселей');
   });
 
+  it('на 429 говорит, сколько ждать: контракт кладёт срок в Retry-After', async () => {
+    server.use(
+      http.post('*/api/files', () =>
+        HttpResponse.json(
+          {
+            title: 'Too Many Requests',
+            status: 429,
+            detail: 'Слишком много загрузок файлов. Повторите позже.',
+            instance: '/api/files',
+            timestamp: '2026-08-29T12:00:00.000000+03:00',
+          },
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '42' },
+          },
+        ),
+      ),
+    );
+    await renderField({ initial: '<p>Отчёт</p>', imageCategory: 'news' });
+
+    chooseFile();
+
+    // «Повторите позже» без срока заставляет пробовать наугад, а срок
+    // сервер прислал — терять его нельзя.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Слишком много загрузок. Повторите через 42 секунды.',
+    );
+  });
+
   it('«Отмена» закрывает строку и возвращает курсор в текст', async () => {
     const area = await renderWithImages();
 
