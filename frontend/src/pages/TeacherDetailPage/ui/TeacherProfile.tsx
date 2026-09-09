@@ -3,6 +3,7 @@ import { FileText, Mail, MessageCircle, Phone } from 'lucide-react';
 
 import { formatYears, teacherCredentials, teacherFullName } from '@entities/teacher';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
+import { RichText } from '@shared/ui/RichText';
 import type { Subject, Teacher } from '@shared/types';
 
 interface TeacherProfileProps {
@@ -194,34 +195,6 @@ function ContactItem({
       <span className="sr-only">{label}:</span>
       {children}
     </li>
-  );
-}
-
-/**
- * `education` и `qualification` — rich-text HTML: на старом портале оба поля
- * выводились через `[innerHTML]`, и в перенесённых строках лежит разметка.
- *
- * Про `dangerouslySetInnerHTML` здесь верно ровно то же, что записано
- * в `pages/NewsDetailPage/ui/NewsArticle.tsx`, и по той же причине: границей,
- * на которой отсекается чужой исполняемый код, выбран бэкенд. `TeacherService`
- * чистит оба поля через общий `HtmlSanitizer` на всех трёх путях записи —
- * `POST`, `PUT` и `PUT /api/teachers/me` (docs/API.md, «Создание и правка
- * карточек»), а вычищенное до пустоты сохраняется как `null`, поэтому пустой
- * строки здесь не бывает.
- *
- * Второй санитайзер на клиенте не ставится — он стал бы вторым источником
- * правды о допустимых тегах. Условие, при котором решение перестаёт быть
- * верным, то же: перенос старой базы мимо сервиса (ARCHITECTURE §7).
- */
-function RichText({ html }: { html: string }) {
-  return (
-    // prose из @tailwindcss/typography: у пришедшего HTML своих классов нет,
-    // а сброс Tailwind снимает стили с ul и p — без него список образования
-    // выглядит одним абзацем. max-w-none: ширину держит плашка.
-    <div
-      className="prose prose-sm max-w-none prose-headings:text-text-heading prose-a:text-primary"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
   );
 }
 

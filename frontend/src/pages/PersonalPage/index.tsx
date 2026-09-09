@@ -262,6 +262,7 @@ function TeacherCardEditor({
 
       <TeacherCardForm
         register={form.register}
+        control={form.control}
         onSubmit={form.onSubmit}
         onCancel={onCancel}
         fieldErrors={form.fieldErrors}

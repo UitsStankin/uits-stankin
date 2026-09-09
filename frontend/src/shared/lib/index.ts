@@ -1,4 +1,5 @@
 export { cn } from './cn';
+export { errorId, labelId } from './fieldIds';
 export { applyFieldErrors } from './formErrors';
 export { formatDate, formatDateTime } from './formatDate';
 export { PAGE_PARAM, pageHref, parsePage } from './pageParam';

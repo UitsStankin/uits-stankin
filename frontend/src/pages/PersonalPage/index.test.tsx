@@ -1,5 +1,5 @@
 import { onlineManager } from '@tanstack/react-query';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -19,6 +19,21 @@ import type { Profile } from '@shared/types';
 import { createTestQueryClient, renderWithProviders } from '@/test/render';
 
 import PersonalPage from './index';
+
+/*
+ * Ленивый кусок редактора (F-41) — статическим импортом, ради времени.
+ *
+ * `RichTextEditor` подставляет редактор через `lazy()`, и первый же
+ * `findBy` ждёт не рендера, а разбора TipTap: 413 КБ исходников,
+ * которые vite-node транслирует при первом обращении. На своей машине
+ * это доли секунды, на раннере CI — больше секунды, которую Testing
+ * Library ждёт по умолчанию, и тест падал «поле не найдено» на форме,
+ * которая на самом деле открылась. Поймано в CI 2026-09-09.
+ *
+ * Импорт кладёт модуль в кэш до начала теста; сам `lazy()` остаётся
+ * на месте, и проверяется ровно то же, что и раньше.
+ */
+import '@shared/ui/RichTextEditor/Editor';
 
 const TEACHERS_ME = '*/api/teachers/me';
 const PROFILE = '*/api/users/profile';
@@ -162,6 +177,82 @@ describe('PersonalPage, секция карточки ППС', () => {
  * один аватар и одна пара полей «Фамилия»/«Имя», и запросы в проверки
  * не подмешивается вторая секция.
  */
+/**
+ * Правка карточки ППС — того самого места, где rich-text поля правились
+ * тегами вручную (F-41). Проверяется по телу запроса: что уедет в базу,
+ * а не что нарисовано в форме.
+ */
+describe('PersonalPage, правка карточки ППС', () => {
+  /** Секция преподавателя: кнопка «Редактировать» на странице не одна. */
+  function teacherSection() {
+    return within(screen.getByText('Информация о преподавателе').closest('section')!);
+  }
+
+  async function openTeacherForm() {
+    server.use(...teacherHandlers(makeTeacher()));
+    renderPersonalPage();
+    await screen.findByText('Информация о преподавателе');
+
+    fireEvent.click(teacherSection().getByRole('button', { name: 'Редактировать' }));
+
+    return {
+      // Ждём: редактор грузится отдельным куском, до подгрузки на месте
+      // поля стоит заглушка. Запас против секунды по умолчанию — потому
+      // что раннер CI медленнее машины разработчика в разы, а падение
+      // на нём было именно здесь и воспроизвести его локально не вышло
+      // даже на чистом чекауте.
+      education: await screen.findByRole(
+        'textbox',
+        { name: 'Образование' },
+        { timeout: 3000 },
+      ),
+      // Панель у каждого поля своя: редактора на форме два.
+      formatting: within(
+        screen.getByRole('toolbar', { name: 'Форматирование: Образование' }),
+      ),
+      save: teacherSection().getByRole('button', { name: 'Сохранить' }),
+    };
+  }
+
+  /** Значение поля в карточке — соседний `<dd>` при подписи. */
+  function cardValue(label: string) {
+    return teacherSection().getByText(label).nextElementSibling;
+  }
+
+  it('правит образование редактором, а не тегами в textarea', async () => {
+    const form = await openTeacherForm();
+
+    // Перенесённое из Django значение — плоский текст: там у поля был
+    // `TextField`, а показывалось оно через `innerHTML`.
+    expect(form.education).toHaveTextContent('МГТУ «СТАНКИН», 2005');
+
+    fireEvent.keyDown(form.education, { key: 'a', ctrlKey: true });
+    fireEvent.click(form.formatting.getByRole('button', { name: 'Жирный' }));
+    fireEvent.click(form.save);
+
+    // Карточка после сохранения показывает разметку, а не теги текстом:
+    // до F-41 преподаватель видел здесь `<p>` и `<li>` буквами.
+    await screen.findByRole('button', { name: 'Редактировать' });
+    expect(cardValue('Образование')?.querySelector('strong')).toHaveTextContent(
+      'МГТУ «СТАНКИН», 2005',
+    );
+  });
+
+  it('пустое поле сохраняет как незаполненное, а не абзацем из ничего', async () => {
+    const form = await openTeacherForm();
+
+    fireEvent.keyDown(form.education, { key: 'a', ctrlKey: true });
+    fireEvent.keyDown(form.education, { key: 'Backspace' });
+    fireEvent.click(form.save);
+
+    // `<p></p>` доехал бы до базы «заполненным пустотой»: и на публичной
+    // карточке ППС, и здесь появилась бы пустая плашка «Образование»
+    // вместо прочерка.
+    await screen.findByRole('button', { name: 'Редактировать' });
+    expect(cardValue('Образование')).toHaveTextContent('—');
+  });
+});
+
 describe('PersonalPage, правка профиля', () => {
   const WITH_AVATAR = {
     avatar: 'avatars/2026/08/a3f9.jpg',

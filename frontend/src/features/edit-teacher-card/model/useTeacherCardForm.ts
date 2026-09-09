@@ -37,6 +37,7 @@ export function useTeacherCardForm(card: Teacher, onSaved: () => void) {
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors },
@@ -105,6 +106,12 @@ export function useTeacherCardForm(card: Teacher, onSaved: () => void) {
 
   return {
     register,
+    /**
+     * Для полей, которые не являются элементом ввода: rich-text редактор
+     * отдаёт строку HTML, а `register` цепляется к `onChange`
+     * DOM-элемента, которого у `contenteditable` нет.
+     */
+    control,
     onSubmit,
     fieldErrors: errors,
     formError,

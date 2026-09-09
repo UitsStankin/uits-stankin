@@ -2,6 +2,7 @@ import { degreeLabel, rankLabel } from '@shared/config/teacherDictionaries';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
 import { cn } from '@shared/lib';
 import type { Teacher } from '@shared/types';
+import { RichText } from '@shared/ui/RichText';
 import { formatYears, teacherFullName } from '@entities/teacher';
 
 import { DefinitionField, definitionLabelClass } from './DefinitionField';
@@ -51,8 +52,8 @@ export function TeacherCard({ card, onEdit }: TeacherCardProps) {
           <DefinitionField label="Телефон" value={card.phoneNumber} />
           <DefinitionField label="Электронная почта" value={card.email} />
           <DefinitionField label="Мессенджер" value={card.messenger} />
-          <DefinitionField label="Образование" value={card.education} />
-          <DefinitionField label="Повышение квалификации" value={card.qualification} />
+          <RichTextField label="Образование" html={card.education} />
+          <RichTextField label="Повышение квалификации" html={card.qualification} />
           <DefinitionField label="Биография" value={card.bio} />
 
           <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
@@ -94,6 +95,31 @@ export function TeacherCard({ card, onEdit }: TeacherCardProps) {
         </button>
       </div>
     </section>
+  );
+}
+
+/**
+ * Образование и повышение квалификации — единственные rich-text поля
+ * карточки: контракт объявляет их такими, публичная страница ППС
+ * показывает их разметкой, и правятся они редактором (F-41).
+ *
+ * Текстовым `DefinitionField` они и были до F-41 — то есть преподаватель
+ * видел в своей карточке `<p>` и `<li>` буквами. Разметка бралась
+ * не из воздуха: поля перенесены со старого портала, где выводились
+ * через `[innerHTML]`, и модератор писал теги руками.
+ */
+function RichTextField({ label, html }: { label: string; html: string | null }) {
+  return (
+    <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+      <dt className={definitionLabelClass}>{label}</dt>
+      {html ? (
+        <dd className="min-w-0 break-words text-base text-text-heading">
+          <RichText html={html} />
+        </dd>
+      ) : (
+        <dd className="text-base text-text-muted">—</dd>
+      )}
+    </div>
   );
 }
 

@@ -24,13 +24,16 @@ import { makeProfile, profileHandlers } from './profile';
  * ни админку посмотреть нельзя. Пароль мок не проверяет — пускает любого,
  * кто ввёл логин.
  *
- * Роль — модератор: под ней открыт весь раздел админки, кроме учётных
- * записей (F-46), а личный кабинет и публичная часть выглядят так же,
- * как у всех. Нужна другая роль — `worker.use(...profileHandlers(
- * makeProfile({ superuser: true })))` в консоли браузера.
+ * Роль — модератор и преподаватель сразу: под первой открыт весь раздел
+ * админки, кроме учётных записей (F-46), вторая добавляет в личный кабинет
+ * карточку ППС — единственное место портала, где до админки можно
+ * посмотреть форму с rich-text редактором (F-41). Совмещение не выдумано:
+ * модератор кафедры — обычно преподаватель. Нужна другая роль —
+ * `worker.use(...profileHandlers(makeProfile({ superuser: true })))`
+ * в консоли браузера.
  */
 export const worker = setupWorker(
   ...handlers,
   ...authHandlers(),
-  ...profileHandlers(makeProfile({ moderator: true })),
+  ...profileHandlers(makeProfile({ moderator: true, teacher: true })),
 );
