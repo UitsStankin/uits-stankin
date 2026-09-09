@@ -1,6 +1,6 @@
 import type { FormEventHandler } from 'react';
 import { LoaderCircle } from 'lucide-react';
-import type { FieldErrors, UseFormRegister } from 'react-hook-form';
+import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 
 import {
   DEGREE_CODES,
@@ -11,11 +11,14 @@ import {
 import { cn } from '@shared/lib';
 import { AvatarPicker } from '@shared/ui/AvatarPicker';
 import { SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
+import { RichTextEditor } from '@shared/ui/RichTextEditor';
 
 import type { TeacherCardFormValues } from '../model/teacherCardSchema';
 
 interface TeacherCardFormProps {
   register: UseFormRegister<TeacherCardFormValues>;
+  /** Для rich-text полей: они не элементы ввода и живут через `Controller`. */
+  control: Control<TeacherCardFormValues>;
   onSubmit: FormEventHandler<HTMLFormElement>;
   onCancel: () => void;
   /** Ошибки полей: и от zod, и разложенные из ответа сервера. */
@@ -28,6 +31,11 @@ interface TeacherCardFormProps {
   isUploadingAvatar: boolean;
   onAvatarSelect: (file: File) => void;
 }
+
+const RICH_TEXT_FIELDS = [
+  { name: 'education', label: 'Образование' },
+  { name: 'qualification', label: 'Повышение квалификации' },
+] as const;
 
 const DEGREE_OPTIONS = DEGREE_CODES.map((code) => ({ value: code, label: DEGREE_LABELS[code] }));
 const RANK_OPTIONS = RANK_CODES.map((code) => ({ value: code, label: RANK_LABELS[code] }));
@@ -43,6 +51,7 @@ const RANK_OPTIONS = RANK_CODES.map((code) => ({ value: code, label: RANK_LABELS
  */
 export function TeacherCardForm({
   register,
+  control,
   onSubmit,
   onCancel,
   fieldErrors,
@@ -157,18 +166,27 @@ export function TeacherCardForm({
         />
       </div>
 
-      <TextAreaField
-        id="teacher-education"
-        label="Образование"
-        error={fieldErrors.education?.message}
-        registration={register('education')}
-      />
-      <TextAreaField
-        id="teacher-qualification"
-        label="Повышение квалификации"
-        error={fieldErrors.qualification?.message}
-        registration={register('qualification')}
-      />
+      {/* Образование и повышение квалификации — rich-text поля контракта:
+          сервер чистит их санитайзером, а карточка ППС показывает
+          разметкой. В обычной textarea преподаватель видел здесь теги
+          и правил их руками — F-41. Биография ниже осталась текстовым
+          полем: её сервер как раз не чистит и выводится она текстом. */}
+      {RICH_TEXT_FIELDS.map(({ name, label }) => (
+        <Controller
+          key={name}
+          name={name}
+          control={control}
+          render={({ field }) => (
+            <RichTextEditor
+              id={`teacher-${name}`}
+              label={label}
+              value={field.value}
+              onChange={field.onChange}
+              error={fieldErrors[name]?.message}
+            />
+          )}
+        />
+      ))}
       <TextAreaField
         id="teacher-bio"
         label="Биография"

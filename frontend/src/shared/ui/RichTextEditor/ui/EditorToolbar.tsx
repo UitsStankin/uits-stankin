@@ -6,6 +6,12 @@ import { TOOLBAR_BUTTONS } from '../model/toolbarButtons';
 import type { ToolbarAction, ToolbarState } from '../model/useRichTextEditor';
 
 interface EditorToolbarProps {
+  /**
+   * Подпись поля — она входит в имя панели. Редакторов на форме бывает
+   * несколько (у карточки ППС их два), и три панели «Форматирование»
+   * подряд диктор читает одинаково.
+   */
+  fieldLabel: string;
   /** Что включено там, где стоит курсор. */
   state: ToolbarState;
   /** Открыта ли строка ввода адреса — для кнопки «Ссылка». */
@@ -23,6 +29,7 @@ interface EditorToolbarProps {
  * приходят пропсами, набор кнопок — из `model/toolbarButtons.ts`.
  */
 export function EditorToolbar({
+  fieldLabel,
   state,
   isLinkFormOpen,
   disabled,
@@ -34,7 +41,7 @@ export function EditorToolbar({
   return (
     <div
       role="toolbar"
-      aria-label="Форматирование"
+      aria-label={`Форматирование: ${fieldLabel}`}
       aria-orientation="horizontal"
       onKeyDown={onKeyDown}
       onFocus={onFocus}

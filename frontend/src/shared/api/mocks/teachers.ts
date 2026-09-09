@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-import type { Teacher, TeacherListItem } from '@shared/types';
+import type { Teacher, TeacherListItem, TeacherUpsertRequest } from '@shared/types';
 
 import { pageFromUrl } from './page';
 import { problemResponse } from './problemResponse';
@@ -40,22 +40,46 @@ export function makeTeacher(overrides: Partial<Teacher> = {}): Teacher {
 }
 
 /**
- * Чтение своей карточки. `card: null` — контрактный `404`: роль есть,
- * карточка не привязана. Это не сбой, а состояние, и различать его
+ * Чтение и правка своей карточки. `card: null` — контрактный `404`: роль
+ * есть, карточка не привязана. Это не сбой, а состояние, и различать его
  * с настоящим сбоем умеет только страница — значит, мок обязан уметь
  * отдавать оба.
+ *
+ * `PUT` отвечает карточкой, собранной из тела по правилам контракта,
+ * а не самим телом: ручка — полная замена, но дисциплины она не трогает
+ * (их назначает модератор), а вместо ключа аватара в ответе приходит пара
+ * «ключ и адрес». Мок, возвращающий присланное, зеленил бы форму,
+ * потерявшую дисциплины.
  */
 export function teacherHandlers(card: Teacher | null = makeTeacher()) {
+  let current = card;
+
+  const notFound = () =>
+    problemResponse(404, {
+      title: 'Not Found',
+      detail: 'Карточка преподавателя не найдена',
+      instance: '/api/teachers/me',
+    });
+
   return [
-    http.get(TEACHERS_ME, () =>
-      card
-        ? HttpResponse.json(card)
-        : problemResponse(404, {
-            title: 'Not Found',
-            detail: 'Карточка преподавателя не найдена',
-            instance: '/api/teachers/me',
-          }),
-    ),
+    http.get(TEACHERS_ME, () => (current ? HttpResponse.json(current) : notFound())),
+
+    http.put(TEACHERS_ME, async ({ request }) => {
+      if (!current) return notFound();
+
+      const body = (await request.json()) as TeacherUpsertRequest;
+
+      current = {
+        ...current,
+        ...body,
+        // Адрес собирает бэкенд, и по ключу его на фронте не построить —
+        // здесь это делает мок, ровно как хранилище: префикс `/media`.
+        avatarUrl: body.avatar === null ? null : `/media/${body.avatar}`,
+        subjects: current.subjects,
+      };
+
+      return HttpResponse.json(current);
+    }),
   ];
 }
 

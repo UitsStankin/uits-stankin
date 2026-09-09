@@ -98,6 +98,7 @@ export function RichTextEditor({
         )}
       >
         <EditorToolbar
+          fieldLabel={label}
           state={state}
           isLinkFormOpen={linkForm.isOpen}
           disabled={disabled}
