@@ -40,6 +40,16 @@ function Field({
   );
 }
 
+/**
+ * Рендер с ожиданием: редактор грузится отдельным куском (`lazy`),
+ * и до его подгрузки на месте поля стоит заглушка.
+ */
+async function renderField(props: Parameters<typeof Field>[0] = {}) {
+  render(<Field {...props} />);
+
+  return await screen.findByRole('textbox', { name: 'Содержание' });
+}
+
 /** Область ввода: `contenteditable`, объявленный полем ввода для диктора. */
 function editorArea() {
   return screen.getByRole('textbox', { name: 'Содержание' });
@@ -60,8 +70,8 @@ function selectAll() {
 }
 
 describe('RichTextEditor, разметка', () => {
-  it('открывает разметку разметкой, а не исходником', () => {
-    render(<Field initial="<p>Кафедра <strong>УИТС</strong></p>" />);
+  it('открывает разметку разметкой, а не исходником', async () => {
+    await renderField({ initial: '<p>Кафедра <strong>УИТС</strong></p>' });
 
     // Текст тегами модератор видел в textarea до F-41; редактор должен
     // показывать результат.
@@ -69,8 +79,8 @@ describe('RichTextEditor, разметка', () => {
     expect(editorArea()).not.toHaveTextContent('<strong>');
   });
 
-  it('жирный уезжает тегом, а не классом', () => {
-    render(<Field initial="<p>Кафедра</p>" />);
+  it('жирный уезжает тегом, а не классом', async () => {
+    await renderField({ initial: '<p>Кафедра</p>' });
 
     selectAll();
     fireEvent.click(toolbarButton('Жирный'));
@@ -78,8 +88,8 @@ describe('RichTextEditor, разметка', () => {
     expect(savedHtml()).toBe('<p><strong>Кафедра</strong></p>');
   });
 
-  it('заголовок из панели — второго уровня: h1 на странице занят названием записи', () => {
-    render(<Field initial="<p>Порядок приёма</p>" />);
+  it('заголовок из панели — второго уровня: h1 на странице занят названием записи', async () => {
+    await renderField({ initial: '<p>Порядок приёма</p>' });
 
     selectAll();
     fireEvent.click(toolbarButton('Заголовок'));
@@ -95,8 +105,8 @@ describe('RichTextEditor, разметка', () => {
  * поимённо.
  */
 describe('RichTextEditor, согласие с белым списком бэкенда', () => {
-  it('зачёркивает тегом strike: тега s в белом списке jsoup нет', () => {
-    render(<Field initial="<p>Отменено</p>" />);
+  it('зачёркивает тегом strike: тега s в белом списке jsoup нет', async () => {
+    await renderField({ initial: '<p>Отменено</p>' });
 
     selectAll();
     fireEvent.click(toolbarButton('Зачёркнутый'));
@@ -107,8 +117,8 @@ describe('RichTextEditor, согласие с белым списком бэке
     expect(savedHtml()).not.toContain('<s>');
   });
 
-  it('старое зачёркивание из <s> открывается и сохраняется уже как strike', () => {
-    render(<Field initial="<p><s>Старое</s> объявление</p>" />);
+  it('старое зачёркивание из <s> открывается и сохраняется уже как strike', async () => {
+    await renderField({ initial: '<p><s>Старое</s> объявление</p>' });
 
     selectAll();
     fireEvent.click(toolbarButton('Жирный'));
@@ -117,11 +127,11 @@ describe('RichTextEditor, согласие с белым списком бэке
     expect(savedHtml()).not.toContain('<s>');
   });
 
-  it('не теряет картинку, которой в тексте не касались', () => {
+  it('не теряет картинку, которой в тексте не касались', async () => {
     // Разбор картинок держится в схеме ради этого: кнопки вставки ещё нет
     // (F-42), а `<img>` в перенесённых текстах уже есть. Без расширения
     // правка заголовка уносила бы иллюстрации.
-    render(<Field initial='<p>Фото с защиты</p><img src="/media/foto.jpg">' />);
+    await renderField({ initial: '<p>Фото с защиты</p><img src="/media/foto.jpg">' });
 
     selectAll();
     fireEvent.click(toolbarButton('Курсив'));
@@ -129,8 +139,8 @@ describe('RichTextEditor, согласие с белым списком бэке
     expect(savedHtml()).toContain('<img src="/media/foto.jpg">');
   });
 
-  it('не теряет верхний и нижний индекс', () => {
-    render(<Field initial="<p>H<sub>2</sub>O и м<sup>2</sup></p>" />);
+  it('не теряет верхний и нижний индекс', async () => {
+    await renderField({ initial: '<p>H<sub>2</sub>O и м<sup>2</sup></p>' });
 
     selectAll();
     fireEvent.click(toolbarButton('Жирный'));
@@ -139,8 +149,8 @@ describe('RichTextEditor, согласие с белым списком бэке
     expect(savedHtml()).toContain('<sup>2</sup>');
   });
 
-  it('не предлагает того, что бэкенд вырежет', () => {
-    render(<Field />);
+  it('не предлагает того, что бэкенд вырежет', async () => {
+    await renderField();
 
     // Цвет, шрифт, выравнивание и видео были в панели старого Quill,
     // но `Safelist.relaxed()` не разрешает ни `style`, ни `class`,
@@ -153,8 +163,8 @@ describe('RichTextEditor, согласие с белым списком бэке
 });
 
 describe('RichTextEditor, пустое поле', () => {
-  it('отдаёт пустую строку, а не абзац из ничего', () => {
-    render(<Field initial="<p>Текст</p>" />);
+  it('отдаёт пустую строку, а не абзац из ничего', async () => {
+    await renderField({ initial: '<p>Текст</p>' });
 
     selectAll();
     fireEvent.keyDown(editorArea(), { key: 'Backspace' });
@@ -172,8 +182,8 @@ describe('RichTextEditor, ссылки', () => {
     return screen.getByLabelText('Адрес');
   }
 
-  it('вешает ссылку на выделенный текст', () => {
-    render(<Field initial="<p>Новости</p>" />);
+  it('вешает ссылку на выделенный текст', async () => {
+    await renderField({ initial: '<p>Новости</p>' });
 
     selectAll();
     const address = openLinkBar();
@@ -183,8 +193,8 @@ describe('RichTextEditor, ссылки', () => {
     expect(savedHtml()).toBe('<p><a href="/about/news">Новости</a></p>');
   });
 
-  it('дописывает схему адресу, набранному без неё', () => {
-    render(<Field initial="<p>Институт</p>" />);
+  it('дописывает схему адресу, набранному без неё', async () => {
+    await renderField({ initial: '<p>Институт</p>' });
 
     selectAll();
     const address = openLinkBar();
@@ -196,8 +206,8 @@ describe('RichTextEditor, ссылки', () => {
     expect(savedHtml()).toContain('href="https://stankin.ru"');
   });
 
-  it('отказывает схеме, которую бэкенд снимет со ссылки, и объясняет почему', () => {
-    render(<Field initial="<p>Телефон</p>" />);
+  it('отказывает схеме, которую бэкенд снимет со ссылки, и объясняет почему', async () => {
+    await renderField({ initial: '<p>Телефон</p>' });
 
     selectAll();
     const address = openLinkBar();
@@ -210,11 +220,11 @@ describe('RichTextEditor, ссылки', () => {
     expect(address).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('Enter в адресе ставит ссылку, а не отправляет форму', () => {
+  it('Enter в адресе ставит ссылку, а не отправляет форму', async () => {
     // Поле редактора стоит внутри формы записи, и необработанный Enter
     // сохранил бы её вместо того, чтобы поставить ссылку.
     const onSubmit = vi.fn();
-    render(<Field initial="<p>Новости</p>" onSubmit={onSubmit} />);
+    await renderField({ initial: '<p>Новости</p>', onSubmit });
 
     selectAll();
     const address = openLinkBar();
@@ -225,8 +235,8 @@ describe('RichTextEditor, ссылки', () => {
     expect(savedHtml()).toContain('href="/about/news"');
   });
 
-  it('убирает ссылку, оставляя текст', () => {
-    render(<Field initial='<p><a href="/about/news">Новости</a></p>' />);
+  it('убирает ссылку, оставляя текст', async () => {
+    await renderField({ initial: '<p><a href="/about/news">Новости</a></p>' });
 
     selectAll();
     openLinkBar();
@@ -237,8 +247,8 @@ describe('RichTextEditor, ссылки', () => {
 });
 
 describe('RichTextEditor, клавиатура и диктор', () => {
-  it('панель проходится стрелками, а в табуляции стоит одной кнопкой', () => {
-    render(<Field />);
+  it('панель проходится стрелками, а в табуляции стоит одной кнопкой', async () => {
+    await renderField();
 
     const bold = toolbarButton('Жирный');
     const italic = toolbarButton('Курсив');
@@ -255,8 +265,8 @@ describe('RichTextEditor, клавиатура и диктор', () => {
     expect(bold).toHaveAttribute('tabindex', '-1');
   });
 
-  it('называет область ввода подписью поля и объявляет её многострочной', () => {
-    render(<Field />);
+  it('называет область ввода подписью поля и объявляет её многострочной', async () => {
+    await renderField();
 
     // `<label for>` к `contenteditable` не цепляется — связь идёт через
     // `aria-labelledby`, и без неё диктор читает поле безымянным.
@@ -264,15 +274,15 @@ describe('RichTextEditor, клавиатура и диктор', () => {
     expect(editorArea()).toHaveAttribute('aria-invalid', 'false');
   });
 
-  it('связывает ошибку с полем', () => {
-    render(<Field error="Опишите достижение" />);
+  it('связывает ошибку с полем', async () => {
+    await renderField({ error: "Опишите достижение" });
 
     expect(editorArea()).toHaveAttribute('aria-invalid', 'true');
     expect(editorArea()).toHaveAccessibleDescription('Опишите достижение');
   });
 
-  it('показывает нажатой кнопку того форматирования, в котором стоит курсор', () => {
-    render(<Field initial="<p>Кафедра</p>" />);
+  it('показывает нажатой кнопку того форматирования, в котором стоит курсор', async () => {
+    await renderField({ initial: '<p>Кафедра</p>' });
 
     expect(toolbarButton('Жирный')).toHaveAttribute('aria-pressed', 'false');
 
@@ -284,8 +294,8 @@ describe('RichTextEditor, клавиатура и диктор', () => {
 });
 
 describe('RichTextEditor, во время сохранения', () => {
-  it('не даёт править и гасит панель', () => {
-    render(<Field initial="<p>Кафедра</p>" disabled />);
+  it('не даёт править и гасит панель', async () => {
+    await renderField({ initial: '<p>Кафедра</p>', disabled: true });
 
     expect(editorArea()).toHaveAttribute('contenteditable', 'false');
     expect(toolbarButton('Жирный')).toBeDisabled();
@@ -293,7 +303,7 @@ describe('RichTextEditor, во время сохранения', () => {
 });
 
 describe('RichTextEditor, значение снаружи', () => {
-  it('подхватывает значение, поставленное формой', () => {
+  it('подхватывает значение, поставленное формой', async () => {
     // Форму сбрасывают снаружи: `reset` после сохранения, переход
     // к другой записи. Поле обязано показать новое значение, хотя своего
     // документа оно из-за этого не перечитывает на каждом рендере.
@@ -311,6 +321,8 @@ describe('RichTextEditor, значение снаружи', () => {
     }
 
     render(<Reset />);
+    await screen.findByRole('textbox', { name: 'Содержание' });
+
     fireEvent.click(screen.getByRole('button', { name: 'Сбросить' }));
 
     expect(editorArea()).toHaveTextContent('Новое');

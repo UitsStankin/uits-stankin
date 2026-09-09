@@ -181,7 +181,9 @@ describe('PersonalPage, правка карточки ППС', () => {
     fireEvent.click(teacherSection().getByRole('button', { name: 'Редактировать' }));
 
     return {
-      education: screen.getByRole('textbox', { name: 'Образование' }),
+      // Ждём: редактор грузится отдельным куском, до подгрузки на месте
+      // поля стоит заглушка.
+      education: await screen.findByRole('textbox', { name: 'Образование' }),
       // Панель у каждого поля своя: редактора на форме два.
       formatting: within(
         screen.getByRole('toolbar', { name: 'Форматирование: Образование' }),

@@ -110,11 +110,13 @@ export function useRichTextEditor({
    * бы ровно один раз, при создании.
    */
   useEffect(() => {
-    editor?.setEditable(editable);
+    if (!isUsable(editor)) return;
+
+    editor.setEditable(editable);
   }, [editor, editable]);
 
   useEffect(() => {
-    if (!editor || editor.isFocused) return;
+    if (!isUsable(editor) || editor.isFocused) return;
     if (editorHtml(editor) === value) return;
 
     // `emitUpdate: false` — иначе подстановка внешнего значения вернулась
@@ -128,6 +130,20 @@ export function useRichTextEditor({
   });
 
   return { editor, state: state ?? {} };
+}
+
+/**
+ * Жив ли экземпляр.
+ *
+ * Уничтоженный редактор остаётся в переменной, но схемы у него уже нет,
+ * и `getHTML` на нём падает с `Cannot read properties of null`. Случай
+ * не теоретический: поле грузится лениво, и React, разворачивая
+ * `Suspense`, заново запускает эффекты поддерева — в том числе те, чей
+ * компонент к этому моменту успел размонтироваться. Поймано тестами
+ * сразу после того, как редактор переехал в отдельный кусок.
+ */
+function isUsable(editor: Editor | null): editor is Editor {
+  return editor !== null && !editor.isDestroyed;
 }
 
 /** HTML документа для формы: пустой — это пустая строка, а не `<p></p>`. */

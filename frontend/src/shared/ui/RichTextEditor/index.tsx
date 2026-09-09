@@ -1,27 +1,27 @@
-import { EditorContent } from '@tiptap/react';
+import { Suspense, lazy } from 'react';
 
-import { cn, errorId, labelId } from '@shared/lib';
 import { FieldShell } from '@shared/ui/FormFields';
 
-import { TOOLBAR_BUTTONS } from './model/toolbarButtons';
-import { useLinkForm } from './model/useLinkForm';
-import { useToolbarRoving } from './model/useToolbarRoving';
-import { runToolbarAction, useRichTextEditor, type ToolbarAction } from './model/useRichTextEditor';
-import { EditorToolbar } from './ui/EditorToolbar';
-import { LinkBar } from './ui/LinkBar';
+import type { RichTextEditorProps } from './props';
 
-interface RichTextEditorProps {
-  /** Идентификатор поля: от него считаются `id` подписи и сообщения об ошибке. */
-  id: string;
-  label: string;
-  /** Готовый HTML. Пустое поле — это `''`, а не `<p></p>`. */
-  value: string;
-  onChange: (html: string) => void;
-  /** Текст ошибки под полем; `undefined` — ошибки нет. */
-  error?: string;
-  /** Идёт сохранение: править нельзя, панель погашена. */
-  disabled?: boolean;
-}
+/**
+ * TipTap приезжает отдельным куском, а не вместе с приложением.
+ *
+ * Замер на F-41: с редактором в общем бандле сборка выросла с 918 КБ
+ * (279 КБ gzip) до 1336 КБ (412 КБ gzip) — плюс 133 КБ gzip **на каждой
+ * странице портала**, включая главную, куда приходит посетитель, который
+ * никогда ничего не правит. Редактор нужен троим: администратору,
+ * модератору и преподавателю в своём кабинете, и всем троим — после входа.
+ *
+ * Это тот самый случай, под который в D-F6 записана граница: кода-сплиттинга
+ * в проекте нет вовсе, начинать его имеет смысл с куска, который публичному
+ * посетителю не нужен ни при каких условиях. Редактор — первый такой кусок
+ * с готовой границей: он лист, форма отдаёт ему строку и получает строку.
+ *
+ * Ленивая загрузка не портит форму: значение живёт в react-hook-form,
+ * а не в компоненте, и подмена заглушки на редактор ничего не теряет.
+ */
+const Editor = lazy(() => import('./Editor'));
 
 /**
  * Поле rich-text: панель форматирования и область ввода.
@@ -51,78 +51,24 @@ interface RichTextEditorProps {
  * Подпись при этом не `<label>`: `for` цепляется к полям ввода,
  * а не к `contenteditable`, и связь идёт через `aria-labelledby`.
  */
-export function RichTextEditor({
-  id,
-  label,
-  value,
-  onChange,
-  error,
-  disabled = false,
-}: RichTextEditorProps) {
-  const { editor, state } = useRichTextEditor({
-    value,
-    onChange,
-    editable: !disabled,
-    labelledBy: labelId(id),
-    describedBy: error ? errorId(id) : undefined,
-    invalid: error !== undefined,
-  });
-
-  const linkForm = useLinkForm(editor);
-  const roving = useToolbarRoving(TOOLBAR_BUTTONS.length);
-
-  function onAction(action: ToolbarAction) {
-    if (!editor) return;
-
-    if (action === 'link') {
-      // Повторное нажатие закрывает строку — кнопка работает как
-      // переключатель, и `aria-expanded` на ней это обещает.
-      if (linkForm.isOpen) linkForm.close();
-      else linkForm.open();
-
-      return;
-    }
-
-    runToolbarAction(editor, action);
-  }
-
+export function RichTextEditor(props: RichTextEditorProps) {
   return (
-    <FieldShell id={id} label={label} error={error} labelAsText>
-      <div
-        className={cn(
-          'overflow-hidden rounded border bg-white transition-colors',
-          // Рамка ведёт себя как у обычного поля: подсвечивается, когда
-          // курсор внутри, краснеет при ошибке. Фокус живёт на области
-          // ввода, поэтому `focus-within`, а не `focus`.
-          error === undefined ? 'border-gray-300 focus-within:border-primary' : 'border-danger',
-        )}
-      >
-        <EditorToolbar
-          fieldLabel={label}
-          state={state}
-          isLinkFormOpen={linkForm.isOpen}
-          disabled={disabled}
-          onAction={onAction}
-          activeIndex={roving.activeIndex}
-          onKeyDown={roving.onKeyDown}
-          onFocus={roving.onFocus}
-        />
-
-        {linkForm.isOpen && (
-          <LinkBar
-            id={`${id}-href`}
-            href={linkForm.href}
-            error={linkForm.error}
-            canRemove={linkForm.canRemove}
-            onHrefChange={linkForm.setHref}
-            onApply={linkForm.apply}
-            onRemove={linkForm.remove}
-            onCancel={linkForm.close}
-          />
-        )}
-
-        <EditorContent editor={editor} />
-      </div>
+    <FieldShell id={props.id} label={props.label} error={props.error} labelAsText>
+      <Suspense fallback={<EditorPlaceholder />}>
+        <Editor {...props} />
+      </Suspense>
     </FieldShell>
   );
+}
+
+/**
+ * Пустая рамка на время загрузки куска.
+ *
+ * Высота та же, что у редактора, — иначе форма подпрыгивала бы, и кнопка
+ * под полем уезжала бы из-под курсора. Текста в ней нет намеренно:
+ * на быстрой сети она мелькает долями секунды, и надпись «Загружается»
+ * успела бы только моргнуть.
+ */
+function EditorPlaceholder() {
+  return <div aria-hidden="true" className="h-52 rounded border border-gray-300 bg-light" />;
 }
