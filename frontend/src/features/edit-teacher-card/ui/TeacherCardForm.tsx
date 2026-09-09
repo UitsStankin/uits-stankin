@@ -9,7 +9,7 @@ import {
   RANK_LABELS,
 } from '@shared/config/teacherDictionaries';
 import { cn } from '@shared/lib';
-import { AvatarPicker } from '@shared/ui/AvatarPicker';
+import { ImagePicker } from '@shared/ui/ImagePicker';
 import { SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
 import { RichTextEditor } from '@shared/ui/RichTextEditor';
 
@@ -75,7 +75,8 @@ export function TeacherCardForm({
           Кнопки удаления здесь нет: `PUT /api/teachers/me` очистку фото
           принимает, но карточку ППС видят посетители, и решение убрать
           с неё лицо стоит отдельного разговора с кафедрой. */}
-      <AvatarPicker
+      <ImagePicker
+        variant="avatar"
         previewUrl={avatarPreviewUrl}
         isUploading={isUploadingAvatar}
         error={avatarError}
