@@ -1,5 +1,5 @@
 import { api } from '@shared/api';
-import type { PageParams, PostgraduatePage } from '@shared/types';
+import type { PostgraduateListParams, PostgraduatePage } from '@shared/types';
 
 /**
  * Чтение записей аспирантуры — одна публичная ручка списка. Сущность знает
@@ -21,6 +21,10 @@ const PUBLIC_POSTGRADUATES_PATH = '/api/public/postgraduates';
  * алфавит по фамилии — то, что нужно списку людей, и он же стоит
  * на бэкенде по умолчанию.
  *
+ * Поиск уходит параметром `q` — с T-78 по заявке B-3. Он серверный
+ * и другим быть не мог: клиент видит двадцать записей из скольких-то,
+ * и фильтровать ему нечего.
+ *
  * Фильтров `?teacherId=` и `?speciality=` здесь нет намеренно, хотя
  * контракт их принимает: страница аспирантуры показывает список целиком,
  * а первым их потребителем станет блок «аспиранты» на карточке ППС либо
@@ -29,7 +33,7 @@ const PUBLIC_POSTGRADUATES_PATH = '/api/public/postgraduates';
  * карточки.
  */
 export async function fetchPostgraduatesPage(
-  params: PageParams,
+  params: PostgraduateListParams,
   signal?: AbortSignal,
 ): Promise<PostgraduatePage> {
   const { data } = await api.get<PostgraduatePage>(PUBLIC_POSTGRADUATES_PATH, {
