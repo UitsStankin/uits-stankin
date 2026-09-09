@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RichTextEditor } from './index';
@@ -233,6 +233,20 @@ describe('RichTextEditor, ссылки', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(savedHtml()).toContain('href="/about/news"');
+  });
+
+  it('после «Применить» возвращает курсор в текст', async () => {
+    // Иначе фокус остаётся на кнопке, которой больше нет на экране, —
+    // то есть на `body`: следующий таб идёт от шапки страницы.
+    const area = await renderField({ initial: '<p>Новости</p>' });
+
+    selectAll();
+    const address = openLinkBar();
+    fireEvent.change(address, { target: { value: '/about/news' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Применить' }));
+
+    // Через кадр: `focus()` у TipTap отложен `requestAnimationFrame`.
+    await waitFor(() => expect(area).toHaveFocus());
   });
 
   it('убирает ссылку, оставляя текст', async () => {

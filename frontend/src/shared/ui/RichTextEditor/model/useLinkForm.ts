@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 
 import { checkHref } from '../lib/html';
@@ -23,6 +23,26 @@ export function useLinkForm(editor: Editor | null) {
   const [href, setHref] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  /*
+   * Строка закрылась — курсор возвращается в текст, откуда бы её ни
+   * закрыли: «Применить», «Убрать», «Отмена», Escape.
+   *
+   * Одним правилом в одном месте, а не вызовом `focus()` в каждом из
+   * четырёх обработчиков: забытый в одном из них означал бы, что человек
+   * остался с фокусом на кнопке, которой больше нет на экране, — то есть
+   * на `body`, в начале страницы.
+   *
+   * Возврат приходит через кадр: `focus()` у TipTap отложен
+   * `requestAnimationFrame`. Поэтому и тест ждёт его через `waitFor`.
+   */
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    if (wasOpen.current && !isOpen && editor && !editor.isDestroyed) editor.commands.focus();
+
+    wasOpen.current = isOpen;
+  }, [isOpen, editor]);
+
   /** Открыть строку: адрес существующей ссылки подставляется в поле. */
   function open() {
     setHref(editor?.getAttributes('link').href ?? '');
@@ -30,10 +50,9 @@ export function useLinkForm(editor: Editor | null) {
     setIsOpen(true);
   }
 
-  /** Закрыть, вернув фокус в текст: иначе он остался бы на исчезнувшей кнопке. */
+  /** Закрыть строку; фокус вернёт эффект выше. */
   function close() {
     setIsOpen(false);
-    editor?.commands.focus();
   }
 
   function apply() {
