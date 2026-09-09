@@ -1,6 +1,7 @@
 import { setupWorker } from 'msw/browser';
 
 import { authHandlers } from './auth';
+import { fileHandlers } from './files';
 import { handlers } from './handlers';
 import { makeProfile, profileHandlers } from './profile';
 
@@ -24,6 +25,12 @@ import { makeProfile, profileHandlers } from './profile';
  * ни админку посмотреть нельзя. Пароль мок не проверяет — пускает любого,
  * кто ввёл логин.
  *
+ * Файлы — тоже здесь, а не в общем наборе: загрузку зовут только формы
+ * за входом, и тестам она нужна точечно, с новым счётчиком ключей
+ * на каждый тест. В браузере же без неё аватар и картинка в редакторе
+ * упирались бы в необработанный запрос, а `/media` отдаёт загруженное
+ * обратно — разбор в `files.ts`.
+ *
  * Роль — модератор и преподаватель сразу: под первой открыт весь раздел
  * админки, кроме учётных записей (F-46), вторая добавляет в личный кабинет
  * карточку ППС — единственное место портала, где до админки можно
@@ -36,4 +43,5 @@ export const worker = setupWorker(
   ...handlers,
   ...authHandlers(),
   ...profileHandlers(makeProfile({ moderator: true, teacher: true })),
+  ...fileHandlers(),
 );
