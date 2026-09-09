@@ -2,6 +2,8 @@ import type { KeyboardEvent } from 'react';
 
 import { cn } from '@shared/lib';
 
+import { barActionClass } from './barActionClass';
+
 interface LinkBarProps {
   /** Идентификатор поля адреса: к нему цепляются подпись и текст отказа. */
   id: string;
@@ -79,17 +81,17 @@ export function LinkBar({
           )}
         />
 
-        <button type="button" onClick={onApply} className={actionClass}>
+        <button type="button" onClick={onApply} className={barActionClass}>
           Применить
         </button>
 
         {canRemove && (
-          <button type="button" onClick={onRemove} className={actionClass}>
+          <button type="button" onClick={onRemove} className={barActionClass}>
             Убрать
           </button>
         )}
 
-        <button type="button" onClick={onCancel} className={actionClass}>
+        <button type="button" onClick={onCancel} className={barActionClass}>
           Отмена
         </button>
       </div>
@@ -102,9 +104,3 @@ export function LinkBar({
     </div>
   );
 }
-
-const actionClass = cn(
-  'rounded border border-default bg-white px-2.5 py-1',
-  'text-sm font-bold text-text-heading transition-colors',
-  'hover:border-primary hover:text-primary',
-);
