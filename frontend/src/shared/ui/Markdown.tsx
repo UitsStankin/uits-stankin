@@ -4,6 +4,8 @@ import remarkGfm from 'remark-gfm';
 
 import { cn } from '@shared/lib';
 
+import { richTextClass } from './richTextClass';
+
 interface MarkdownProps {
   /** Исходник Markdown. Пустую строку рисовать не надо — решает вызывающий. */
   text: string;
@@ -49,15 +51,12 @@ interface MarkdownProps {
  */
 export default function Markdown({ text, className }: MarkdownProps) {
   return (
-    // prose из @tailwindcss/typography: у разметки, собранной из Markdown,
-    // своих классов нет, а сброс Tailwind снимает стили с h2, ul и blockquote
-    // — без него раздел выглядит одним сплошным абзацем. Набор модификаторов
-    // тот же, что у статьи новости: два способа показа текста на портале
-    // должны давать одну типографику.
-    // max-w-none: ширину держит карточка, а не типографика.
+    // Типографика — общая с остальным чужим текстом портала
+    // (`shared/ui/RichText.tsx`): два способа показа текста должны давать
+    // один результат.
     <div
       className={cn(
-        'prose prose-sm max-w-none prose-headings:text-text-heading prose-a:text-primary prose-img:rounded',
+        richTextClass,
         // Длинное неразрывное слово — обычно вставленный адрес — иначе
         // распирает страницу ровно так же, как широкая таблица ниже.
         'break-words',
