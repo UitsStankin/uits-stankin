@@ -3,6 +3,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RichTextEditor } from './index';
+// Ленивый кусок — в кэш модулей до начала тестов: иначе первый `findBy`
+// ждёт разбора TipTap, а не рендера, и на раннере CI не укладывается
+// в секунду. Разбор — в `pages/PersonalPage/index.test.tsx`.
+import './Editor';
 
 /**
  * Поле с редактором вместе с формой, в которой оно живёт: значение

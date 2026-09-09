@@ -20,6 +20,21 @@ import { createTestQueryClient, renderWithProviders } from '@/test/render';
 
 import PersonalPage from './index';
 
+/*
+ * Ленивый кусок редактора (F-41) — статическим импортом, ради времени.
+ *
+ * `RichTextEditor` подставляет редактор через `lazy()`, и первый же
+ * `findBy` ждёт не рендера, а разбора TipTap: 413 КБ исходников,
+ * которые vite-node транслирует при первом обращении. На своей машине
+ * это доли секунды, на раннере CI — больше секунды, которую Testing
+ * Library ждёт по умолчанию, и тест падал «поле не найдено» на форме,
+ * которая на самом деле открылась. Поймано в CI 2026-09-09.
+ *
+ * Импорт кладёт модуль в кэш до начала теста; сам `lazy()` остаётся
+ * на месте, и проверяется ровно то же, что и раньше.
+ */
+import '@shared/ui/RichTextEditor/Editor';
+
 const TEACHERS_ME = '*/api/teachers/me';
 const PROFILE = '*/api/users/profile';
 
