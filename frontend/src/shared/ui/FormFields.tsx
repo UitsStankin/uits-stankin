@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 
-import { cn } from '@shared/lib';
+import { cn, errorId, labelId } from '@shared/lib';
 
 /**
  * Поля формы: текст, селект, многострочное. Чистые: значение ведёт
@@ -37,21 +37,46 @@ interface FieldBaseProps {
   registration: UseFormRegisterReturn;
 }
 
-/** Подпись сверху, сообщение об ошибке снизу — общий каркас всех полей. */
-function FieldShell({
+/**
+ * Подпись сверху, сообщение об ошибке снизу — общий каркас всех полей.
+ *
+ * Экспортируется ради rich-text редактора (F-41): у него своё содержимое,
+ * но подпись, отступы и разметка ошибки обязаны совпадать с соседними
+ * полями формы — а совпадают они только тогда, когда рисуются одним кодом.
+ */
+export function FieldShell({
   id,
   label,
   error,
+  labelAsText = false,
   children,
-}: Pick<FieldBaseProps, 'id' | 'label' | 'error'> & { children: React.ReactNode }) {
+}: Pick<FieldBaseProps, 'id' | 'label' | 'error'> & {
+  /**
+   * Подпись обычным текстом с идентификатором вместо `<label for>`.
+   *
+   * `<label for>` цепляется только к полям ввода; редактор — это
+   * `contenteditable`, и подпись к нему привязывают через
+   * `aria-labelledby`, которому нужен `id` самой подписи.
+   */
+  labelAsText?: boolean;
+  children: React.ReactNode;
+}) {
+  const labelClass = 'text-base font-bold text-text-heading';
+
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-base font-bold text-text-heading">
-        {label}
-      </label>
+      {labelAsText ? (
+        <span id={labelId(id)} className={labelClass}>
+          {label}
+        </span>
+      ) : (
+        <label htmlFor={id} className={labelClass}>
+          {label}
+        </label>
+      )}
       {children}
       {error && (
-        <p id={`${id}-error`} className="text-sm text-danger">
+        <p id={errorId(id)} className="text-sm text-danger">
           {error}
         </p>
       )}
@@ -63,7 +88,7 @@ function FieldShell({
 function ariaProps(id: string, error: string | undefined) {
   return {
     'aria-invalid': error !== undefined,
-    'aria-describedby': error && `${id}-error`,
+    'aria-describedby': error && errorId(id),
   };
 }
 
