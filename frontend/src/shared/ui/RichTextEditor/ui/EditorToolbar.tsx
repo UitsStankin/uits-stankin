@@ -59,13 +59,7 @@ export function EditorToolbar({
             disabled={disabled}
             title={label}
             aria-label={label}
-            // «Ссылка» не переключатель, а раскрытие строки ввода: диктору
-            // важнее, что она открывает, чем то, что курсор стоит в ссылке.
-            {...(action === 'link'
-              ? { 'aria-expanded': isLinkFormOpen }
-              : action === 'clear'
-                ? {}
-                : { 'aria-pressed': state[action] ?? false })}
+            {...stateAttribute(action, state, isLinkFormOpen)}
             tabIndex={index === activeIndex ? 0 : -1}
             className={cn(
               'rounded p-1.5 text-text-default transition-colors',
@@ -84,4 +78,23 @@ export function EditorToolbar({
       ))}
     </div>
   );
+}
+
+/**
+ * Чем кнопка объявляет своё состояние диктору.
+ *
+ * Кнопки трёх разных сортов, и `aria-pressed` годится только одному:
+ *
+ * * переключатели форматирования — нажаты, пока курсор стоит внутри
+ *   своей разметки;
+ * * «Ссылка» не переключатель, а раскрытие строки ввода: диктору важнее,
+ *   что она открывает, чем то, что курсор стоит в ссылке;
+ * * «Убрать форматирование» — обычное действие, у него нет состояния,
+ *   и `aria-pressed="false"` на нём говорил бы, что оно бывает нажатым.
+ */
+function stateAttribute(action: ToolbarAction, state: ToolbarState, isLinkFormOpen: boolean) {
+  if (action === 'link') return { 'aria-expanded': isLinkFormOpen };
+  if (action === 'clear') return {};
+
+  return { 'aria-pressed': state[action] ?? false };
 }
