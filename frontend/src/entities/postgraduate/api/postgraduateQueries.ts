@@ -1,6 +1,6 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 
-import type { PageParams } from '@shared/types';
+import type { PostgraduateListParams } from '@shared/types';
 
 import { fetchPostgraduatesPage } from './postgraduateApi';
 
@@ -16,7 +16,7 @@ import { fetchPostgraduatesPage } from './postgraduateApi';
 export const postgraduateKeys = {
   all: ['postgraduate'] as const,
   lists: () => [...postgraduateKeys.all, 'list'] as const,
-  list: (params: PageParams) => [...postgraduateKeys.lists(), params] as const,
+  list: (params: PostgraduateListParams) => [...postgraduateKeys.lists(), params] as const,
 };
 
 /**
@@ -25,9 +25,12 @@ export const postgraduateKeys = {
  * `keepPreviousData` — как у всех списков портала: без него переход
  * на вторую страницу гасит первую, таблица схлопывается в скелет
  * и уезжает скролл. С ним прошлая страница остаётся на экране,
- * а `isPlaceholderData` позволяет её на это время притушить.
+ * а `isPlaceholderData` позволяет её на это время притушить. С поиском
+ * это стало важнее, чем при листании: запрос уходит на каждое изменение
+ * поля, и без подстановки прошлого ответа таблица моргала бы скелетом
+ * под руками у набирающего.
  */
-export const postgraduatesListQuery = (params: PageParams) =>
+export const postgraduatesListQuery = (params: PostgraduateListParams) =>
   queryOptions({
     queryKey: postgraduateKeys.list(params),
     queryFn: ({ signal }) => fetchPostgraduatesPage(params, signal),
