@@ -51,7 +51,9 @@ function Field({
 async function renderField(props: Parameters<typeof Field>[0] = {}) {
   render(<Field {...props} />);
 
-  return await screen.findByRole('textbox', { name: 'Содержание' });
+  // Запас по времени — по той же причине, что в личном кабинете:
+  // ожидание должно упираться в рендер, а не в скорость раннера.
+  return await screen.findByRole('textbox', { name: 'Содержание' }, { timeout: 3000 });
 }
 
 /** Область ввода: `contenteditable`, объявленный полем ввода для диктора. */
