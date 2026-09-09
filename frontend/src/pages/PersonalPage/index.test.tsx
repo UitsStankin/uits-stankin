@@ -402,7 +402,7 @@ describe('PersonalPage, правка профиля', () => {
       target: { files: [new File(['x'], 'photo.gif', { type: 'image/gif' })] },
     });
 
-    expect(await screen.findByText('Фото — только JPEG или PNG.')).toBeInTheDocument();
+    expect(await screen.findByText('Подходят только JPEG и PNG.')).toBeInTheDocument();
     expect(uploads).toBe(0);
   });
 

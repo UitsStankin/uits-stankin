@@ -7,6 +7,7 @@ export {
 } from './client';
 export type { RefreshResult } from './client';
 export { uploadFile } from './files';
+export { useImageUpload } from './useImageUpload';
 export { ApiError, isApiError, toApiError } from './problem';
 export type { ProblemDetail } from './problem';
 export {

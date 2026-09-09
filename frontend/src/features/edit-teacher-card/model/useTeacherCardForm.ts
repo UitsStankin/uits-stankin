@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { teacherKeys } from '@entities/teacher';
-import { isApiError, uploadFile } from '@shared/api';
+import { isApiError, useImageUpload } from '@shared/api';
 import { applyFieldErrors } from '@shared/lib';
 import type { FileUploadResponse, Teacher } from '@shared/types';
 
@@ -30,7 +30,8 @@ import {
  * при выборе (`POST /api/files`, `category: avatars`), в форме остаётся
  * только ключ из ответа. Предпросмотр — тоже из ответа: сервер картинку
  * перекодирует и ужимает, показывать локальный файл значило бы показывать
- * не то, что сохранится.
+ * не то, что сохранится. Сама загрузка — проверка файла, запрос, текст
+ * отказа — общая с формой профиля и редактором (`useImageUpload`).
  */
 export function useTeacherCardForm(card: Teacher, onSaved: () => void) {
   const queryClient = useQueryClient();
@@ -50,34 +51,9 @@ export function useTeacherCardForm(card: Teacher, onSaved: () => void) {
   const [formError, setFormError] = useState<string | null>(null);
   /** Загруженное на замену фото; `null` — оставляем прежнее. */
   const [newAvatar, setNewAvatar] = useState<FileUploadResponse | null>(null);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const uploadMutation = useMutation({ mutationFn: (file: File) => uploadFile(file, 'avatars') });
+  const avatarUpload = useImageUpload('avatars', setNewAvatar);
   const saveMutation = useMutation({ mutationFn: updateMyTeacherCard });
-
-  const onAvatarSelect = (file: File) => {
-    setAvatarError(null);
-
-    // Те же границы, что на сервере, но до запроса: файл не тот — узнать
-    // об этом лучше не после отправки пятнадцати мегабайт. Сервер при этом
-    // строже: формат он определяет по содержимому, а не по типу файла.
-    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      setAvatarError('Фото — только JPEG или PNG.');
-      return;
-    }
-    if (file.size > 15 * 1024 * 1024) {
-      setAvatarError('Файл больше 15 МБ.');
-      return;
-    }
-
-    uploadMutation.mutate(file, {
-      onSuccess: setNewAvatar,
-      onError: (error) =>
-        setAvatarError(
-          isApiError(error) ? error.message : 'Не удалось загрузить фото. Попробуйте ещё раз.',
-        ),
-    });
-  };
 
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
@@ -117,15 +93,15 @@ export function useTeacherCardForm(card: Teacher, onSaved: () => void) {
     formError,
     /** Что показывать в кружке предпросмотра; `null` — заглушку. */
     avatarPreviewUrl: newAvatar?.url ?? card.avatarUrl,
-    avatarError,
-    isUploadingAvatar: uploadMutation.isPending,
-    onAvatarSelect,
+    avatarError: avatarUpload.error,
+    isUploadingAvatar: avatarUpload.isUploading,
+    onAvatarSelect: avatarUpload.select,
     /**
      * Запрос в полёте: кнопка блокируется. Загрузка фото тоже считается:
      * сохранение в этот момент ушло бы со старым ключом, и только что
      * выбранное фото молча потерялось бы.
      */
-    isPending: saveMutation.isPending || uploadMutation.isPending,
+    isPending: saveMutation.isPending || avatarUpload.isUploading,
   };
 }
 
