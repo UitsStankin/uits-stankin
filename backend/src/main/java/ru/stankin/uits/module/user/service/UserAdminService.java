@@ -6,6 +6,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.exception.FieldValidationException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.exception.ResourceInUseException;
@@ -60,7 +61,7 @@ public class UserAdminService {
     @Transactional
     public UserAdminResponseDto createUser(UserCreateRequestDto request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new InvalidRequestException("Логин уже занят: " + request.getUsername());
+            throw new FieldValidationException("username", "Логин уже занят: " + request.getUsername());
         }
 
         User user = userMapper.toEntity(request);

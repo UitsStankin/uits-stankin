@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.stankin.uits.common.exception.InvalidRequestException;
+import ru.stankin.uits.common.exception.FieldValidationException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.module.publications.dto.TagDto;
 import ru.stankin.uits.module.publications.dto.TagRequestDto;
@@ -34,7 +34,7 @@ public class TagService {
     public TagDto createTag(TagRequestDto request) {
         String name = request.getName().trim();
         if (tagRepository.existsByNameIgnoreCase(name)) {
-            throw new InvalidRequestException("Тег с названием «" + name + "» уже существует");
+            throw new FieldValidationException("name", "Тег с названием «" + name + "» уже существует");
         }
 
         return tagMapper.toDto(tagRepository.save(Tag.builder().name(name).build()));
@@ -46,7 +46,7 @@ public class TagService {
         String name = request.getName().trim();
 
         if (tagRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
-            throw new InvalidRequestException("Тег с названием «" + name + "» уже существует");
+            throw new FieldValidationException("name", "Тег с названием «" + name + "» уже существует");
         }
 
         tag.setName(name);
