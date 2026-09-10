@@ -87,15 +87,19 @@ describe('AdminTeachersPage, список', () => {
   });
 
   /**
-   * Отчество в контракте бывает `null`. Прочерк на его месте диктор
-   * читает как «тире» либо молчит, поэтому здесь слова.
+   * Отчество в контракте бывает `null`, и ФИО собирается без него —
+   * без « null» на конце и без пустого места.
+   *
+   * Своей колонки у отчества нет: она была и ушла на первом же взгляде
+   * на живой стенд — сортировала по имени, а показывала отчество
+   * (разбор в `ui/teacherColumns.tsx`).
    */
-  it('называет словами карточку без отчества', async () => {
+  it('собирает ФИО без отчества, когда его нет', async () => {
     renderTeachers();
 
-    await screen.findByRole('cell', { name: 'Гаврилов Степан' });
-
-    expect(rowOf('Гаврилов Степан').getByText('без отчества')).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Гаврилов Степан' })).toBeInTheDocument();
+    expect(screen.queryByText('без отчества')).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /Имя/ })).not.toBeInTheDocument();
   });
 
   /**
@@ -176,7 +180,7 @@ describe('AdminTeachersPage, список', () => {
   it('меняет порядок кликом по заголовку колонки', async () => {
     renderTeachers();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Фамилия/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /ФИО/ }));
 
     expect(await screen.findByRole('cell', { name: 'Фёдоров Максим Эдуардович' })).toBeInTheDocument();
   });
