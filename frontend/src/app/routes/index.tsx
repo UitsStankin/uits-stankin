@@ -48,6 +48,7 @@ import UnknownSectionPage from '@pages/admin/UnknownSectionPage';
 import SubjectsPage from '@pages/admin/SubjectsPage';
 import AdminTeachersPage from '@pages/admin/TeachersPage';
 import TeacherFormPage from '@pages/admin/TeacherFormPage';
+import AdminHelpersPage from '@pages/admin/HelpersPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -151,6 +152,8 @@ function adminSectionScreen(section: AdminSection) {
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список ППС — тоже `TeachersPage`.
       return <AdminTeachersPage />;
+    case 'helpers':
+      return <AdminHelpersPage />;
     case 'subjects':
       return <SubjectsPage />;
     default:

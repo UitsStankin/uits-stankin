@@ -94,7 +94,6 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     icon: UserCog,
     path: ADMIN_HELPERS_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-44',
   },
   {
     key: 'postgraduates',
