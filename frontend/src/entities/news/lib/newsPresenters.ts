@@ -13,6 +13,16 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
   announcements: 'Объявление',
 };
 
+/**
+ * Оба значения словаря списком — для тех, кому нужен выбор, а не подпись:
+ * селект типа записи в форме админки и фильтр над её таблицей.
+ *
+ * Выводится из таблицы подписей, а не пишется вторым списком: разошедшись,
+ * они дали бы в селекте значение без подписи — то самое «Запись», ради
+ * которого у `postTypeLabel` есть запасной вариант.
+ */
+export const POST_TYPES = Object.keys(POST_TYPE_LABELS) as readonly PostType[];
+
 export function postTypeLabel(postType: PostType): string {
   // Не `POST_TYPE_LABELS[postType]` без запасного варианта: enum'а на бэкенде
   // нет, `postType` — строка с `@Pattern`, и третье значение туда попадёт
