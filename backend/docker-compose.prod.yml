@@ -57,12 +57,19 @@ services:
       REFRESH_GRACE_PERIOD: ${REFRESH_GRACE_PERIOD:-60000}
       REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-true}
       LOGIN_RATE_LIMIT_ATTEMPTS: ${LOGIN_RATE_LIMIT_ATTEMPTS:-5}
+      LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS: ${LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS:-10}
       LOGIN_RATE_LIMIT_PERIOD: ${LOGIN_RATE_LIMIT_PERIOD:-60000}
+      UPLOAD_RATE_LIMIT_ATTEMPTS: ${UPLOAD_RATE_LIMIT_ATTEMPTS:-30}
+      UPLOAD_RATE_LIMIT_PERIOD: ${UPLOAD_RATE_LIMIT_PERIOD:-60000}
       # Без этой переменной прод-фронт упрётся в дефолт http://localhost:5173
       # и получит отказ на каждом запросе
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
       STORAGE_ROOT: /app/media
       SCHEDULE_SERVICE_URL: http://schedule-service:8000
+      # Мягкий дефолт, а не ${VAR:?}: без ключа 503 отдаёт только поиск
+      # публикаций, остальной портал работает — ронять из-за него весь стек
+      # несоразмерно. Пустое значение и отсутствие переменной для Spring одно и то же
+      SERPER_API_KEY: ${SERPER_API_KEY:-}
       # Куча — 70% предела контейнера, а не 100: рядом с ней живут metaspace,
       # стеки потоков и прямые буферы. Без флага JVM берёт четверть предела
       # (под 1536m это 384 МБ) и упирается в неё задолго до лимита.
