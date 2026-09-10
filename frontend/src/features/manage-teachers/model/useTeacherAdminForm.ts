@@ -7,7 +7,7 @@ import { subjectsListQuery } from '@entities/subject';
 import { teacherKeys } from '@entities/teacher';
 import { userDirectoryQuery } from '@entities/user';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, takeFieldErrors } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { Teacher } from '@shared/types';
 
@@ -26,6 +26,19 @@ import {
  * до неё молча), и дисциплин у кафедры заведомо меньше.
  */
 const SUBJECTS_QUERY = subjectsListQuery({ size: 100 });
+
+/**
+ * Поля, у которых есть адрес в ответе, но нет места в react-hook-form.
+ *
+ * Ровно три, и все три названы контрактом (docs/API.md, «Создание
+ * и правка карточек»): занятая или негодная учётная запись — `userId`,
+ * неизвестная дисциплина — `subjectIds`, ключ несуществующего файла —
+ * `avatar`. Больше ключей у этих ручек не бывает: отказы приходят
+ * по одному.
+ */
+const FIELDS_OUTSIDE_FORM = ['userId', 'subjectIds', 'avatar'] as const;
+
+type ServerFieldErrors = Partial<Record<(typeof FIELDS_OUTSIDE_FORM)[number], string>>;
 
 /** Пустая карточка для формы создания: те же поля, все незаполненные. */
 const BLANK_CARD: Teacher = {
@@ -85,8 +98,22 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
     defaultValues: teacherToFormValues(card ?? BLANK_CARD),
   });
 
-  /** Отказ, который не лёг ни на одно поле: сеть, `500`, негодный ключ фото. */
+  /** Отказ, который не лёг ни на одно поле: сеть, `500`, `404`. */
   const [formError, setFormError] = useState<string | null>(null);
+
+  /**
+   * Отказы сервера по трём полям, которые живут вне react-hook-form.
+   *
+   * Своим состоянием, потому что `setError` на них не наведёшь. Чистятся
+   * там же, где react-hook-form чистит свои серверные ошибки, — при
+   * правке самого поля: сообщение «Учётная запись уже связана
+   * с карточкой id=3» после выбора другой учётки перестаёт быть правдой,
+   * а висело бы до следующей отправки.
+   */
+  const [fieldErrors, setFieldErrors] = useState<ServerFieldErrors>({});
+
+  const clearFieldError = (field: keyof ServerFieldErrors) =>
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
 
   /** Ключ и адрес фото: ключ уедет в запрос, адрес — в предпросмотр. */
   const [avatar, setAvatar] = useState({
@@ -117,6 +144,7 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
 
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
+    setFieldErrors({});
 
     saveMutation.mutate(values, {
       onSuccess: (saved) => {
@@ -135,7 +163,7 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
         );
         onSaved();
       },
-      onError: (error) => setFormError(describeSaveError(error, setError)),
+      onError: (error) => setFormError(describeSaveError(error, setError, setFieldErrors)),
     });
   });
 
@@ -148,9 +176,19 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
     formError,
 
     avatarPreviewUrl: avatar.url,
-    avatarError: avatarUpload.error,
+    /**
+     * Что сказать под рамкой фото. Отказ сохранения показывается поверх
+     * ошибки загрузки: он про последнее действие человека — только что
+     * нажатое «Сохранить», — а ошибка загрузки к этому моменту уже
+     * прочитана. Снимается он выбором нового файла, то есть ровно
+     * тогда, когда снова становится актуальной ошибка загрузки.
+     */
+    avatarError: fieldErrors.avatar ?? avatarUpload.error,
     isUploadingAvatar: avatarUpload.isUploading,
-    onAvatarSelect: avatarUpload.select,
+    onAvatarSelect: (file: File) => {
+      clearFieldError('avatar');
+      avatarUpload.select(file);
+    },
     /**
      * Снять фото. Отправленный `avatar: null` не просто забывает ключ —
      * бэкенд удаляет файл с диска, поэтому «убрать» здесь означает именно
@@ -161,22 +199,39 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
     onAvatarRemove: () => {
       setAvatar({ key: null, url: null });
       avatarUpload.clearError();
+      clearFieldError('avatar');
     },
 
     subjects: subjectsQuery.data?.content ?? [],
     subjectIds,
-    onSubjectToggle: (id: number) =>
+    onSubjectToggle: (id: number) => {
+      clearFieldError('subjectIds');
       setSubjectIds((current) =>
         current.includes(id) ? current.filter((each) => each !== id) : [...current, id],
-      ),
+      );
+    },
     isLoadingSubjects: subjectsQuery.isLoading,
-    subjectsError: subjectsQuery.isError ? 'Не удалось загрузить словарь дисциплин' : null,
+    /** Отказ сохранения поверх несостоявшейся загрузки — как у фото. */
+    subjectsError:
+      fieldErrors.subjectIds ??
+      (subjectsQuery.isError ? 'Не удалось загрузить словарь дисциплин' : null),
 
     accounts: accountsQuery.data?.content ?? [],
     userId,
-    onUserIdChange: setUserId,
+    onUserIdChange: (next: number | null) => {
+      clearFieldError('userId');
+      setUserId(next);
+    },
     isLoadingAccounts: accountsQuery.isLoading,
-    accountsError: accountsQuery.isError ? 'Не удалось загрузить справочник учётных записей' : null,
+    accountsError:
+      fieldErrors.userId ??
+      (accountsQuery.isError ? 'Не удалось загрузить справочник учётных записей' : null),
+    /**
+     * Справочник не доехал — отдельным признаком, а не по тексту ошибки:
+     * от него зависит, заперт ли выбор, а место под сообщением может
+     * занять отказ сохранения.
+     */
+    hasAccountsFailed: accountsQuery.isError,
 
     /**
      * Запрос в полёте: кнопка заблокирована. Загрузка фото тоже считается:
@@ -194,25 +249,39 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
 function describeSaveError(
   error: unknown,
   setError: UseFormSetError<TeacherCardFormValues>,
+  setFieldErrors: (errors: ServerFieldErrors) => void,
 ): string | null {
   // До формы доезжает только ApiError — интерцептор приводит к нему всё.
   if (!isApiError(error)) return 'Не удалось сохранить карточку. Попробуйте ещё раз.';
 
-  // Словарь от `@Valid`: имена в нём — имена полей формы.
   if (error.errors) {
-    const homeless = applyFieldErrors(error.errors, TEACHER_CARD_FIELDS, setError);
+    /*
+     * Словарь раскладывается в два приёма, и порядок важен.
+     *
+     * Сначала снимаются три поля, живущие вне формы: учётная запись,
+     * дисциплины и ключ фото. Оставь их общему разбору — они уехали бы
+     * в «бездомные» и показались бы баннером **вдобавок** к сообщению
+     * под собой, потому что `detail` повторяет текст дословно.
+     *
+     * Остальное — имена полей `TeacherRequestDto`, они же имена полей
+     * формы, и их кладёт react-hook-form.
+     */
+    const { taken, rest } = takeFieldErrors(error.errors, FIELDS_OUTSIDE_FORM);
+    setFieldErrors(taken);
+
+    const homeless = applyFieldErrors(rest, TEACHER_CARD_FIELDS, setError);
 
     return homeless.length > 0 ? homeless.join(' ') : null;
   }
 
   /*
-   * Остальное — в баннер как есть, и здесь этого «остального» больше,
-   * чем у других форм портала: занятая учётная запись, учётка без роли
-   * преподавателя, неизвестная дисциплина и негодный ключ фото приходят
-   * от сервиса, а не от `@Valid`, — то есть `400` с одним `detail`,
-   * без словаря. Плюс `404` (карточку удалили, пока форма была открыта),
-   * сеть и `500`. Текст ApiError пригоден для показа: он называет и что
-   * не так, и с какой именно учёткой или дисциплиной.
+   * Остальное — в баннер как есть: `404` (карточку удалили, пока форма
+   * была открыта), сеть, `500`. Текст ApiError пригоден для показа.
+   *
+   * Отказы по учётной записи, дисциплинам и ключу фото сюда больше
+   * не попадают: до T-81 (2026-09-10) они приходили от сервиса одним
+   * `detail`, и показать их можно было только здесь; заявка **B-7**
+   * закрыта, и теперь у каждого есть адрес.
    */
   return error.message;
 }

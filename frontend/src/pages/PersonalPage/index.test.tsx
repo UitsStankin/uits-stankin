@@ -238,6 +238,42 @@ describe('PersonalPage, правка карточки ППС', () => {
     );
   });
 
+  /**
+   * Из трёх ключей `errors` карточки ППС до своей карточки доезжает
+   * только `avatar`: `PUT /api/teachers/me` игнорирует учётную запись
+   * и дисциплины, значит и отвергнуть их не может (docs/API.md, «Своя
+   * карточка»). Заявка **B-7** закрыта T-81, и сообщение обязано встать
+   * под рамкой фото, а не общей плашкой над формой на два экрана.
+   */
+  it('ставит отказ по ключу фото под рамкой фото', async () => {
+    const form = await openTeacherForm();
+
+    // Отказ ставится после открытия формы: `openTeacherForm` сам зовёт
+    // `server.use` с набором своей карточки, и хендлер, положенный до
+    // него, тот бы перекрыл — `server.use` кладёт новые поверх прежних.
+    server.use(
+      http.put('*/api/teachers/me', () =>
+        problemResponse(400, {
+          title: 'Bad Request',
+          detail: 'Файл аватара не найден: avatars/2026/08/zzz.jpg',
+          instance: '/api/teachers/me',
+          errors: { avatar: ['Файл аватара не найден: avatars/2026/08/zzz.jpg'] },
+        }),
+      ),
+    );
+
+    fireEvent.click(form.save);
+
+    const message = await screen.findByText('Файл аватара не найден: avatars/2026/08/zzz.jpg');
+    const block = message.closest('div');
+
+    expect(block).not.toBeNull();
+    // «Выбрать фото» — подпись поверх скрытого `input[type=file]`,
+    // а не кнопка; сообщение лежит с ней в одном блоке.
+    expect(within(block!).getByText('Выбрать фото')).toBeInTheDocument();
+    expect(screen.getAllByText('Файл аватара не найден: avatars/2026/08/zzz.jpg')).toHaveLength(1);
+  });
+
   it('не предлагает вставить картинку: раздел staff преподавателю закрыт', async () => {
     const form = await openTeacherForm();
 
