@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
-import { newsHandlers, problemResponse } from '@shared/api/mocks';
+import { makeNews, newsHandlers, problemResponse } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
 
@@ -78,6 +78,27 @@ describe('NewsPage', () => {
     renderWithProviders(<NewsPage />, { route: '/about/news?page=abc' });
 
     expect(await screen.findByText('Новость 1')).toBeInTheDocument();
+  });
+
+  /**
+   * Порядок держит бэкенд: новые сверху (`@PageableDefault`). Проверка
+   * стоит здесь с F-43, потому что список мока стал изменяемым: созданная
+   * в админке запись дописывается в конец, и лента, показывающая его как
+   * есть, ставила бы свежую новость на последнюю страницу. Ровно это
+   * и обнаружилось при проверке админки в браузере.
+   */
+  it('показывает новые записи сверху, а не в порядке списка', async () => {
+    server.use(
+      ...newsHandlers([
+        makeNews({ id: 1, title: 'Прошлогодняя', createdAt: '2025-09-01T10:15:30.123456+03:00' }),
+        makeNews({ id: 2, title: 'Свежая', createdAt: '2026-09-01T10:15:30.123456+03:00' }),
+      ]),
+    );
+
+    renderWithProviders(<NewsPage />, { route: '/about/news' });
+
+    const titles = await screen.findAllByRole('heading', { level: 3 });
+    expect(titles.map((heading) => heading.textContent)).toEqual(['Свежая', 'Прошлогодняя']);
   });
 
   it('на пустой ленте объясняет, что новостей нет', async () => {
