@@ -14,3 +14,11 @@
 export const labelId = (fieldId: string) => `${fieldId}-label`;
 
 export const errorId = (fieldId: string) => `${fieldId}-error`;
+
+/**
+ * Идентификатор строки-объяснения под полем — той, что говорит
+ * о последствии, а не об ошибке («снятый флажок оставляет запись
+ * черновиком»). Диктор читает её только по `aria-describedby`: рядом
+ * стоящий текст он сам к полю не привяжет.
+ */
+export const hintId = (fieldId: string) => `${fieldId}-hint`;

@@ -328,8 +328,14 @@ describe('AdminNewsPage, создание', () => {
     renderNews();
 
     const form = await openForm();
+    const publish = form.dialog.getByLabelText('Опубликовать');
 
-    expect(form.dialog.getByLabelText('Опубликовать')).toBeChecked();
+    expect(publish).toBeChecked();
+    // Последствие снятого флажка диктор услышит только через
+    // `aria-describedby`: текст рядом в разметке он к полю не привяжет.
+    expect(publish).toHaveAccessibleDescription(
+      'Снятый флажок оставляет запись черновиком: на сайте её не видно.',
+    );
   });
 
   it('не отправляет пустую форму', async () => {

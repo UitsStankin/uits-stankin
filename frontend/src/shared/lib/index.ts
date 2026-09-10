@@ -1,5 +1,5 @@
 export { cn } from './cn';
-export { errorId, labelId } from './fieldIds';
+export { errorId, hintId, labelId } from './fieldIds';
 export { applyFieldErrors } from './formErrors';
 export { formatDate, formatDateTime } from './formatDate';
 export { IMAGE_ACCEPT, IMAGE_HINT, checkImageFile, imageFileOf } from './imageFile';

@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 
-import { cn, errorId, labelId } from '@shared/lib';
+import { cn, errorId, hintId, labelId } from '@shared/lib';
 
 /**
  * Поля формы: текст, селект, многострочное, флажок. Чистые: значение ведёт
@@ -170,6 +170,10 @@ export function CheckboxField({
   error,
   registration,
 }: FieldBaseProps & { hint?: string }) {
+  // Диктору объяснение и ошибка достаются только через `aria-describedby`:
+  // текст, стоящий рядом в разметке, он к полю сам не привяжет.
+  const describedBy = [hint && hintId(id), error && errorId(id)].filter(Boolean).join(' ');
+
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
@@ -177,7 +181,8 @@ export function CheckboxField({
           id={id}
           type="checkbox"
           className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
-          {...ariaProps(id, error)}
+          aria-invalid={error !== undefined}
+          aria-describedby={describedBy === '' ? undefined : describedBy}
           {...registration}
         />
         <label htmlFor={id} className="text-base font-bold text-text-heading">
@@ -185,7 +190,11 @@ export function CheckboxField({
         </label>
       </div>
 
-      {hint && <p className="text-sm text-text-muted">{hint}</p>}
+      {hint && (
+        <p id={hintId(id)} className="text-sm text-text-muted">
+          {hint}
+        </p>
+      )}
 
       {error && (
         <p id={errorId(id)} className="text-sm text-danger">
