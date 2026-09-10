@@ -77,9 +77,12 @@ export const subjectsFixture: readonly Subject[] = [
  * - сортировка `?sort=name,asc|desc` — да: на ней стоит проверка смены
  *   порядка, и клиентская сортировка вместо серверной была бы ровно тем
  *   враньём, от которого таблица отказалась (`manualSorting`);
- * - занятое название — да, `409` с текстом «Конфликт данных.»: именно
- *   так отвечает уникальный индекс базы, и форма переводит этот отказ
- *   в понятный. Мок с готовым текстом проверял бы сам себя;
+ * - занятое название — да, `400` с готовым текстом: с закрытия B-4
+ *   (`c9f8597`, 2026-09-07) дубль проверяет сам сервис, а не уникальный
+ *   индекс базы, и текст отказа называет дисциплину. Мок повторяет
+ *   и статус, и форму текста: на прежний `409` с общим «Конфликт данных.»
+ *   у формы был свой перевод, и мок, оставленный старым, сторожил бы код,
+ *   которого уже нет;
  * - назначенность дисциплины преподавателям — нет: `409` на удаление
  *   заводится точечно в тесте через `server.use`, потому что зависит
  *   от данных, которых у словаря нет.
@@ -108,7 +111,7 @@ export function subjectHandlers(items: readonly Subject[] = subjectsFixture) {
       const taken = current.some(
         (subject) => subject.name.toLowerCase() === body.name.toLowerCase(),
       );
-      if (taken) return conflict('/api/subjects');
+      if (taken) return duplicateName('/api/subjects', body.name);
 
       const created = makeSubject({ id: nextId++, name: body.name, description: body.description });
       current = [...current, created];
@@ -126,7 +129,7 @@ export function subjectHandlers(items: readonly Subject[] = subjectsFixture) {
       const taken = current.some(
         (subject) => subject.id !== id && subject.name.toLowerCase() === body.name.toLowerCase(),
       );
-      if (taken) return conflict(`/api/subjects/${id}`);
+      if (taken) return duplicateName(`/api/subjects/${id}`, body.name);
 
       const updated = { ...existing, name: body.name, description: body.description };
       current = current.map((subject) => (subject.id === id ? updated : subject));
@@ -157,9 +160,20 @@ function sortSubjects(items: readonly Subject[], sort: string | null): readonly 
   return [...items].sort((a, b) => (desc ? -1 : 1) * a.name.localeCompare(b.name, 'ru'));
 }
 
-/** Занятое название: `409` от уникального индекса, текст общий. */
-function conflict(instance: string) {
-  return problemResponse(409, { title: 'Conflict', detail: 'Конфликт данных.', instance });
+/**
+ * Занятое название: `400` с текстом, который называет дисциплину.
+ *
+ * Словаря `errors` в таком отказе нет — сервис отвечает одним `detail`
+ * (проверено на живом стенде 2026-09-10). Из-за этого форме неизвестно,
+ * к какому полю относится сообщение, и она показывает его баннером;
+ * заявка **B-5** просит добавить словарь.
+ */
+function duplicateName(instance: string, name: string) {
+  return problemResponse(400, {
+    title: 'Bad Request',
+    detail: `Дисциплина с названием «${name}» уже существует`,
+    instance,
+  });
 }
 
 function notFound(instance: string) {

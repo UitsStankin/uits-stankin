@@ -1,5 +1,6 @@
 export { cn } from './cn';
 export { errorId, labelId } from './fieldIds';
+export { focusPageContent } from './focusPageContent';
 export { applyFieldErrors } from './formErrors';
 export { formatDate, formatDateTime } from './formatDate';
 export { IMAGE_ACCEPT, IMAGE_HINT, checkImageFile, imageFileOf } from './imageFile';
