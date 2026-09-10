@@ -106,7 +106,7 @@ describe('ContributorsPage', () => {
     expect(photosIn(cardOf('Ерин Сергей'))[0]).toHaveAttribute('src', DEFAULT_AVATAR_URL);
     expect(photosIn(cardOf('Малова Яна'))[0]).toHaveAttribute(
       'src',
-      '/assets/images/contributors/malova-iana.jpg',
+      '/img/contributors/malova-iana.jpg',
     );
   });
 

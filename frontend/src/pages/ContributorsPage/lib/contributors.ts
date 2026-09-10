@@ -27,7 +27,7 @@ export interface Contributor {
 }
 
 /** Каталог снимков. Отдельной константой, чтобы путь не повторялся десять раз. */
-const PHOTOS = '/assets/images/contributors';
+const PHOTOS = '/img/contributors';
 
 /**
  * Те, кто делал портал кафедры, — содержимое страницы

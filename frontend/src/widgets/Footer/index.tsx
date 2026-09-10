@@ -40,7 +40,7 @@ export default function Footer({ className }: FooterProps) {
         >
           {/* Логотип бренда, а не абстрактная иконка: в lucide телеграма нет,
               а подменять его самолётиком Send — терять узнаваемость. */}
-          <img src="/assets/images/telegram.png" alt="" className="h-8.75 w-8.75" aria-hidden />
+          <img src="/img/telegram.png" alt="" className="h-8.75 w-8.75" aria-hidden />
         </a>
       </div>
     </footer>
