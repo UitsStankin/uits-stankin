@@ -121,9 +121,10 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         /** Метод контроллера — попадает в RequestMappingHandlerMapping и проверяется сторожем. */
         CONTROLLER,
         /**
-         * Раздача статики ({@code /media}) и actuator: их обслуживают другие
-         * handler mapping, в списке контроллерных ручек их нет. В матрице они
-         * нужны — доступ у них тоже есть, — но сторож их не ищет.
+         * Actuator: его обслуживает другой handler mapping, в списке
+         * контроллерных ручек его нет. В матрице он нужен — доступ у него тоже
+         * есть, — но сторож его не ищет. Раздача {@code /media} была здесь же,
+         * пока её не забрал nginx (T-85).
          */
         INFRASTRUCTURE
     }
@@ -247,7 +248,6 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.PUT, "/api/helpers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/helpers/{id}", EDITORS),
 
-            infrastructure(HttpMethod.GET, "/media/{key}", ANYONE),
             infrastructure(HttpMethod.GET, "/actuator/health", ANYONE)
     );
 
@@ -381,7 +381,6 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         String path = endpoint.path()
                 .replace("{id}", String.valueOf(fixture.newsId()))
                 .replace("{teacherId}", TEACHER_ID)
-                .replace("{key}", MEDIA_KEY)
                 .replace("{slug}", PAGE_SLUG)
                 + query(endpoint);
 

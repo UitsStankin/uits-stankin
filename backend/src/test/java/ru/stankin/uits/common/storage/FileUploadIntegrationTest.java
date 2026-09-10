@@ -209,9 +209,13 @@ class FileUploadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getBody().getDetail()).isEqualTo("Файл превышает допустимый размер.");
     }
 
-    /** Адрес из ответа должен работать без токена: картинки открывают посетители сайта. */
+    /**
+     * Адрес из ответа должен указывать на реально существующий файл. Отдаёт его
+     * посетителям nginx, а не приложение: раздача снята в T-86, и запрос
+     * по тому же адресу до приложения в проде не доходит вовсе.
+     */
     @Test
-    void uploadedFile_IsServedByReturnedUrlWithoutToken() throws IOException {
+    void uploadedFile_LandsInStorageUnderReturnedUrl() throws IOException {
         createUser("admin", TestRole.ADMIN);
         String token = login("admin");
         ResponseEntity<FileUploadResponseDto> upload = restTemplate.postForEntity(
@@ -219,11 +223,15 @@ class FileUploadIntegrationTest extends AbstractIntegrationTest {
                 FileUploadResponseDto.class);
         assertThat(upload.getBody()).isNotNull();
 
-        ResponseEntity<byte[]> served = restTemplate.getForEntity(upload.getBody().url(), byte[].class);
+        String url = upload.getBody().url();
+        assertThat(url).startsWith("/media/");
 
-        assertThat(served.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(served.getBody()).isNotEmpty();
-        assertThat(ImageIO.read(new java.io.ByteArrayInputStream(served.getBody()))).isNotNull();
+        Path stored = STORAGE_ROOT.resolve(url.substring("/media/".length()));
+        assertThat(Files.exists(stored)).isTrue();
+        assertThat(ImageIO.read(stored.toFile())).isNotNull();
+
+        assertThat(restTemplate.getForEntity(url, byte[].class).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test

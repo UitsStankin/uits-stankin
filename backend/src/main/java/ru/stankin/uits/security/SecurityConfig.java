@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -39,8 +38,7 @@ public class SecurityConfig {
             UploadRateLimitFilter uploadRateLimitFilter,
             AuthenticationProvider authenticationProvider,
             JwtAuthenticationEntryPoint authenticationEntryPoint,
-            RestAccessDeniedHandler accessDeniedHandler,
-            @Value("${application.storage.public-base-url}") String mediaBaseUrl
+            RestAccessDeniedHandler accessDeniedHandler
     ) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -50,7 +48,6 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, mediaBaseUrl + "/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .anyRequest().authenticated()
                 ).exceptionHandling(
