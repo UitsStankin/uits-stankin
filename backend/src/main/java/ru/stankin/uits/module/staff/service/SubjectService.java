@@ -5,7 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
-import ru.stankin.uits.common.exception.InvalidRequestException;
+import ru.stankin.uits.common.exception.FieldValidationException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.exception.ResourceInUseException;
 import ru.stankin.uits.module.staff.dto.SubjectDto;
@@ -34,7 +34,7 @@ public class SubjectService {
         String name = request.getName().trim();
 
         if (subjectRepository.existsByNameIgnoreCase(name)) {
-            throw new InvalidRequestException("Дисциплина с названием «" + name + "» уже существует");
+            throw new FieldValidationException("name", "Дисциплина с названием «" + name + "» уже существует");
         }
 
         Subject subject = Subject.builder()
@@ -51,7 +51,7 @@ public class SubjectService {
         String name = request.getName().trim();
 
         if (subjectRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
-            throw new InvalidRequestException("Дисциплина с названием «" + name + "» уже существует");
+            throw new FieldValidationException("name", "Дисциплина с названием «" + name + "» уже существует");
         }
 
         subject.setName(name);

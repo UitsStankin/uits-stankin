@@ -24,6 +24,7 @@ import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -241,6 +242,8 @@ class UserAdminIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getDetail()).isEqualTo("Логин уже занят: novikov");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("username", List.of("Логин уже занят: novikov")));
     }
 
     @Test

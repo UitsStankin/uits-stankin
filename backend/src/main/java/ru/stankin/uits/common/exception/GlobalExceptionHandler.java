@@ -124,6 +124,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(FieldValidationException.class)
+    public ProblemDetail handleFieldValidation(FieldValidationException ex) {
+        ProblemDetail problem = problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setProperty("errors", Map.of(ex.getField(), List.of(ex.getMessage())));
+
+        return problem;
+    }
+
     @ExceptionHandler(InvalidRequestException.class)
     public ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
