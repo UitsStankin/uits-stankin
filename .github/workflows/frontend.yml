@@ -15,6 +15,9 @@ on:
       - "frontend/**"
       - "!frontend/**.md"
       - ".github/workflows/frontend.yml"
+  # Вызов из deploy.yml: на push в main этот workflow сам по себе не стартует,
+  # и без него в прод уехал бы фронтенд, чьи тесты никто не прогонял
+  workflow_call:
 
 concurrency:
   group: frontend-ci-${{ github.ref }}

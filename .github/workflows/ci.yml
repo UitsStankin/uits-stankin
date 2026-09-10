@@ -185,3 +185,14 @@ jobs:
           tags: ghcr.io/uitsstankin/uits-schedule-service:${{ github.sha }}
           cache-from: type=gha,scope=schedule
           cache-to: type=gha,mode=max,scope=schedule
+
+      # Фронтенд запечён в образ вместе с nginx (ARCHITECTURE §7.1): доставлять
+      # dist на сервер не нужно, откат делается предыдущим тегом образа
+      - name: Сборка и публикация образа фронтенда
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: frontend
+          push: true
+          tags: ghcr.io/uitsstankin/uits-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend

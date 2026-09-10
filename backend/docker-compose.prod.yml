@@ -41,8 +41,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # Порт наружу не публикуется: снаружи приложение доступно только через
+    # nginx. Публикация оставляла бы обход прокси, а вместе с ним — обход
+    # ограничения размера тела запроса и подмену X-Forwarded-For
     environment:
       # Обязательно: без прод-профиля сработает профиль по умолчанию dev,
       # и DevDataSeeder зальёт тестовые учётки в боевую базу
@@ -111,6 +112,32 @@ services:
       retries: 5
       start_period: 10s
     mem_limit: 512m
+    networks:
+      - uits_network
+
+  # Фронтенд запечён в образ вместе со своим nginx: доставлять dist на сервер
+  # не нужно, а откат фронта делается тем же способом, что откат бэкенда —
+  # предыдущим тегом образа. Он же терминирует внешний трафик и раздаёт /media
+  nginx:
+    image: ghcr.io/uitsstankin/uits-frontend:${IMAGE_TAG:?не задан IMAGE_TAG}
+    container_name: uits_nginx
+    restart: unless-stopped
+    # Без condition: страницы должны открываться и при больном бэкенде — API
+    # ответит 502, но портал останется виден. Зависимость нужна лишь для того,
+    # чтобы имя backend резолвилось в сети к моменту старта nginx
+    depends_on:
+      - backend
+    ports:
+      - "80:8080"
+    volumes:
+      - media_data:/srv/media:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    mem_limit: 128m
     networks:
       - uits_network
 
