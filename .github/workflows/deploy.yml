@@ -46,10 +46,67 @@ jobs:
           source: "backend/docker-compose.prod.yml"
           target: "/opt/uits/"
 
-      - name: Запуск на сервере
+      - name: Пишем .env на сервер
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5
         env:
           IMAGE_TAG: ${{ github.sha }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: IMAGE_TAG,POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,CORS_ALLOWED_ORIGINS,SERPER_API_KEY
+          # Прод-значения живут в секретах environment production, а не в файле,
+          # который правят руками на сервере. IMAGE_TAG пишется туда же: откат
+          # тогда сводится к правке одной строки и `up -d`, без прогона workflow.
+          #
+          # Значение пишется в одинарных кавычках, и это не косметика.
+          # Содержимое .env compose интерполирует: пароль вида `p$ss` без
+          # кавычек превращается в `p` — подстрока `$ss` читается как пустая
+          # переменная, приложение молча получает не тот пароль. Решётка после
+          # пробела точно так же обрезает хвост значения как комментарий.
+          # Кавычки снимают оба случая; не переживают они только собственную
+          # одинарную кавычку внутри значения, поэтому такой секрет валит шаг
+          # явной ошибкой вместо пустой строки в .env.
+          #
+          # umask 077 закрывает файл до его создания — между записью и chmod
+          # иначе есть окно, когда .env читаем всем.
+          script: |
+            set -e
+            cd /opt/uits/backend
+
+            for name in IMAGE_TAG POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD \
+                        JWT_SECRET_KEY CORS_ALLOWED_ORIGINS SERPER_API_KEY; do
+              eval "value=\${$name}"
+              case "$value" in
+                *"'"*)
+                  echo "секрет $name содержит одинарную кавычку — .env такого не переживёт" >&2
+                  exit 1
+                  ;;
+              esac
+            done
+
+            umask 077
+            {
+              printf "IMAGE_TAG='%s'\n" "$IMAGE_TAG"
+              printf "POSTGRES_DB='%s'\n" "$POSTGRES_DB"
+              printf "POSTGRES_USER='%s'\n" "$POSTGRES_USER"
+              printf "POSTGRES_PASSWORD='%s'\n" "$POSTGRES_PASSWORD"
+              printf "JWT_SECRET_KEY='%s'\n" "$JWT_SECRET_KEY"
+              printf "CORS_ALLOWED_ORIGINS='%s'\n" "$CORS_ALLOWED_ORIGINS"
+              printf "SERPER_API_KEY='%s'\n" "$SERPER_API_KEY"
+            } > .env
+            chmod 600 .env
+
+      - name: Запуск на сервере
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5
+        env:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -58,8 +115,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           # Переменные окружения шага не попадают в ssh-сессию сами по себе —
-          # их нужно перечислить здесь
-          envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          # их нужно перечислить здесь. IMAGE_TAG среди них больше нет:
+          # он лежит в .env, откуда compose читает его сам
+          envs: GHCR_USER,GHCR_TOKEN
           script: |
             set -e
             cd /opt/uits/backend
@@ -67,12 +125,24 @@ jobs:
             # Пакет в GHCR приватный, без логина pull получит 403
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # Тянем и поднимаем только приложение: compose пересоздаёт
-            # изменившийся сервис, база при этом не останавливается
-            docker compose -f docker-compose.prod.yml pull backend
-            docker compose -f docker-compose.prod.yml up -d
+            # Без имени сервиса: тем же тегом едет и образ микросервиса,
+            # раньше он приезжал неявно на `up`
+            docker compose -f docker-compose.prod.yml pull
+
+            # Логин дальше не нужен: всё, что тянется из registry, уже локально
+            docker logout ghcr.io
+
+            # --wait держит шаг, пока healthcheck каждого сервиса не позеленеет,
+            # и отдаёт ненулевой код, если не дождался. Без него деплой считался
+            # успешным и тогда, когда приложение падало на миграциях: `up -d`
+            # рапортует о запуске контейнера, а не о готовности приложения.
+            # База при этом не останавливается — compose пересоздаёт только
+            # изменившиеся сервисы.
+            if ! docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 240; then
+              docker compose -f docker-compose.prod.yml ps
+              docker compose -f docker-compose.prod.yml logs --tail 200 backend
+              exit 1
+            fi
 
             # Чистим старые образы, чтобы не забивать диск
             docker image prune -f
-
-            docker logout ghcr.io

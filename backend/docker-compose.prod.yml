@@ -76,6 +76,19 @@ services:
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
       ORPHAN_CLEANUP_MIN_AGE: ${ORPHAN_CLEANUP_MIN_AGE:-86400000}
       ORPHAN_CLEANUP_CATEGORIES: ${ORPHAN_CLEANUP_CATEGORIES:-news,avatars,achievements,publications,staff,pages}
+    # Готовность, а не факт запуска процесса: readiness зеленеет только после
+    # миграций Liquibase и полного подъёма контекста, и деплой ждёт именно
+    # этого — `up -d --wait` не вернёт успех, пока проба не пройдёт.
+    # curl взят из базового образа eclipse-temurin:21-jre, где он уже есть;
+    # при смене базы healthcheck нужно проверить заново.
+    # start_period держит стартовые неудачи незачтёнными: приложение
+    # поднимается дольше, чем интервал между пробами.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 60s
     mem_limit: 1536m
     volumes:
       - media_data:/app/media
