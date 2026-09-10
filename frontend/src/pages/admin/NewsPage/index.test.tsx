@@ -497,6 +497,109 @@ describe('AdminNewsPage, правка', () => {
   });
 
   /**
+   * Черновик обязан открыться черновиком. Начальное значение флажка —
+   * единственное место, где `display: false` вообще участвует в форме,
+   * и без сторожа замена его на «всегда опубликовано» осталась бы
+   * незамеченной: правка чужого черновика молча выкладывала бы его
+   * на сайт.
+   */
+  it('открывает черновик со снятым флажком публикации', async () => {
+    renderNews();
+
+    const form = await openEditor('Черновик новости');
+
+    expect(form.getByLabelText('Опубликовать')).not.toBeChecked();
+  });
+
+  /**
+   * `PUT` — полная замена: поле, не пришедшее в теле, обнуляется
+   * (docs/API.md). Форма показывает не все поля записи — ключа обложки
+   * в ней нет вовсе, — и потерянный ключ означает не «забыли поле»,
+   * а **удалённый с диска файл**. Поэтому тело запроса проверяется целиком,
+   * а не по таблице.
+   */
+  it('отправляет в правке все поля, включая невидимые в форме', async () => {
+    const withCover = makeNews({
+      id: 7,
+      title: 'Итоги олимпиады',
+      shortDescription: 'Кафедра взяла три призовых места.',
+      previewImage: 'news/2026/08/olymp.jpg',
+      previewImageUrl: '/media/news/2026/08/olymp.jpg',
+      previewImageDescription: 'Победители на сцене',
+      content: '<p>Подробности</p>',
+    });
+
+    let sent: NewsRequest | null = null;
+    // Перехватчик — первым: `server.use` проверяет хендлеры по порядку,
+    // и `PUT` из общего набора ответил бы раньше него.
+    server.use(
+      http.put('*/api/news/:id', async ({ request }) => {
+        sent = (await request.json()) as NewsRequest;
+
+        return HttpResponse.json({ ...withCover, title: 'Итоги олимпиады 2026' });
+      }),
+      ...newsHandlers([withCover]),
+    );
+
+    renderNews();
+
+    const form = await openEditor('Итоги олимпиады');
+    fireEvent.change(titleField(form), { target: { value: 'Итоги олимпиады 2026' } });
+    fireEvent.click(form.getByRole('button', { name: 'Сохранить' }));
+
+    await screen.findByText('Запись «Итоги олимпиады 2026» сохранена');
+
+    expect(sent).toEqual({
+      title: 'Итоги олимпиады 2026',
+      shortDescription: 'Кафедра взяла три призовых места.',
+      postType: 'news',
+      previewImage: 'news/2026/08/olymp.jpg',
+      previewImageDescription: 'Победители на сцене',
+      content: '<p>Подробности</p>',
+      display: true,
+    });
+  });
+
+  /**
+   * Снятие обложки — единственное место, откуда картинка удаляется
+   * с диска намеренно: `previewImage: null` бэкенд понимает именно так.
+   * Описание уходит вместе с ней: без картинки оно ничего не описывает,
+   * а оставшись в форме, всплыло бы подписью у следующей.
+   */
+  it('снимает обложку вместе с её описанием', async () => {
+    const withCover = makeNews({
+      id: 8,
+      title: 'Итоги олимпиады',
+      previewImage: 'news/2026/08/olymp.jpg',
+      previewImageUrl: '/media/news/2026/08/olymp.jpg',
+      previewImageDescription: 'Победители на сцене',
+    });
+
+    let sent: NewsRequest | null = null;
+    server.use(
+      http.put('*/api/news/:id', async ({ request }) => {
+        sent = (await request.json()) as NewsRequest;
+
+        return HttpResponse.json(withCover);
+      }),
+      ...newsHandlers([withCover]),
+    );
+
+    renderNews();
+
+    const form = await openEditor('Итоги олимпиады');
+    expect(form.getByLabelText('Описание обложки')).toHaveValue('Победители на сцене');
+
+    fireEvent.click(form.getByRole('button', { name: 'Убрать обложку' }));
+    expect(form.queryByLabelText('Описание обложки')).not.toBeInTheDocument();
+
+    fireEvent.click(form.getByRole('button', { name: 'Сохранить' }));
+    await screen.findByText('Запись «Итоги олимпиады» сохранена');
+
+    expect(sent).toMatchObject({ previewImage: null, previewImageDescription: null });
+  });
+
+  /**
    * Начальные значения берутся при монтировании окна: открой форму второй
    * записи, не размонтировав первую, — в полях осталась бы предыдущая,
    * и правка ушла бы не туда.

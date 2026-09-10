@@ -51,6 +51,7 @@ export function useNewsForm(news: News | null, onSaved: () => void) {
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<NewsFormValues>({
     resolver: zodResolver(newsSchema),
@@ -126,9 +127,17 @@ export function useNewsForm(news: News | null, onSaved: () => void) {
      * Снять обложку. Отправленный `previewImage: null` не просто забывает
      * ключ — бэкенд удаляет файл с диска (docs/API.md, «Обложка новости»),
      * поэтому «убрать» здесь означает именно убрать, а не спрятать.
+     *
+     * Описание стирается вместе с картинкой, и это не уборка ради порядка.
+     * Поле описания без обложки не рисуется, а react-hook-form помнит
+     * значение снятого с экрана поля — то есть текст от прежней картинки
+     * уехал бы подписью к следующей, а слишком длинный (больше 256) ещё
+     * и заблокировал бы отправку формы ошибкой на поле, которого на экране
+     * нет: кнопка «просто не работает», и объяснения не видно нигде.
      */
     onCoverRemove: () => {
       setCover({ key: null, url: null });
+      setValue('previewImageDescription', '');
       coverUpload.clearError();
     },
 

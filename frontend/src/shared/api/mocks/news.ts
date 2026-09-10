@@ -120,6 +120,12 @@ function buildFixture(): readonly News[] {
  * Список берётся аргументом, чтобы тест пустой ленты был одной строкой
  * `server.use(...newsHandlers([]))`, а не копией хендлера с другим телом.
  *
+ * **Тесту, который что-то создаёт, правит или удаляет, нужен свой набор**
+ * — `server.use(...newsHandlers())` в `beforeEach`. Общий набор
+ * (`handlers.ts`) собирается один раз на процесс, `resetHandlers` его
+ * состояние не откатывает, и заведённая запись досталась бы соседнему
+ * файлу.
+ *
  * Что мок повторяет из контракта, а что нет:
  *
  * - **фильтр `display`** — да, и это половина смысла отдельной админской
@@ -268,7 +274,13 @@ function filterByType(items: readonly News[], url: URL): readonly News[] {
 function sortByCreatedAt(items: readonly News[], sort: string | null): readonly News[] {
   const asc = sort === 'createdAt,asc';
 
-  return [...items].sort((a, b) => (asc ? 1 : -1) * a.createdAt.localeCompare(b.createdAt));
+  // Сравниваются моменты, а не строки. Строкой сравнивать нельзя: даты
+  // в фикстуре со смещением `+03:00`, а созданная запись получает
+  // `toISOString()` с `Z`, и лексикографически «10:15+03:00» больше,
+  // чем «09:00Z», хотя произошло раньше.
+  return [...items].sort(
+    (a, b) => (asc ? 1 : -1) * (Date.parse(a.createdAt) - Date.parse(b.createdAt)),
+  );
 }
 
 /**
