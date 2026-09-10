@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { teacherKeys } from '@entities/teacher';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, takeFieldErrors } from '@shared/lib';
 import type { FileUploadResponse, Teacher } from '@shared/types';
 
 import { updateMyTeacherCard } from '../api/teacherCardApi';
@@ -53,8 +53,18 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
     defaultValues: teacherToFormValues(card),
   });
 
-  /** Ошибка, которая не легла ни на одно поле: сеть, 500, негодный ключ фото. */
+  /** Ошибка, которая не легла ни на одно поле: сеть, 500, 404. */
   const [formError, setFormError] = useState<string | null>(null);
+  /**
+   * Отказ по ключу фото — единственный, у которого здесь есть адрес.
+   *
+   * Учётную запись и дисциплины `PUT /api/teachers/me` игнорирует, значит
+   * и отвергнуть их не может: из трёх ключей `errors` карточки ППС сюда
+   * доезжает только `avatar` (docs/API.md, «Своя карточка»). Живёт своим
+   * состоянием, потому что фото — не поле формы, а состояние загрузки,
+   * и `setError` на него не наведёшь.
+   */
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   /** Загруженное на замену фото; `null` — оставляем прежнее. */
   const [newAvatar, setNewAvatar] = useState<FileUploadResponse | null>(null);
 
@@ -63,6 +73,7 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
 
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
+    setAvatarError(null);
 
     // Ключ фото для полной замены: новый — из загрузки, иначе прежний
     // из карточки. `PUT` полностью заменяет запись, и не прислать ключ
@@ -82,7 +93,7 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
         queryClient.setQueryData(teacherKeys.me(), fresh);
         onSaved();
       },
-      onError: (error) => setFormError(describeTeacherCardError(error, setError)),
+      onError: (error) => setFormError(describeTeacherCardError(error, setError, setAvatarError)),
     });
   });
 
@@ -99,9 +110,18 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
     formError,
     /** Что показывать в кружке предпросмотра; `null` — заглушку. */
     avatarPreviewUrl: newAvatar?.url ?? card.avatarUrl,
-    avatarError: avatarUpload.error,
+    /**
+     * Отказ сохранения показывается поверх ошибки загрузки: он про
+     * последнее действие — только что нажатое «Сохранить», — а ошибка
+     * загрузки к этому моменту уже прочитана. Снимается выбором нового
+     * файла, то есть когда ошибка загрузки снова становится актуальной.
+     */
+    avatarError: avatarError ?? avatarUpload.error,
     isUploadingAvatar: avatarUpload.isUploading,
-    onAvatarSelect: avatarUpload.select,
+    onAvatarSelect: (file: File) => {
+      setAvatarError(null);
+      avatarUpload.select(file);
+    },
     /**
      * Запрос в полёте: кнопка блокируется. Загрузка фото тоже считается:
      * сохранение в этот момент ушло бы со старым ключом, и только что
@@ -118,18 +138,24 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
 function describeTeacherCardError(
   error: unknown,
   setError: UseFormSetError<TeacherCardFormValues>,
+  setAvatarError: (message: string | null) => void,
 ): string | null {
   // До формы доезжает только ApiError — интерцептор приводит к нему всё.
   if (!isApiError(error)) return 'Не удалось сохранить карточку. Попробуйте ещё раз.';
 
-  // Словарь от `@Valid`: имена в нём — имена полей формы.
   if (error.errors) {
-    const homeless = applyFieldErrors(error.errors, TEACHER_CARD_FIELDS, setError);
+    // Ключ фото — вперёд общего разбора: в форме он не поле, и без этого
+    // уехал бы в «бездомные», то есть показался бы баннером вдобавок
+    // к сообщению под рамкой — `detail` повторяет его дословно.
+    const { taken, rest } = takeFieldErrors(error.errors, ['avatar']);
+    setAvatarError(taken.avatar ?? null);
+
+    const homeless = applyFieldErrors(rest, TEACHER_CARD_FIELDS, setError);
     return homeless.length > 0 ? homeless.join(' ') : null;
   }
 
-  // Остальное — в баннер как есть: 400 без словаря (негодный ключ фото,
-  // незнакомый код степени), 404 (карточку отвязали, пока форма была
-  // открыта), сеть, 500. Текст ApiError пригоден для показа.
+  // Остальное — в баннер как есть: 400 без словаря (незнакомый код
+  // степени), 404 (карточку отвязали, пока форма была открыта), сеть,
+  // 500. Текст ApiError пригоден для показа.
   return error.message;
 }

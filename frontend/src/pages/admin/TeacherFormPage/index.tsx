@@ -121,6 +121,7 @@ function TeacherEditor({ card, onDone }: { card: Teacher | null; onDone: () => v
               onChange={form.onUserIdChange}
               isLoading={form.isLoadingAccounts}
               error={form.accountsError}
+              hasFailed={form.hasAccountsFailed}
             />
           </>
         }

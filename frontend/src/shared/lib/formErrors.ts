@@ -43,3 +43,45 @@ export function applyFieldErrors<TFieldValues extends FieldValues>(
 
   return homeless;
 }
+
+/**
+ * Снимает со словаря `errors` сообщения тех полей, которых в форме нет,
+ * но которым есть где показаться.
+ *
+ * Такие поля у портала есть, и это не небрежность формы: ключ фото,
+ * набор отмеченных дисциплин и выбранная учётная запись — не поля ввода,
+ * они живут в состоянии хука (разбор в `features/manage-teachers`).
+ * `setError` react-hook-form на них не наведёшь, а показать сообщение
+ * рядом с тем, что править, надо — под рамкой фото, под списком, под
+ * выпадающим списком.
+ *
+ * Возвращает пару: снятое (по одному сообщению на поле, как и у
+ * `applyFieldErrors`) и остаток словаря — его вызывающий отдаёт
+ * `applyFieldErrors`, а что не легло и туда, показывает баннером.
+ *
+ * Порядок именно такой — сначала снять, потом разложить: иначе поле,
+ * которого в форме нет, уехало бы в «бездомные» и показалось бы
+ * баннером **вдобавок** к сообщению под собой. `detail` у таких отказов
+ * повторяет текст дословно (docs/API.md, «Формат ошибок»), и человек
+ * увидел бы одно и то же дважды.
+ */
+export function takeFieldErrors<K extends string>(
+  errors: Record<string, string[]>,
+  fields: readonly K[],
+): { taken: Partial<Record<K, string>>; rest: Record<string, string[]> } {
+  const taken: Partial<Record<K, string>> = {};
+  const rest: Record<string, string[]> = {};
+
+  for (const [field, messages] of Object.entries(errors)) {
+    if (messages.length === 0) continue;
+
+    if ((fields as readonly string[]).includes(field)) {
+      // Все сообщения, а не первое: порядок в списке не гарантирован.
+      taken[field as K] = messages.join(' ');
+    } else {
+      rest[field] = messages;
+    }
+  }
+
+  return { taken, rest };
+}

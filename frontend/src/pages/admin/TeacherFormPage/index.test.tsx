@@ -355,32 +355,133 @@ describe('TeacherFormPage, создание', () => {
   });
 
   /**
-   * Занятая учётка приходит от сервиса, а не от `@Valid`: `400` с одним
-   * `detail`, без словаря. Подсветить поле нечем, и сообщение обязано
-   * дойти баннером — иначе форма молча ничего не сохранит.
+   * Три поля карточки живут вне react-hook-form — учётка, дисциплины
+   * и ключ фото, — и до T-81 их отказы приходили без адреса, одним
+   * `detail`. Заявка **B-7** закрыта, у каждого есть ключ, и сообщение
+   * обязано встать под своим полем, а не в общей плашке наверху формы:
+   * поля на этой странице разделяют два редактора TipTap, и плашку над
+   * ними человек, стоящий у списка дисциплин, просто не увидит.
    */
-  it('показывает баннером отказ по занятой учётной записи', async () => {
+  async function submitNewCard() {
+    fireEvent.change(await screen.findByLabelText('Фамилия'), { target: { value: 'Волков' } });
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Артём' } });
+    fireEvent.change(screen.getByLabelText('Должность'), { target: { value: 'ассистент' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Создать' }));
+  }
+
+  /** Поле вместе с подписью и сообщением под ним. */
+  function fieldBlock(label: string) {
+    const block = screen.getByLabelText(label).closest('div');
+
+    if (!block) throw new Error(`поля «${label}» нет в разметке`);
+
+    return within(block);
+  }
+
+  it('ставит отказ по занятой учётной записи под её полем', async () => {
     server.use(
       http.post(TEACHERS, () =>
         problemResponse(400, {
           title: 'Bad Request',
           detail: 'Учётная запись уже связана с карточкой преподавателя id=3',
           instance: '/api/teachers',
+          errors: { userId: ['Учётная запись уже связана с карточкой преподавателя id=3'] },
         }),
       ),
     );
 
     renderForm('/admin/teachers/new');
-
-    fireEvent.change(await screen.findByLabelText('Фамилия'), { target: { value: 'Волков' } });
-    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Артём' } });
-    fireEvent.change(screen.getByLabelText('Должность'), { target: { value: 'ассистент' } });
-    fireEvent.change(screen.getByLabelText('Учётная запись'), { target: { value: '101' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Создать' }));
+    await submitNewCard();
 
     expect(
-      await screen.findByText('Учётная запись уже связана с карточкой преподавателя id=3'),
+      await fieldBlock('Учётная запись').findByText(
+        'Учётная запись уже связана с карточкой преподавателя id=3',
+      ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * `detail` повторяет сообщение словаря дословно (docs/API.md, «Формат
+   * ошибок»), поэтому показать надо что-то одно. Сторож на разложенное
+   * дважды: под полем и заодно баннером.
+   */
+  it('не повторяет сообщение баннером над формой', async () => {
+    server.use(
+      http.post(TEACHERS, () =>
+        problemResponse(400, {
+          title: 'Bad Request',
+          detail: 'Дисциплины не найдены: [42]',
+          instance: '/api/teachers',
+          errors: { subjectIds: ['Дисциплины не найдены: [42]'] },
+        }),
+      ),
+    );
+
+    renderForm('/admin/teachers/new');
+    await submitNewCard();
+
+    expect(await screen.findByText('Дисциплины не найдены: [42]')).toBeInTheDocument();
+    expect(screen.getAllByText('Дисциплины не найдены: [42]')).toHaveLength(1);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Ключ фото — третий такой ключ, и адрес у него есть **только**
+   * в карточке ППС: у обложек новостей, у файла публикации и у аватаров
+   * УВП и профиля тот же отказ приходит одним `detail` (docs/API.md).
+   */
+  it('ставит отказ по ключу фото под рамкой фото', async () => {
+    server.use(
+      http.post(TEACHERS, () =>
+        problemResponse(400, {
+          title: 'Bad Request',
+          detail: 'Файл аватара не найден: avatars/2026/08/zzz.jpg',
+          instance: '/api/teachers',
+          errors: { avatar: ['Файл аватара не найден: avatars/2026/08/zzz.jpg'] },
+        }),
+      ),
+    );
+
+    renderForm('/admin/teachers/new');
+    await submitNewCard();
+
+    const message = await screen.findByText('Файл аватара не найден: avatars/2026/08/zzz.jpg');
+
+    // Рядом с выбором файла, а не наверху формы: сообщение лежит
+    // в одном блоке с подписью «Выбрать фото». Подпись, а не кнопка —
+    // это `<label>` поверх скрытого `input[type=file]`.
+    const block = message.closest('div');
+
+    expect(block).not.toBeNull();
+    expect(within(block!).getByText('Выбрать фото')).toBeInTheDocument();
+  });
+
+  /**
+   * Правка поля снимает серверный отказ — так же, как react-hook-form
+   * снимает свои `type: 'server'`. Иначе «Учётная запись уже связана
+   * с карточкой id=3» висит под уже выбранной другой учёткой и врёт.
+   */
+  it('снимает отказ, когда поле поправили', async () => {
+    server.use(
+      http.post(TEACHERS, () =>
+        problemResponse(400, {
+          title: 'Bad Request',
+          detail: 'Учётная запись уже связана с карточкой преподавателя id=3',
+          instance: '/api/teachers',
+          errors: { userId: ['Учётная запись уже связана с карточкой преподавателя id=3'] },
+        }),
+      ),
+    );
+
+    renderForm('/admin/teachers/new');
+    await submitNewCard();
+    await screen.findByText('Учётная запись уже связана с карточкой преподавателя id=3');
+
+    fireEvent.change(screen.getByLabelText('Учётная запись'), { target: { value: '101' } });
+
+    expect(
+      screen.queryByText('Учётная запись уже связана с карточкой преподавателя id=3'),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -418,6 +519,15 @@ describe('TeacherFormPage, создание', () => {
       await screen.findByText('Не удалось загрузить справочник учётных записей'),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Учётная запись')).toBeDisabled();
+
+    // Пустой пункт объясняет запертый выбор сам: место под полем может
+    // занять отказ сохранения, и «почему не нажимается» осталось бы
+    // без ответа.
+    expect(
+      within(screen.getByLabelText('Учётная запись')).getByRole('option', {
+        name: 'Справочник не доехал',
+      }),
+    ).toBeInTheDocument();
   });
 
   /** ФИО в справочнике бывает не заполнено вовсе — пустой пункт выбрать можно, а понять нельзя. */

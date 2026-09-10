@@ -10,8 +10,18 @@ interface AccountFieldProps {
   onChange: (userId: number | null) => void;
   /** Справочник ещё едет: список пуст не потому, что учёток нет. */
   isLoading: boolean;
-  /** Справочник не доехал вовсе. `null` — доехал. */
+  /**
+   * Что сказать под полем: сбой справочника либо отказ сервера по связи.
+   * `null` — сообщения нет.
+   */
   error: string | null;
+  /**
+   * Справочник не доехал — отдельным признаком, а не по наличию `error`:
+   * от него зависит, заперт ли выбор, а место под сообщением может занять
+   * отказ сохранения («Учётная запись уже связана с карточкой id=3»),
+   * и тогда по тексту сбой справочника уже не отличить.
+   */
+  hasFailed: boolean;
 }
 
 /**
@@ -41,6 +51,7 @@ export function AccountField({
   onChange,
   isLoading,
   error,
+  hasFailed,
 }: AccountFieldProps) {
   const id = 'teacher-account';
 
@@ -53,14 +64,17 @@ export function AccountField({
           'text-base text-text-default transition-colors focus:border-primary focus:ring-0',
           'disabled:cursor-not-allowed disabled:opacity-60',
         )}
-        // Пока справочник едет, выбирать не из чего — но и «Без учётной
-        // записи» показывать нельзя: это выглядело бы как ответ, хотя
-        // ответа ещё нет.
-        disabled={isLoading || error !== null}
+        // Пока справочник едет или не доехал, выбирать не из чего — но и
+        // «Без учётной записи» показывать нельзя: это выглядело бы как
+        // ответ, хотя ответа нет.
+        disabled={isLoading || hasFailed}
         value={value === null ? '' : String(value)}
         onChange={(event) => onChange(event.target.value === '' ? null : Number(event.target.value))}
       >
-        <option value="">{isLoading ? 'Загружаем справочник…' : 'Без учётной записи'}</option>
+        {/* Подпись пустого пункта объясняет запертый выбор сама: место
+            под полем может занять отказ сохранения, и «почему не нажимается»
+            осталось бы без ответа. */}
+        <option value="">{emptyLabel(isLoading, hasFailed)}</option>
         {accounts.map((account) => (
           <option key={account.id} value={account.id}>
             {accountLabel(account)}
@@ -74,6 +88,13 @@ export function AccountField({
       </p>
     </FieldShell>
   );
+}
+
+function emptyLabel(isLoading: boolean, hasFailed: boolean): string {
+  if (isLoading) return 'Загружаем справочник…';
+  if (hasFailed) return 'Справочник не доехал';
+
+  return 'Без учётной записи';
 }
 
 /** «Фамилия Имя», а без них — хотя бы номер учётки. */
