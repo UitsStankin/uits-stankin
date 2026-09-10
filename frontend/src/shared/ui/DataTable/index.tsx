@@ -1,9 +1,11 @@
+import { useRef } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import { useTable, type RowData, type SortingState, type Updater } from '@tanstack/react-table';
 
 import { cn } from '@shared/lib';
 
 import { adminTableFeatures, type AdminColumn } from './model/adminTable';
+import { useRowFocusRescue } from './model/useRowFocusRescue';
 import { DataTableSkeleton } from './ui/DataTableSkeleton';
 
 interface DataTableProps<TData extends RowData> {
@@ -53,6 +55,11 @@ export default function DataTable<TData extends RowData>({
   sorting,
   onSortingChange,
 }: DataTableProps<TData>) {
+  const regionRef = useRef<HTMLDivElement>(null);
+
+  // Удалённая строка не должна уносить с собой фокус — разбор в хуке.
+  useRowFocusRescue(regionRef, data);
+
   const table = useTable({
     features: adminTableFeatures,
     columns,
@@ -88,7 +95,13 @@ export default function DataTable<TData extends RowData>({
         не попадающей в обход табом, доберётся только тот, у кого есть
         мышь или тачскрин.
       */}
-      <div role="region" aria-label={label} tabIndex={0} className="overflow-x-auto">
+      <div
+        ref={regionRef}
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+        className="overflow-x-auto"
+      >
         <table
           className={cn(
             'w-full min-w-[36rem] text-base transition-opacity',

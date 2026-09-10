@@ -116,7 +116,7 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Картинка, вставленная в Markdown редактируемого раздела, не считается сиротой")
     void sweep_WhenFileIsUsedInsideEditablePageText_KeepsIt() throws IOException {
-        String inlineKey = storeFile("news");
+        String inlineKey = storeFile("pages");
         makeOld(inlineKey);
 
         EditablePage section = editablePageRepository.findBySlug("home-after").orElseThrow();
@@ -131,7 +131,7 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Картинка из блока «образование» карточки преподавателя не считается сиротой")
     void sweep_WhenFileIsUsedInsideTeacherEducation_KeepsIt() throws IOException {
-        String inlineKey = storeFile("news");
+        String inlineKey = storeFile("staff");
         makeOld(inlineKey);
 
         teacherRepository.save(Teacher.builder()
@@ -148,7 +148,7 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Картинка из блока «квалификация» карточки преподавателя не считается сиротой")
     void sweep_WhenFileIsUsedInsideTeacherQualification_KeepsIt() throws IOException {
-        String inlineKey = storeFile("news");
+        String inlineKey = storeFile("staff");
         makeOld(inlineKey);
 
         teacherRepository.save(Teacher.builder()
@@ -160,6 +160,28 @@ class OrphanFileCleanupIntegrationTest extends AbstractIntegrationTest {
         cleanupTask.sweep();
 
         assertThat(fileStorage.exists(inlineKey)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Картинка карточки ППС, не попавшая ни в одну карточку, удаляется: раздел staff подметается")
+    void sweep_WhenStaffFileIsUnreferenced_DeletesIt() throws IOException {
+        String orphanKey = storeFile("staff");
+        makeOld(orphanKey);
+
+        cleanupTask.sweep();
+
+        assertThat(fileStorage.exists(orphanKey)).isFalse();
+    }
+
+    @Test
+    @DisplayName("Картинка редактируемого раздела, не попавшая ни в один текст, удаляется: раздел pages подметается")
+    void sweep_WhenPagesFileIsUnreferenced_DeletesIt() throws IOException {
+        String orphanKey = storeFile("pages");
+        makeOld(orphanKey);
+
+        cleanupTask.sweep();
+
+        assertThat(fileStorage.exists(orphanKey)).isFalse();
     }
 
     @Test

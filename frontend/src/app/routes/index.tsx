@@ -43,6 +43,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
 import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
 import AdminNewsPage from '@pages/admin/NewsPage';
+import UnknownSectionPage from '@pages/admin/UnknownSectionPage';
 import SubjectsPage from '@pages/admin/SubjectsPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
@@ -368,6 +369,10 @@ export const routes: RouteObject[] = [
               ),
             errorElement: <RouteError />,
           })),
+          // Адрес внутри админки, которого нет. Без него такой адрес
+          // ловил бы корневой '*' и говорил «страница ещё не перенесена» —
+          // про раздел, которого не существует вовсе.
+          { path: '*', element: <UnknownSectionPage /> },
         ],
       },
       // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на

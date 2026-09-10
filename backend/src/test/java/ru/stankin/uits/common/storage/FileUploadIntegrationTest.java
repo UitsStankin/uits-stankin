@@ -135,6 +135,48 @@ class FileUploadIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void upload_WhenModeratorUploadsToStaff_Returns201() throws IOException {
+        createUser("moderator_staff", TestRole.MODERATOR);
+        String token = login("moderator_staff");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(400, 400), "diploma.jpg", "staff", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().key()).startsWith("staff/");
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key())).exists();
+    }
+
+    @Test
+    void upload_WhenModeratorUploadsToPages_Returns201() throws IOException {
+        createUser("moderator_pages", TestRole.MODERATOR);
+        String token = login("moderator_pages");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(400, 400), "scheme.jpg", "pages", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().key()).startsWith("pages/");
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key())).exists();
+    }
+
+    @Test
+    void upload_WhenTeacherUploadsToStaff_Returns403() throws IOException {
+        createUser("teacher_staff", TestRole.TEACHER);
+        String token = login("teacher_staff");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(300, 300), "diploma.jpg", "staff", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
     void upload_WhenFileIsEmpty_Returns400() {
         createUser("admin_empty", TestRole.ADMIN);
         String token = login("admin_empty");
@@ -276,6 +318,21 @@ class FileUploadIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
                 "/api/files", multipart(image(600, 600), "photo.jpg", "avatars", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key().replace(".jpg", "_thumb.jpg")))
+                .doesNotExist();
+    }
+
+    @Test
+    void upload_WhenStaff_HasNoThumbnail() throws IOException {
+        createUser("moderator_staff_thumb", TestRole.MODERATOR);
+        String token = login("moderator_staff_thumb");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(1200, 900), "diploma.jpg", "staff", token),
                 FileUploadResponseDto.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);

@@ -117,3 +117,92 @@ describe('DataTable', () => {
     });
   });
 });
+
+/**
+ * Удаление уносит строку вместе с кнопкой, в которой стоял фокус,
+ * и браузер в этот момент роняет фокус на `body` — человек с клавиатуры
+ * оказывается в начале страницы. Поймано на живом стенде.
+ */
+describe('DataTable, фокус на исчезнувшей строке', () => {
+  it('оставляет фокус в таблице, когда строка с ним пропала', () => {
+    const { rerender } = renderTable();
+
+    const кнопка = screen.getByRole('button', { name: 'Править Программирование' });
+    кнопка.focus();
+    expect(кнопка).toHaveFocus();
+
+    // Список перезапросили — строки приехали уже без этой.
+    rerender(
+      <DataTable
+        columns={COLUMNS}
+        data={ROWS.filter((row) => row.name !== 'Программирование')}
+        getRowId={(row) => String(row.id)}
+        label="Дисциплины"
+      />,
+    );
+
+    expect(screen.getByRole('region', { name: 'Дисциплины' })).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it('не трогает фокус, если человек ушёл из таблицы сам', () => {
+    render(<button type="button">Добавить</button>);
+    const { rerender } = renderTable();
+
+    const вТаблице = screen.getByRole('button', { name: 'Править Программирование' });
+    вТаблице.focus();
+
+    // Ушли к кнопке над таблицей — дальше её судьба нас не касается.
+    const снаружи = screen.getByRole('button', { name: 'Добавить' });
+    fireEvent.focusOut(вТаблице, { relatedTarget: снаружи });
+    снаружи.focus();
+
+    rerender(
+      <DataTable
+        columns={COLUMNS}
+        data={ROWS.filter((row) => row.name !== 'Программирование')}
+        getRowId={(row) => String(row.id)}
+        label="Дисциплины"
+      />,
+    );
+
+    // Иначе перерисовка списка дёргала бы фокус под руками.
+    expect(снаружи).toHaveFocus();
+  });
+});
+
+/**
+ * Последняя строка уносит с собой всю таблицу: раздел показывает вместо
+ * неё «дисциплин пока нет», и подхватить фокус в таблице некому.
+ */
+describe('DataTable, удалена последняя строка', () => {
+  /** Раздел: пока строки есть — таблица, кончились — пустое состояние. */
+  function Section({ rows }: { rows: Row[] }) {
+    return (
+      <main>
+        {rows.length > 0 ? (
+          <DataTable
+            columns={COLUMNS}
+            data={rows}
+            getRowId={(row) => String(row.id)}
+            label="Дисциплины"
+          />
+        ) : (
+          <p>Дисциплин пока нет</p>
+        )}
+      </main>
+    );
+  }
+
+  it('уводит фокус в содержимое страницы, когда таблицы не стало', () => {
+    const { rerender } = render(<Section rows={[ROWS[0]]} />);
+
+    screen.getByRole('button', { name: 'Править Базы данных' }).focus();
+
+    rerender(<Section rows={[]} />);
+
+    expect(screen.getByText('Дисциплин пока нет')).toBeInTheDocument();
+    expect(document.querySelector('main')).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+});

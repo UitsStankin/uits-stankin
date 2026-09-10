@@ -21,6 +21,9 @@ import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.repository.SubjectRepository;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -122,6 +125,8 @@ class SubjectIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getDetail()).contains("Базы данных", "уже существует");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("name", List.of(response.getBody().getDetail())));
         assertThat(subjectRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("Проектирование ИС");
     }
 
@@ -251,6 +256,8 @@ class SubjectIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getDetail()).contains("Базы данных", "уже существует");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("name", List.of(response.getBody().getDetail())));
         assertThat(subjectRepository.count()).isEqualTo(1);
     }
 

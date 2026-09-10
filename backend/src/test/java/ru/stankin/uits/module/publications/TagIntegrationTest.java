@@ -19,6 +19,7 @@ import ru.stankin.uits.module.publications.entity.Tag;
 import ru.stankin.uits.module.publications.repository.TagRepository;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -118,6 +119,9 @@ class TagIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("name", List.of(response.getBody().getDetail())));
         assertThat(tagRepository.count()).isEqualTo(1);
     }
 
