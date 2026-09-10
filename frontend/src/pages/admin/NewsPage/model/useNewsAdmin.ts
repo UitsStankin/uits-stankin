@@ -67,11 +67,24 @@ export function useNewsAdmin() {
   const sorting = parseSort(searchParams.get(SORT_PARAM), SORTABLE_FIELDS, DEFAULT_SORTING);
   const postType = parsePostType(searchParams.get(TYPE_PARAM));
 
+  /**
+   * Порядок, отличный от умолчания. `null` означает «не задавать вовсе» —
+   * и в адресе, и **в запросе**.
+   *
+   * В запросе это важнее, чем в адресе: `?sort=createdAt,desc` — не то же
+   * самое, что отсутствие параметра. Заданный порядок заменяет умолчание
+   * контракта целиком, вместе с ключом `id`, который идёт в нём вторым
+   * и делает листание устойчивым. Отправляя свой «такой же» порядок,
+   * список получил бы записи с одинаковой датой в неопределённом порядке —
+   * и одна приходила бы на двух страницах, а другая ни на одной.
+   */
+  const sortInRequest = sortParam(sorting) === DEFAULT_SORT ? null : sortParam(sorting);
+
   // В адресе счёт страниц с единицы, в запросе — с нуля. Пересчёт ровно здесь.
   const query = useQuery(
     allNewsListQuery({
       page: page - 1,
-      sort: sortParam(sorting) ?? undefined,
+      sort: sortInRequest ?? undefined,
       postType: postType ?? undefined,
     }),
   );
@@ -83,9 +96,6 @@ export function useNewsAdmin() {
 
   const data = query.data;
   const totalPages = data?.totalPages ?? 0;
-
-  /** Порядок, отличный от умолчания, — единственное, что попадает в адрес. */
-  const sortInUrl = sortParam(sorting) === DEFAULT_SORT ? null : sortParam(sorting);
 
   /**
    * Адрес списка: страница, порядок и фильтр вместе. Один сборщик на всё,
@@ -119,7 +129,7 @@ export function useNewsAdmin() {
     /** Страница за пределами данных: контракт отвечает `200` с пустым `content`. */
     isOutOfRange: query.isSuccess && totalPages > 0 && page > totalPages,
 
-    hrefForPage: (target: number) => listHref(target, postType, sortInUrl),
+    hrefForPage: (target: number) => listHref(target, postType, sortInRequest),
 
     /**
      * Смена фильтра сбрасывает страницу — по той же причине, что и смена
@@ -127,7 +137,7 @@ export function useNewsAdmin() {
      * к списку объявлений, и оставленный номер показал бы пустоту или
      * не то, что искали.
      */
-    hrefForType: (type: PostType | null) => listHref(1, type, sortInUrl),
+    hrefForType: (type: PostType | null) => listHref(1, type, sortInRequest),
 
     /**
      * Смена порядка сбрасывает страницу и сохраняет фильтр. Здесь тот же

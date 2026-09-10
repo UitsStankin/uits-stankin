@@ -163,6 +163,42 @@ describe('AdminNewsPage, список', () => {
     expect(screen.queryByRole('cell', { name: 'Черновик объявления' })).not.toBeInTheDocument();
   });
 
+  /**
+   * `?sort=createdAt,desc` — не то же самое, что отсутствие параметра:
+   * заданный порядок заменяет умолчание контракта целиком, вместе
+   * с ключом `id`, который идёт в нём вторым и делает листание устойчивым.
+   * Найдено в браузере: запрос уходил со «своим таким же» порядком.
+   */
+  it('не отправляет порядок по умолчанию — у контракта он с ключом id', async () => {
+    let requested: string | null = null;
+    // Хендлер без ответа пропускает запрос дальше по набору: смотрим
+    // адрес, не подменяя выдачу.
+    server.use(
+      http.get(NEWS, ({ request }) => {
+        requested = request.url;
+      }),
+    );
+
+    renderNews();
+    await screen.findByRole('cell', { name: 'Новость 1' });
+
+    expect(requested).not.toContain('sort=');
+  });
+
+  it('отправляет порядок, отличный от умолчания', async () => {
+    let requested: string | null = null;
+    server.use(
+      http.get(NEWS, ({ request }) => {
+        requested = request.url;
+      }),
+    );
+
+    renderNews('/admin/news?sort=createdAt,asc');
+    await screen.findByRole('cell', { name: 'Новость 23' });
+
+    expect(requested).toContain('sort=createdAt,asc');
+  });
+
   it('меняет порядок кликом по заголовку даты', async () => {
     renderNews();
 
