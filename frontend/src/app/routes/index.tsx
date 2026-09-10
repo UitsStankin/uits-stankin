@@ -42,6 +42,7 @@ import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
 import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
+import AdminNewsPage from '@pages/admin/NewsPage';
 import UnknownSectionPage from '@pages/admin/UnknownSectionPage';
 import SubjectsPage from '@pages/admin/SubjectsPage';
 import ProtectedRoute from './protectedRoute';
@@ -138,6 +139,11 @@ function adminSectionScreen(section: AdminSection) {
   if (section.plannedIn) return <PlannedSectionPage section={section} />;
 
   switch (section.key) {
+    case 'news':
+      // Имя импорта отличается от имени файла: публичная лента новостей
+      // — тоже `NewsPage`, и два одинаковых имени в одном модуле роутера
+      // не ужились бы.
+      return <AdminNewsPage />;
     case 'subjects':
       return <SubjectsPage />;
     default:

@@ -1,5 +1,5 @@
 export { cn } from './cn';
-export { errorId, labelId } from './fieldIds';
+export { errorId, hintId, labelId } from './fieldIds';
 export { focusPageContent } from './focusPageContent';
 export { applyFieldErrors } from './formErrors';
 export { formatDate, formatDateTime } from './formatDate';

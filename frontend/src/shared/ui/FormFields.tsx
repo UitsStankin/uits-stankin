@@ -1,13 +1,13 @@
 import type { ComponentProps } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 
-import { cn, errorId, labelId } from '@shared/lib';
+import { cn, errorId, hintId, labelId } from '@shared/lib';
 
 /**
- * Поля формы: текст, селект, многострочное. Чистые: значение ведёт
+ * Поля формы: текст, селект, многострочное, флажок. Чистые: значение ведёт
  * react-hook-form через `registration`, ошибка приходит пропсом.
  *
- * Один файл на три компонента — у них одна причина для изменения:
+ * Один файл на четыре компонента — у них одна причина для изменения:
  * вид поля формы.
  *
  * Заведены в фиче правки карточки ППС (F-16) и перенесены сюда вторым
@@ -114,8 +114,13 @@ export function SelectField({
   emptyLabel,
   options,
 }: FieldBaseProps & {
-  /** Подпись пустого значения — «Без степени», «Без звания». */
-  emptyLabel: string;
+  /**
+   * Подпись пустого значения — «Без степени», «Без звания». Не задана —
+   * пустого значения у поля нет вовсе: тип записи новости обязателен
+   * по контракту, и пункт «не выбрано» предлагал бы отправить форму
+   * в состояние, которое сервер отклонит (F-43).
+   */
+  emptyLabel?: string;
   options: readonly { value: string; label: string }[];
 }) {
   return (
@@ -123,7 +128,7 @@ export function SelectField({
       {/* Родной select: опций меньше десятка, поиск не нужен, а клавиатура,
           мобильные списки и диктор достаются бесплатно. */}
       <select id={id} className={inputClass} {...ariaProps(id, error)} {...registration}>
-        <option value="">{emptyLabel}</option>
+        {emptyLabel !== undefined && <option value="">{emptyLabel}</option>}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -145,5 +150,57 @@ export function TextAreaField({
     <FieldShell id={id} label={label} error={error}>
       <textarea id={id} rows={rows} className={inputClass} {...ariaProps(id, error)} {...registration} />
     </FieldShell>
+  );
+}
+
+/**
+ * Флажок: подпись справа от квадратика, а не сверху, — поэтому мимо
+ * `FieldShell`. Каркас общих полей ставит подпись над содержимым, и флажок
+ * в нём висел бы под своим текстом, оторванный от него.
+ *
+ * `hint` — строка под флажком, объясняющая последствие. У «Опубликовать»
+ * она не украшение: снятый флажок означает черновик, которого на сайте
+ * не видно, и это ровно то, чего от формы не ждут (docs/API.md, «Новости:
+ * создание, правка, удаление»).
+ */
+export function CheckboxField({
+  id,
+  label,
+  hint,
+  error,
+  registration,
+}: FieldBaseProps & { hint?: string }) {
+  // Диктору объяснение и ошибка достаются только через `aria-describedby`:
+  // текст, стоящий рядом в разметке, он к полю сам не привяжет.
+  const describedBy = [hint && hintId(id), error && errorId(id)].filter(Boolean).join(' ');
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <input
+          id={id}
+          type="checkbox"
+          className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+          aria-invalid={error !== undefined}
+          aria-describedby={describedBy === '' ? undefined : describedBy}
+          {...registration}
+        />
+        <label htmlFor={id} className="text-base font-bold text-text-heading">
+          {label}
+        </label>
+      </div>
+
+      {hint && (
+        <p id={hintId(id)} className="text-sm text-text-muted">
+          {hint}
+        </p>
+      )}
+
+      {error && (
+        <p id={errorId(id)} className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
