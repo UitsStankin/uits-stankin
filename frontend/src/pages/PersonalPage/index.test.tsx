@@ -10,7 +10,7 @@ import {
   makeTeacher,
   problemResponse,
   profileHandlers,
-  teacherHandlers,
+  myTeacherCardHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { clearSession, setAccessToken } from '@shared/api';
@@ -78,7 +78,7 @@ afterEach(() => {
 
 describe('PersonalPage, секция карточки ППС', () => {
   it('показывает карточку преподавателя', async () => {
-    server.use(...teacherHandlers(makeTeacher({ position: 'доцент кафедры' })));
+    server.use(...myTeacherCardHandlers(makeTeacher({ position: 'доцент кафедры' })));
 
     renderPersonalPage();
 
@@ -107,7 +107,7 @@ describe('PersonalPage, секция карточки ППС', () => {
    * Красной плашки здесь быть не должно, делать преподавателю нечего.
    */
   it('на 404 говорит, что карточка не привязана', async () => {
-    server.use(...teacherHandlers(null));
+    server.use(...myTeacherCardHandlers(null));
 
     renderPersonalPage();
 
@@ -189,7 +189,7 @@ describe('PersonalPage, правка карточки ППС', () => {
   }
 
   async function openTeacherForm() {
-    server.use(...teacherHandlers(makeTeacher()));
+    server.use(...myTeacherCardHandlers(makeTeacher()));
     renderPersonalPage();
     await screen.findByText('Информация о преподавателе');
 

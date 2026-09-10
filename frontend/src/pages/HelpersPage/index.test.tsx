@@ -3,7 +3,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { problemResponse, publicHelperHandlers } from '@shared/api/mocks';
+import { problemResponse, helperHandlers } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
 
@@ -119,7 +119,7 @@ describe('HelpersPage', () => {
   });
 
   it('на пустом списке объясняет, что карточек нет', async () => {
-    server.use(...publicHelperHandlers([]));
+    server.use(...helperHandlers([]));
 
     renderWithProviders(<HelpersPage />, { route: ROUTE });
 

@@ -9,7 +9,7 @@ import {
   makeAchievement,
   makeTeacher,
   problemResponse,
-  publicTeacherHandlers,
+  teacherHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
@@ -60,7 +60,7 @@ describe('TeacherDetailPage', () => {
 
   it('показывает контакты ссылками, а мессенджер — текстом', async () => {
     server.use(
-      ...publicTeacherHandlers([
+      ...teacherHandlers([
         makeTeacher({
           id: 1,
           email: 'm.ivanova@stankin.ru',
@@ -94,7 +94,7 @@ describe('TeacherDetailPage', () => {
    */
   it('рисует образование разметкой, а биографию текстом', async () => {
     server.use(
-      ...publicTeacherHandlers([
+      ...teacherHandlers([
         makeTeacher({
           id: 1,
           education: '<ul><li>МГТУ «СТАНКИН», 2005</li></ul>',
@@ -112,7 +112,7 @@ describe('TeacherDetailPage', () => {
 
   it('показывает дисциплины и ссылки на расписание экзаменов', async () => {
     server.use(
-      ...publicTeacherHandlers([
+      ...teacherHandlers([
         makeTeacher({
           id: 1,
           subjects: [{ id: 1, name: 'Базы данных', description: 'Реляционная модель, SQL' }],
@@ -143,7 +143,7 @@ describe('TeacherDetailPage', () => {
    */
   it('не рисует разделы под незаполненные поля', async () => {
     server.use(
-      ...publicTeacherHandlers([
+      ...teacherHandlers([
         makeTeacher({
           id: 1,
           degree: null,

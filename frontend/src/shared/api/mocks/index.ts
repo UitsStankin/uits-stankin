@@ -11,7 +11,7 @@ export { achievementHandlers, achievementsFixture, makeAchievement } from './ach
 export { conferenceHandlers, conferencesFixture, makeConference } from './conferences';
 export { editablePageHandlers } from './editablePages';
 export { fileHandlers } from './files';
-export { helpersFixture, makeHelper, publicHelperHandlers } from './helpers';
+export { helperHandlers, helpersFixture, makeHelper } from './helpers';
 export { makeNews, newsFixture, newsHandlers } from './news';
 export { makeProfile, profileHandlers } from './profile';
 export { pageResponse } from './page';
@@ -22,10 +22,15 @@ export {
 } from './postgraduates';
 export {
   makeTeacher,
-  publicTeacherHandlers,
+  myTeacherCardHandlers,
   teacherHandlers,
   teacherListItem,
   teachersFixture,
 } from './teachers';
 export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
+export {
+  makeUserDirectoryEntry,
+  userDirectoryFixture,
+  userDirectoryHandlers,
+} from './users';
 export { problemResponse } from './problemResponse';
