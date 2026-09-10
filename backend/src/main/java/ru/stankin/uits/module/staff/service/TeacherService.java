@@ -8,7 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
-import ru.stankin.uits.common.exception.InvalidFileException;
+import ru.stankin.uits.common.exception.FieldValidationException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.storage.FileCleanup;
@@ -173,16 +173,17 @@ public class TeacherService {
             return null;
         }
 
-        User user = userService.getUserById(userId);
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new FieldValidationException("userId", "Учётная запись не найдена: id=" + userId));
 
         if (!user.isTeacher()) {
-            throw new InvalidRequestException("У учётной записи id=" + userId + " нет роли преподавателя");
+            throw new FieldValidationException("userId", "У учётной записи id=" + userId + " нет роли преподавателя");
         }
 
         teacherRepository.findByUserId(userId)
                 .filter(linked -> !Objects.equals(linked.getId(), teacherId))
                 .ifPresent(linked -> {
-                    throw new InvalidRequestException(
+                    throw new FieldValidationException("userId",
                             "Учётная запись уже связана с карточкой преподавателя id=" + linked.getId());
                 });
 
@@ -201,7 +202,7 @@ public class TeacherService {
                 .collect(Collectors.toSet());
 
         if (!missing.isEmpty()) {
-            throw new InvalidRequestException("Дисциплины не найдены: " + missing);
+            throw new FieldValidationException("subjectIds", "Дисциплины не найдены: " + missing);
         }
 
         return new HashSet<>(found);
@@ -210,7 +211,7 @@ public class TeacherService {
     private void validateAvatar(TeacherRequestDto request) {
         String key = request.getAvatar();
         if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
-            throw new InvalidFileException("Файл аватара не найден: " + key);
+            throw new FieldValidationException("avatar", "Файл аватара не найден: " + key);
         }
     }
 
