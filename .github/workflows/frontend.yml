@@ -31,12 +31,12 @@ jobs:
 
     steps:
       - name: Checkout кода
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Изменения во фронтенде
         id: changes
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
         with:
           # predicate-quantifier: every и отдельный фильтр на workflow —
           # пояснение в ci.yml
@@ -54,7 +54,7 @@ jobs:
 
       - name: Установка Node 24
         if: steps.gate.outputs.run == 'true'
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           # Не 22: часть зависимостей тестового стенда требует 22.22 и выше,
           # а на «22» runner ставит последнюю 22.x — то есть версия менялась бы
