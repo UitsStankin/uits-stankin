@@ -1,3 +1,12 @@
+spring:
+  datasource:
+    hikari:
+      # Каждый набор @SpringBootTest-свойств поднимает свой контекст, а вместе
+      # с ним свой пул. Контекстов больше десятка, и при десяти соединениях
+      # на каждый Postgres тестового контейнера упирается в max_connections:
+      # падает не тот тест, что виноват, а тот, чей контекст грузился следующим
+      maximum-pool-size: 5
+
 application:
   security:
     login-rate-limit:
