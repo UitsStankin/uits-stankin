@@ -127,6 +127,7 @@ Markdown-страниц, загрузка файлов с фоновой убо�
 | [docs/MIGRATION.md](docs/MIGRATION.md) | план миграции, матрица паритета, карта данных |
 | [docs/API.md](docs/API.md) | описание эндпоинтов API |
 | [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) | подходы к сложным частям (Telegram, расписание, файлы) |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | порядок выкатки на боевой стенд и что мешает ей сейчас |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | разбор кодовой базы для нового участника |
 | [docs/GIT.md](docs/GIT.md) | типы сообщений коммитов |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | очередь задач бэкенда |
