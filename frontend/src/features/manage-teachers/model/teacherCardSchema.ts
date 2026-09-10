@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DEGREE_CODES, RANK_CODES } from '@shared/config/teacherDictionaries';
-import type { Teacher, TeacherUpsertRequest } from '@shared/types';
+import type { Teacher, TeacherAdminRequest, TeacherUpsertRequest } from '@shared/types';
 
 /**
  * Проверки формы карточки ППС — ровно те, что на бэкенде
@@ -128,6 +128,26 @@ export function formValuesToRequest(
     examScheduleGraduation: emptyToNull(values.examScheduleGraduation),
     examScheduleNonGraduation: emptyToNull(values.examScheduleNonGraduation),
   };
+}
+
+/**
+ * То же тело плюс два поля, которых у своей карточки нет: связь с учётной
+ * записью и дисциплины. Оба приходят отдельными аргументами по той же
+ * причине, что и ключ фото, — в форме они не поля ввода: дисциплины
+ * отмечаются флажками, а связь живёт рядом с ними в состоянии хука
+ * (`useTeacherAdminForm`).
+ *
+ * Оба уходят **всегда**, а не «если поменялись»: `PUT` — полная замена,
+ * и не пришедший `userId` снял бы связь, а не пришедшие `subjectIds` —
+ * все дисциплины разом.
+ */
+export function formValuesToAdminRequest(
+  values: TeacherCardFormValues,
+  avatar: string | null,
+  userId: number | null,
+  subjectIds: number[],
+): TeacherAdminRequest {
+  return { ...formValuesToRequest(values, avatar), userId, subjectIds };
 }
 
 function emptyToNull(value: string): string | null {
