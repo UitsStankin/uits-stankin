@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout кода
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
 
@@ -73,7 +73,7 @@ jobs:
 
       - name: Установка JDK 21
         if: steps.gate.outputs.build == 'true'
-        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c  # v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -96,7 +96,7 @@ jobs:
 
       - name: Установка Python 3.13
         if: steps.gate.outputs.build == 'true'
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.13'
           cache: pip
@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Checkout кода
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Нужен для кэша сборки type=gha: он работает только на драйвере docker-container
       - name: Buildx
@@ -185,3 +185,14 @@ jobs:
           tags: ghcr.io/uitsstankin/uits-schedule-service:${{ github.sha }}
           cache-from: type=gha,scope=schedule
           cache-to: type=gha,mode=max,scope=schedule
+
+      # Фронтенд запечён в образ вместе с nginx (ARCHITECTURE §7.1): доставлять
+      # dist на сервер не нужно, откат делается предыдущим тегом образа
+      - name: Сборка и публикация образа фронтенда
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: frontend
+          push: true
+          tags: ghcr.io/uitsstankin/uits-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
