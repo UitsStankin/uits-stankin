@@ -51,10 +51,21 @@ export function useHelpersAdmin() {
   const page = parsePage(searchParams.get(PAGE_PARAM));
   const sorting = parseSort(searchParams.get(SORT_PARAM), SORTABLE_FIELDS, DEFAULT_SORTING);
 
+  /**
+   * Порядок, отличный от умолчания. `null` означает «не задавать вовсе» —
+   * и в адресе, и **в запросе**.
+   *
+   * В запросе это важнее, чем в адресе: `?sort=lastName,asc` — не то же
+   * самое, что отсутствие параметра. Заданный порядок заменяет умолчание
+   * контракта целиком, вместе с ключами `firstName` и `id`, которые идут в нём следом и делают листание
+   * устойчивым. Отправляя свой «такой же» порядок, список получил бы
+   * однофамильцев в неопределённом порядке — и один приходил бы на двух
+   * страницах, а другой ни на одной.
+   */
+  const sortInRequest = sortParam(sorting) === DEFAULT_SORT ? null : sortParam(sorting);
+
   // В адресе счёт страниц с единицы, в запросе — с нуля. Пересчёт ровно здесь.
-  const query = useQuery(
-    helpersListQuery({ page: page - 1, sort: sortParam(sorting) ?? undefined }),
-  );
+  const query = useQuery(helpersListQuery({ page: page - 1, sort: sortInRequest ?? undefined }));
 
   const [editing, setEditing] = useState<Editing>(null);
   const [deleting, setDeleting] = useState<Helper | null>(null);
@@ -64,8 +75,6 @@ export function useHelpersAdmin() {
   const data = query.data;
   const totalPages = data?.totalPages ?? 0;
 
-  /** Порядок, отличный от умолчания, — единственное, что попадает в адрес. */
-  const sortInUrl = sortParam(sorting) === DEFAULT_SORT ? null : sortParam(sorting);
 
   return {
     helpers: data ? [...data.content] : [],
@@ -89,7 +98,7 @@ export function useHelpersAdmin() {
     isOutOfRange: query.isSuccess && totalPages > 0 && page > totalPages,
 
     hrefForPage: (target: number) =>
-      pageHref(ADMIN_HELPERS_ROUTE, target, { [SORT_PARAM]: sortInUrl }),
+      pageHref(ADMIN_HELPERS_ROUTE, target, { [SORT_PARAM]: sortInRequest }),
 
     /**
      * Смена порядка сбрасывает страницу: третья страница прежнего порядка
