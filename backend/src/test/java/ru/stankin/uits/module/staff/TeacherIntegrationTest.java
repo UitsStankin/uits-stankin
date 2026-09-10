@@ -27,6 +27,7 @@ import ru.stankin.uits.module.user.entity.User;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -178,6 +179,8 @@ class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getDetail()).contains("9999");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("subjectIds", List.of(response.getBody().getDetail())));
     }
 
     @Test
@@ -367,6 +370,9 @@ class TeacherIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("avatar", List.of(response.getBody().getDetail())));
         assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isNull();
         assertThat(STORAGE_ROOT.resolve(newsKey)).exists();
     }
@@ -471,6 +477,9 @@ class TeacherIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("userId", List.of(response.getBody().getDetail())));
         assertThat(publicCard(other.getId()).getBody().getUserId()).isNull();
     }
 
@@ -487,6 +496,9 @@ class TeacherIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("userId", List.of(response.getBody().getDetail())));
         assertThat(publicCard(card.getId()).getBody().getUserId()).isNull();
     }
 
@@ -502,6 +514,10 @@ class TeacherIntegrationTest extends AbstractIntegrationTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Учётная запись не найдена: id=999999");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("userId", List.of(response.getBody().getDetail())));
     }
 
     @Test
