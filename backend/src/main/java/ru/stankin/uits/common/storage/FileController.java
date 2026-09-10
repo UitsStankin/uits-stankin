@@ -18,7 +18,7 @@ import java.util.Set;
 public class FileController {
 
     private static final Set<String> ALLOWED_CATEGORIES =
-            Set.of("news", "avatars", "publications", "achievements");
+            Set.of("news", "avatars", "publications", "achievements", "staff", "pages");
 
     private static final Set<String> PDF_CATEGORIES = Set.of("publications");
 

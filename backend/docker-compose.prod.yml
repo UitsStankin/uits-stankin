@@ -68,7 +68,7 @@ services:
       # (под 1536m это 384 МБ) и упирается в неё задолго до лимита.
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
       ORPHAN_CLEANUP_MIN_AGE: ${ORPHAN_CLEANUP_MIN_AGE:-86400000}
-      ORPHAN_CLEANUP_CATEGORIES: ${ORPHAN_CLEANUP_CATEGORIES:-news,avatars,achievements,publications}
+      ORPHAN_CLEANUP_CATEGORIES: ${ORPHAN_CLEANUP_CATEGORIES:-news,avatars,achievements,publications,staff,pages}
     mem_limit: 1536m
     volumes:
       - media_data:/app/media
