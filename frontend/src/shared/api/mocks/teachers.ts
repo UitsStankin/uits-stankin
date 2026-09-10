@@ -16,6 +16,9 @@ const PUBLIC_TEACHERS = '*/api/public/teachers';
 export function makeTeacher(overrides: Partial<Teacher> = {}): Teacher {
   return {
     id: 1,
+    // Учётка у карточки есть: своя карточка (`/api/teachers/me`) без связи
+    // не существует вовсе — по ней ручка и находит, чью карточку отдавать.
+    userId: 7,
     lastName: 'Петров',
     firstName: 'Пётр',
     patronymic: 'Петрович',
