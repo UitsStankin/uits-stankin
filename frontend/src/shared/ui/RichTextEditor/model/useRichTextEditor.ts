@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useEditor, useEditorState, type Editor } from '@tiptap/react';
 
-import { cn } from '@shared/lib';
+import { cn, imageFileOf } from '@shared/lib';
 import { richTextClass } from '@shared/ui/richTextClass';
 
 import { isEmptyHtml } from '../lib/html';
@@ -21,6 +21,7 @@ export type ToolbarAction =
   | 'subscript'
   | 'superscript'
   | 'link'
+  | 'image'
   | 'clear';
 
 /** Что из перечисленного включено там, где стоит курсор. */
@@ -39,6 +40,11 @@ interface RichTextEditorParams {
   describedBy: string | undefined;
   /** Поле не прошло проверку: диктор говорит об этом до чтения текста. */
   invalid: boolean;
+  /**
+   * Картинка пришла файлом — из буфера обмена или перетаскиванием.
+   * Не задан — картинок в поле нет, и такие события идут своим чередом.
+   */
+  onImageFile?: (file: File) => void;
 }
 
 /**
@@ -71,7 +77,27 @@ export function useRichTextEditor({
   labelledBy,
   describedBy,
   invalid,
+  onImageFile,
 }: RichTextEditorParams) {
+  /**
+   * Файл-картинка из события — в загрузку, минуя ProseMirror.
+   *
+   * Без этого вставленный из буфера снимок экрана пропадал бы молча:
+   * `data:`-адрес схема не принимает (разбор в `extensions.ts`), а другого
+   * способа вставить файл у contenteditable нет. `true` — событие наше,
+   * ProseMirror его не трогает; иначе оно идёт как обычно, в том числе
+   * перетаскивание картинки внутри текста, у которого файлов нет.
+   */
+  function takeImageFile(transfer: DataTransfer | null): boolean {
+    if (!onImageFile) return false;
+
+    const file = imageFileOf(transfer);
+    if (!file) return false;
+
+    onImageFile(file);
+    return true;
+  }
+
   const editor = useEditor({
     extensions: richTextExtensions,
     content: value,
@@ -95,6 +121,8 @@ export function useRichTextEditor({
         'aria-invalid': String(invalid),
         ...(describedBy ? { 'aria-describedby': describedBy } : {}),
       },
+      handlePaste: (_view, event) => takeImageFile(event.clipboardData),
+      handleDrop: (_view, event) => takeImageFile(event.dataTransfer),
     },
     onUpdate: ({ editor }) => onChange(editorHtml(editor)),
     // Тесты и браузер одинаково рисуют редактор на первом рендере;
@@ -182,10 +210,10 @@ function activeMarks(editor: Editor): ToolbarState {
  * фокус на себя, и без возврата команда применилась бы к позиции, которой
  * на экране не видно.
  *
- * «Ссылка» сюда не попадает — ей нужен адрес, и она живёт в своей строке
- * ввода (`useLinkForm`).
+ * «Ссылка» и «Картинка» сюда не попадают — одной нужен адрес, другой
+ * файл, и у каждой своя строка ввода (`useLinkForm`, `useImageForm`).
  */
-export function runToolbarAction(editor: Editor, action: Exclude<ToolbarAction, 'link'>) {
+export function runToolbarAction(editor: Editor, action: Exclude<ToolbarAction, 'link' | 'image'>) {
   const chain = editor.chain().focus();
 
   switch (action) {
@@ -218,4 +246,13 @@ export function runToolbarAction(editor: Editor, action: Exclude<ToolbarAction, 
     case 'clear':
       return chain.unsetAllMarks().clearNodes().run();
   }
+}
+
+/**
+ * Картинка блоком туда, где стоит курсор. Пустое `alt` уходит как `alt=""`,
+ * а не снимается: без атрибута диктор читает адрес файла, с пустым —
+ * пропускает картинку как украшение.
+ */
+export function insertImage(editor: Editor, image: { src: string; alt: string }) {
+  editor.chain().focus().setImage(image).run();
 }

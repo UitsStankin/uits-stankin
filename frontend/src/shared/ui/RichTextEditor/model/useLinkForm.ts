@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { Editor } from '@tiptap/react';
 
 import { checkHref } from '../lib/html';
+import type { useBarSlot } from './useBarSlot';
 
 /**
  * Строка ввода адреса ссылки: открыта ли, что набрано, что не так.
@@ -17,42 +18,19 @@ import { checkHref } from '../lib/html';
  * Почему не `<form>`: поле редактора живёт внутри формы записи, а вложенная
  * форма — невалидная разметка. Enter внутри строки поэтому обрабатывается
  * руками, иначе он отправил бы форму целиком (`ui/LinkBar.tsx`).
+ *
+ * Открыта строка или нет — не здесь, а в общем месте под панелью
+ * (`useBarSlot`): его же делит строка картинки.
  */
-export function useLinkForm(editor: Editor | null) {
-  const [isOpen, setIsOpen] = useState(false);
+export function useLinkForm(editor: Editor | null, slot: ReturnType<typeof useBarSlot>) {
   const [href, setHref] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  /*
-   * Строка закрылась — курсор возвращается в текст, откуда бы её ни
-   * закрыли: «Применить», «Убрать», «Отмена», Escape.
-   *
-   * Одним правилом в одном месте, а не вызовом `focus()` в каждом из
-   * четырёх обработчиков: забытый в одном из них означал бы, что человек
-   * остался с фокусом на кнопке, которой больше нет на экране, — то есть
-   * на `body`, в начале страницы.
-   *
-   * Возврат приходит через кадр: `focus()` у TipTap отложен
-   * `requestAnimationFrame`. Поэтому и тест ждёт его через `waitFor`.
-   */
-  const wasOpen = useRef(false);
-
-  useEffect(() => {
-    if (wasOpen.current && !isOpen && editor && !editor.isDestroyed) editor.commands.focus();
-
-    wasOpen.current = isOpen;
-  }, [isOpen, editor]);
 
   /** Открыть строку: адрес существующей ссылки подставляется в поле. */
   function open() {
     setHref(editor?.getAttributes('link').href ?? '');
     setError(null);
-    setIsOpen(true);
-  }
-
-  /** Закрыть строку; фокус вернёт эффект выше. */
-  function close() {
-    setIsOpen(false);
+    slot.show('link');
   }
 
   function apply() {
@@ -66,22 +44,23 @@ export function useLinkForm(editor: Editor | null) {
     }
 
     setLink(editor, checked.href);
-    setIsOpen(false);
+    slot.hide();
   }
 
   function remove() {
     editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-    setIsOpen(false);
+    slot.hide();
   }
 
   return {
-    isOpen,
+    isOpen: slot.isOpen('link'),
     href,
     error,
     /** Курсор стоит в ссылке — значит есть что убирать. */
     canRemove: editor?.isActive('link') ?? false,
     open,
-    close,
+    /** Закрыть строку; курсор в текст вернёт сборка (`useFocusOnClose`). */
+    close: slot.hide,
     apply,
     remove,
     setHref,

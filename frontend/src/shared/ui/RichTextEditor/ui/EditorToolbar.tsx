@@ -2,10 +2,12 @@ import type { FocusEvent, KeyboardEvent } from 'react';
 
 import { cn } from '@shared/lib';
 
-import { TOOLBAR_BUTTONS } from '../model/toolbarButtons';
+import type { ToolbarButton } from '../model/toolbarButtons';
 import type { ToolbarAction, ToolbarState } from '../model/useRichTextEditor';
 
 interface EditorToolbarProps {
+  /** Кнопки по порядку: сборка решает, есть ли среди них «Картинка». */
+  buttons: readonly ToolbarButton[];
   /**
    * Подпись поля — она входит в имя панели. Редакторов на форме бывает
    * несколько (у карточки ППС их два), и три панели «Форматирование»
@@ -25,10 +27,11 @@ interface EditorToolbarProps {
 }
 
 /**
- * Панель форматирования. Чистая: состояние кнопок и поведение стрелок
- * приходят пропсами, набор кнопок — из `model/toolbarButtons.ts`.
+ * Панель форматирования. Чистая: набор кнопок, их состояние и поведение
+ * стрелок приходят пропсами.
  */
 export function EditorToolbar({
+  buttons,
   fieldLabel,
   state,
   isLinkFormOpen,
@@ -47,7 +50,7 @@ export function EditorToolbar({
       onFocus={onFocus}
       className="flex flex-wrap items-center gap-0.5 border-b border-default bg-light px-2 py-1.5"
     >
-      {TOOLBAR_BUTTONS.map(({ action, label, icon: Icon, startsGroup }, index) => (
+      {buttons.map(({ action, label, icon: Icon, startsGroup }, index) => (
         <div key={action} className="flex items-center">
           {startsGroup && <span aria-hidden="true" className="mx-1 h-5 w-px bg-gray-300" />}
 
@@ -89,12 +92,13 @@ export function EditorToolbar({
  *   своей разметки;
  * * «Ссылка» не переключатель, а раскрытие строки ввода: диктору важнее,
  *   что она открывает, чем то, что курсор стоит в ссылке;
- * * «Убрать форматирование» — обычное действие, у него нет состояния,
- *   и `aria-pressed="false"` на нём говорил бы, что оно бывает нажатым.
+ * * «Убрать форматирование» и «Картинка» — обычные действия (вторая
+ *   открывает диалог выбора файла), у них нет состояния,
+ *   и `aria-pressed="false"` на них говорил бы, что оно бывает нажатым.
  */
 function stateAttribute(action: ToolbarAction, state: ToolbarState, isLinkFormOpen: boolean) {
   if (action === 'link') return { 'aria-expanded': isLinkFormOpen };
-  if (action === 'clear') return {};
+  if (action === 'clear' || action === 'image') return {};
 
   return { 'aria-pressed': state[action] ?? false };
 }

@@ -1,17 +1,27 @@
+import { useRef } from 'react';
 import { EditorContent } from '@tiptap/react';
 
-import { cn, errorId, labelId } from '@shared/lib';
+import { IMAGE_ACCEPT, cn, errorId, labelId } from '@shared/lib';
 
 import { TOOLBAR_BUTTONS } from './model/toolbarButtons';
+import { useBarSlot } from './model/useBarSlot';
+import { useFocusOnClose } from './model/useFocusOnClose';
+import { useImageForm } from './model/useImageForm';
 import { useLinkForm } from './model/useLinkForm';
 import { useToolbarRoving } from './model/useToolbarRoving';
-import { runToolbarAction, useRichTextEditor, type ToolbarAction } from './model/useRichTextEditor';
+import {
+  insertImage,
+  runToolbarAction,
+  useRichTextEditor,
+  type ToolbarAction,
+} from './model/useRichTextEditor';
 import { EditorToolbar } from './ui/EditorToolbar';
+import { ImageBar } from './ui/ImageBar';
 import { LinkBar } from './ui/LinkBar';
 import type { RichTextEditorProps } from './props';
 
 /**
- * Сам редактор: панель, строка ссылки и область ввода.
+ * Сам редактор: панель, строки ссылки и картинки, область ввода.
  *
  * Отдельным модулем с экспортом по умолчанию, потому что грузится он
  * лениво — `index.tsx` подставляет его через `lazy()`. Разбор, почему
@@ -24,7 +34,18 @@ export default function Editor({
   onChange,
   error,
   disabled = false,
+  imageCategory,
 }: RichTextEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Место под панелью — одно на обе строки ввода, и заводится оно первым:
+  // строка картинки нужна ещё до редактора, а строке ссылки нужен он.
+  const bar = useBarSlot();
+
+  // До экземпляра редактора: файл из буфера обмена приходит в обработчик
+  // внутри него, и строке картинки нельзя зависеть от того, что она сама
+  // помогает создать.
+  const imageForm = useImageForm(imageCategory, fileInputRef, bar);
+
   const { editor, state } = useRichTextEditor({
     value,
     onChange,
@@ -32,10 +53,20 @@ export default function Editor({
     labelledBy: labelId(id),
     describedBy: error ? errorId(id) : undefined,
     invalid: error !== undefined,
+    onImageFile: imageForm.enabled ? imageForm.receive : undefined,
   });
 
-  const linkForm = useLinkForm(editor);
-  const roving = useToolbarRoving(TOOLBAR_BUTTONS.length);
+  const linkForm = useLinkForm(editor, bar);
+
+  const buttons = imageForm.enabled
+    ? TOOLBAR_BUTTONS
+    : TOOLBAR_BUTTONS.filter((button) => button.action !== 'image');
+  const roving = useToolbarRoving(buttons.length);
+
+  // Место под панелью освободилось — курсор возвращается в текст. Смена
+  // одной строки на другую его не трогает: строка ссылки, сменившаяся
+  // строкой картинки, не должна уводить курсор из описания.
+  useFocusOnClose(bar.open !== null, editor);
 
   function onAction(action: ToolbarAction) {
     if (!editor) return;
@@ -49,7 +80,20 @@ export default function Editor({
       return;
     }
 
+    // Строку картинки открывает не кнопка, а выбранный файл: до него
+    // показывать нечего. Соседнюю строку она сменит сама — место одно.
+    if (action === 'image') {
+      imageForm.pick();
+
+      return;
+    }
+
     runToolbarAction(editor, action);
+  }
+
+  function onImageInsert() {
+    const image = imageForm.take();
+    if (editor && image) insertImage(editor, image);
   }
 
   return (
@@ -63,6 +107,7 @@ export default function Editor({
       )}
     >
       <EditorToolbar
+        buttons={buttons}
         fieldLabel={label}
         state={state}
         isLinkFormOpen={linkForm.isOpen}
@@ -83,6 +128,35 @@ export default function Editor({
           onApply={linkForm.apply}
           onRemove={linkForm.remove}
           onCancel={linkForm.close}
+        />
+      )}
+
+      {imageForm.isOpen && (
+        <ImageBar
+          id={`${id}-image-alt`}
+          previewUrl={imageForm.previewUrl}
+          isUploading={imageForm.isUploading}
+          error={imageForm.error}
+          alt={imageForm.alt}
+          canInsert={imageForm.canInsert}
+          onAltChange={imageForm.setAlt}
+          onInsert={onImageInsert}
+          onCancel={imageForm.close}
+        />
+      )}
+
+      {/* Диалог выбора файла открывает кнопка панели, а сам input спрятан
+          и из обхода, и от диктора: второй способ выбрать файл рядом
+          с первым только путал бы. */}
+      {imageForm.enabled && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={IMAGE_ACCEPT}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="sr-only"
+          onChange={imageForm.onFileChange}
         />
       )}
 

@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
+
+import { fileHandlers } from '@shared/api/mocks';
+import { server } from '@shared/api/mocks/server';
+import type { FileCategory } from '@shared/types';
+import { renderWithProviders } from '@/test/render';
 
 import { RichTextEditor } from './index';
 // Ленивый кусок — в кэш модулей до начала тестов: иначе первый `findBy`
@@ -20,11 +26,13 @@ function Field({
   initial = '',
   error,
   disabled,
+  imageCategory,
   onSubmit,
 }: {
   initial?: string;
   error?: string;
   disabled?: boolean;
+  imageCategory?: FileCategory;
   onSubmit?: () => void;
 }) {
   const [value, setValue] = useState(initial);
@@ -38,6 +46,7 @@ function Field({
         onChange={setValue}
         error={error}
         disabled={disabled}
+        imageCategory={imageCategory}
       />
       <output data-testid="saved">{value}</output>
     </form>
@@ -47,9 +56,14 @@ function Field({
 /**
  * Рендер с ожиданием: редактор грузится отдельным куском (`lazy`),
  * и до его подгрузки на месте поля стоит заглушка.
+ *
+ * Через общие провайдеры, а не голым `render`: загрузка картинки —
+ * мутация react-query, и без клиента запросов поле падает целиком.
+ * В приложении клиент есть у любой страницы (`app/providers`), в тесте
+ * его надо принести.
  */
 async function renderField(props: Parameters<typeof Field>[0] = {}) {
-  render(<Field {...props} />);
+  renderWithProviders(<Field {...props} />);
 
   // Запас по времени — по той же причине, что в личном кабинете:
   // ожидание должно упираться в рендер, а не в скорость раннера.
@@ -134,9 +148,9 @@ describe('RichTextEditor, согласие с белым списком бэке
   });
 
   it('не теряет картинку, которой в тексте не касались', async () => {
-    // Разбор картинок держится в схеме ради этого: кнопки вставки ещё нет
-    // (F-42), а `<img>` в перенесённых текстах уже есть. Без расширения
-    // правка заголовка уносила бы иллюстрации.
+    // Разбор картинок держится в схеме ради этого: `<img>` в перенесённых
+    // текстах уже есть, а кнопка вставки бывает не у каждого поля. Без
+    // расширения правка заголовка уносила бы иллюстрации.
     await renderField({ initial: '<p>Фото с защиты</p><img src="/media/foto.jpg">' });
 
     selectAll();
@@ -266,6 +280,245 @@ describe('RichTextEditor, ссылки', () => {
   });
 });
 
+/**
+ * Картинки вставляются загрузкой в `POST /api/files`: адрес нужен документу
+ * в момент вставки, а `data:`-адрес из буфера не пережил бы сохранение —
+ * белый список разрешает у `img` только `http`, `https` и относительный путь.
+ */
+describe('RichTextEditor, картинки', () => {
+  /**
+   * Буфер обмена события: файл, текст или и то, и другое.
+   *
+   * `getData` подделан не для нас, а для ProseMirror: он спрашивает
+   * у буфера текст **до** того, как дойдёт до нашего обработчика,
+   * и без метода падает весь редактор. В jsdom буфера обмена нет вовсе.
+   */
+  function clipboardOf(file: File | null, text = '') {
+    return {
+      clipboardData: {
+        files: file ? [file] : [],
+        types: file ? ['Files'] : ['text/plain'],
+        getData: (type: string) => (type === 'text/plain' ? text : ''),
+      },
+    };
+  }
+
+  function pasteFile(area: HTMLElement, file: File) {
+    fireEvent.paste(area, clipboardOf(file));
+  }
+
+  /** Файл выбран в диалоге — так же, как это делает человек кнопкой панели. */
+  function chooseFile(file = new File(['x'], 'foto.png', { type: 'image/png' })) {
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    if (!input) throw new Error('скрытого выбора файла нет в разметке');
+
+    fireEvent.change(input, { target: { files: [file] } });
+  }
+
+  async function renderWithImages(initial = '<p>Отчёт с защиты</p>') {
+    server.use(...fileHandlers());
+
+    return await renderField({ initial, imageCategory: 'news' });
+  }
+
+  it('вставляет картинку адресом из ответа загрузки', async () => {
+    await renderWithImages();
+
+    chooseFile();
+
+    // Адрес именно из ответа: собранный на фронте из ключа он разъехался бы
+    // с бэкендом при переезде на объектное хранилище.
+    fireEvent.change(await screen.findByLabelText('Описание'), {
+      target: { value: 'Защита дипломов' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Вставить' }));
+
+    expect(savedHtml()).toContain('src="/media/news/uploaded-1.jpg"');
+    expect(savedHtml()).toContain('alt="Защита дипломов"');
+  });
+
+  it('грузит в раздел, который назвала форма', async () => {
+    const categories: string[] = [];
+    server.use(
+      http.post('*/api/files', async ({ request }) => {
+        categories.push((await request.text()).includes('achievements') ? 'achievements' : 'иной');
+
+        return HttpResponse.json({ key: 'achievements/a.jpg', url: '/media/achievements/a.jpg' }, { status: 201 });
+      }),
+    );
+    await renderField({ initial: '<p>Благодарность</p>', imageCategory: 'achievements' });
+
+    chooseFile();
+
+    // Раздел решает права: `news` преподавателю закрыт, и ключ чужого
+    // раздела бэкенд не примет полем обложки.
+    expect(await screen.findByLabelText('Описание')).toBeInTheDocument();
+    expect(categories).toEqual(['achievements']);
+  });
+
+  it('оставляет пустое описание пустым атрибутом, а не выбрасывает его', async () => {
+    await renderWithImages();
+
+    chooseFile();
+    await screen.findByLabelText('Описание');
+    fireEvent.click(screen.getByRole('button', { name: 'Вставить' }));
+
+    // Без `alt` диктор читает адрес файла; с пустым — пропускает картинку
+    // как украшение, что и означает «описывать нечего».
+    expect(savedHtml()).toContain('alt=""');
+  });
+
+  it('картинку из буфера обмена отправляет на сервер, а не кладёт data:-адресом', async () => {
+    const area = await renderWithImages();
+
+    pasteFile(area, new File(['x'], 'screenshot.png', { type: 'image/png' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Вставить' }));
+
+    // `data:`-адрес белый список у `img` не разрешает: картинка,
+    // положенная в документ напрямую, исчезла бы при сохранении.
+    expect(savedHtml()).toContain('src="/media/news/uploaded-1.jpg"');
+    expect(savedHtml()).not.toContain('data:');
+  });
+
+  it('чужой текст из буфера вставляется по-прежнему, мимо загрузки', async () => {
+    // Обработчик вставки перехватывает только файлы: перехватив всё,
+    // он сломал бы обычную вставку скопированного абзаца.
+    const area = await renderWithImages('<p>Отчёт</p>');
+
+    fireEvent.paste(area, clipboardOf(null, 'Текст из письма'));
+
+    expect(screen.queryByLabelText('Описание')).not.toBeInTheDocument();
+    expect(savedHtml()).toContain('Текст из письма');
+  });
+
+  it('не отправляет то, что сервер отвергнет, и объясняет отказ', async () => {
+    let uploads = 0;
+    server.use(
+      http.post('*/api/files', () => {
+        uploads += 1;
+
+        return HttpResponse.json({ key: 'news/x.gif', url: '/media/news/x.gif' }, { status: 201 });
+      }),
+    );
+    await renderField({ initial: '<p>Отчёт</p>', imageCategory: 'news' });
+
+    chooseFile(new File(['x'], 'anim.gif', { type: 'image/gif' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Подходят только JPEG и PNG.');
+    expect(uploads).toBe(0);
+    // Вставлять нечего — кнопка не предлагает вставить пустоту.
+    expect(screen.getByRole('button', { name: 'Вставить' })).toBeDisabled();
+  });
+
+  it('отказ сервера показывает его словами', async () => {
+    server.use(
+      http.post('*/api/files', () =>
+        HttpResponse.json(
+          {
+            title: 'Bad Request',
+            status: 400,
+            detail: 'Изображение больше 25 мегапикселей',
+            instance: '/api/files',
+            timestamp: '2026-08-29T12:00:00.000000+03:00',
+          },
+          { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    await renderField({ initial: '<p>Отчёт</p>', imageCategory: 'news' });
+
+    chooseFile();
+
+    // `detail` этой ручки написан по-русски и пригоден для показа: из него
+    // видно, что делать с файлом.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Изображение больше 25 мегапикселей');
+  });
+
+  it('на 429 говорит, сколько ждать: контракт кладёт срок в Retry-After', async () => {
+    server.use(
+      http.post('*/api/files', () =>
+        HttpResponse.json(
+          {
+            title: 'Too Many Requests',
+            status: 429,
+            detail: 'Слишком много загрузок файлов. Повторите позже.',
+            instance: '/api/files',
+            timestamp: '2026-08-29T12:00:00.000000+03:00',
+          },
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '42' },
+          },
+        ),
+      ),
+    );
+    await renderField({ initial: '<p>Отчёт</p>', imageCategory: 'news' });
+
+    chooseFile();
+
+    // «Повторите позже» без срока заставляет пробовать наугад, а срок
+    // сервер прислал — терять его нельзя.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Слишком много загрузок. Повторите через 42 секунды.',
+    );
+  });
+
+  it('«Отмена» закрывает строку и возвращает курсор в текст', async () => {
+    const area = await renderWithImages();
+
+    chooseFile();
+    await screen.findByLabelText('Описание');
+    fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(screen.queryByLabelText('Описание')).not.toBeInTheDocument();
+    // Иначе фокус остаётся на кнопке, которой больше нет на экране.
+    await waitFor(() => expect(area).toHaveFocus());
+    expect(savedHtml()).toBe('<p>Отчёт с защиты</p>');
+  });
+
+  it('Enter в описании вставляет картинку, а не отправляет форму', async () => {
+    const onSubmit = vi.fn();
+    server.use(...fileHandlers());
+    await renderField({ initial: '<p>Отчёт</p>', imageCategory: 'news', onSubmit });
+
+    chooseFile();
+    fireEvent.keyDown(await screen.findByLabelText('Описание'), { key: 'Enter' });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(savedHtml()).toContain('<img src="/media/news/uploaded-1.jpg"');
+  });
+
+  it('без раздела хранилища кнопки нет, а картинка из буфера идёт своим чередом', async () => {
+    // Так стоит редактор в карточке ППС: раздел `news` преподавателю
+    // закрыт, и кнопка обещала бы то, что кончится `403`.
+    const area = await renderField({ initial: '<p>Образование</p>' });
+
+    expect(screen.queryByRole('button', { name: 'Картинка' })).not.toBeInTheDocument();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+
+    // Запросов при этом не уходит вовсе: хендлера загрузки в наборе нет,
+    // и ушедший запрос уронил бы тест (`onUnhandledRequest: 'error'`).
+    pasteFile(area, new File(['x'], 'foto.png', { type: 'image/png' }));
+
+    expect(screen.queryByLabelText('Описание')).not.toBeInTheDocument();
+  });
+
+  it('строка ссылки и строка картинки не стоят рядом', async () => {
+    // Две строки ввода под одной панелью — это два поля «Адрес»
+    // и «Описание» подряд, и непонятно, к чему относится «Применить».
+    await renderWithImages();
+
+    fireEvent.click(toolbarButton('Ссылка'));
+    expect(screen.getByLabelText('Адрес')).toBeInTheDocument();
+
+    chooseFile();
+
+    expect(await screen.findByLabelText('Описание')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Адрес')).not.toBeInTheDocument();
+  });
+});
+
 describe('RichTextEditor, клавиатура и диктор', () => {
   it('панель проходится стрелками, а в табуляции стоит одной кнопкой', async () => {
     await renderField();
@@ -273,8 +526,8 @@ describe('RichTextEditor, клавиатура и диктор', () => {
     const bold = toolbarButton('Жирный');
     const italic = toolbarButton('Курсив');
 
-    // Тринадцать кнопок между предыдущим полем формы и текстом означали бы
-    // тринадцать нажатий таба до того, ради чего форму открыли.
+    // Четырнадцать кнопок между предыдущим полем формы и текстом означали
+    // бы четырнадцать нажатий таба до того, ради чего форму открыли.
     expect(bold).toHaveAttribute('tabindex', '0');
     expect(italic).toHaveAttribute('tabindex', '-1');
 
@@ -340,7 +593,7 @@ describe('RichTextEditor, значение снаружи', () => {
       );
     }
 
-    render(<Reset />);
+    renderWithProviders(<Reset />);
     await screen.findByRole('textbox', { name: 'Содержание' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Сбросить' }));

@@ -3,7 +3,7 @@ import { LoaderCircle } from 'lucide-react';
 import type { FieldErrors, UseFormRegister } from 'react-hook-form';
 
 import { cn } from '@shared/lib';
-import { AvatarPicker } from '@shared/ui/AvatarPicker';
+import { ImagePicker } from '@shared/ui/ImagePicker';
 import { TextField } from '@shared/ui/FormFields';
 
 import type { ProfileFormValues } from '../model/profileSchema';
@@ -62,7 +62,8 @@ export function ProfileForm({
         </p>
       )}
 
-      <AvatarPicker
+      <ImagePicker
+        variant="avatar"
         previewUrl={avatarPreviewUrl}
         isUploading={isUploadingAvatar}
         error={avatarError}
