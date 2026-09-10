@@ -17,6 +17,37 @@ import { server } from '@shared/api/mocks/server';
  * `cleanup` вызывается руками, потому что `globals` выключены: автоматическую
  * уборку Testing Library вешает только на глобальные хуки.
  */
+/**
+ * `matchMedia` в jsdom не реализован вовсе, а каркас портала выбирает
+ * раскладку именно им (`widgets/Navbar/model/useIsDesktop.ts`): без
+ * заглушки любой тест, рисующий шапку с меню, падает на первом рендере.
+ *
+ * Ответ считается по ширине окна, а не прибит константой: тест, который
+ * поставит `window.innerWidth`, получит согласованный с ней ответ,
+ * а не вечный «десктоп». Разбирается только `(min-width: Npx)` — другого
+ * вида запросов в портале нет, и поддержка «на всякий случай» означала бы
+ * код, который никто не выполнит.
+ */
+// `scrollTo` jsdom тоже не умеет и на каждый вызов пишет «Not implemented»
+// в вывод теста. Прокрутку окна портал делает при смене адреса, то есть
+// в тестах роутера это сообщение шло бы пачками и топило собой настоящие.
+window.scrollTo = () => {};
+
+window.matchMedia ??= (query: string): MediaQueryList => {
+  const minWidth = Number(query.match(/min-width:\s*(\d+)px/)?.[1] ?? 0);
+
+  return {
+    media: query,
+    matches: window.innerWidth >= minWidth,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  };
+};
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
 });
