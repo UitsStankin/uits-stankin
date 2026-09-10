@@ -6,7 +6,7 @@ import type { News, NewsRequest } from '@shared/types';
  *
  * Лежит в фиче, а не в сущности: сущность знает только чтение — та же
  * граница, что у дисциплин (`features/manage-subjects`) и карточки ППС
- * (`features/edit-teacher-card`).
+ * (`features/manage-teachers`).
  *
  * Путь повторён строкой, а не импортирован из сущности: экспортировать
  * из `entities/news` путь ради одной строки значило бы открыть наружу то,

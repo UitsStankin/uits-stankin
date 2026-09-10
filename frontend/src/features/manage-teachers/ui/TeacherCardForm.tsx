@@ -1,4 +1,4 @@
-import type { FormEventHandler } from 'react';
+import type { FormEventHandler, ReactNode } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 
@@ -12,6 +12,8 @@ import { cn } from '@shared/lib';
 import { ImagePicker } from '@shared/ui/ImagePicker';
 import { SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
 import { RichTextEditor } from '@shared/ui/RichTextEditor';
+
+import type { FileCategory } from '@shared/types';
 
 import type { TeacherCardFormValues } from '../model/teacherCardSchema';
 
@@ -30,6 +32,37 @@ interface TeacherCardFormProps {
   avatarError: string | null;
   isUploadingAvatar: boolean;
   onAvatarSelect: (file: File) => void;
+  /**
+   * Убрать фото. Не передан — кнопки нет вовсе.
+   *
+   * Передаёт его только модератор. У преподавателя её нет намеренно:
+   * `PUT /api/teachers/me` очистку принимает, но карточку ППС видят
+   * посетители, и решение убрать с неё лицо стоит отдельного разговора
+   * с кафедрой — а не одного клика в личном кабинете.
+   */
+  onAvatarRemove?: () => void;
+  /**
+   * Что стоит между полями карточки и кнопками.
+   *
+   * Слот, а не набор пропсов под каждый случай: у преподавателя здесь
+   * строка про дисциплины, которых он не правит, у модератора — сами
+   * дисциплины и связь с учётной записью. Общего у этих двух вещей
+   * ровно одно — место, и описывать их форме незачем.
+   */
+  beforeActions?: ReactNode;
+  /** Подпись кнопки отправки: у новой карточки это не «Сохранить». */
+  submitLabel?: string;
+  /**
+   * Раздел хранилища для картинок внутри «Образования» и «Повышения
+   * квалификации». Не передан — кнопки «Картинка» у полей нет вовсе.
+   *
+   * Передаёт его только модератор, и это не забывчивость в кабинете:
+   * раздел `staff` преподавателю закрыт (docs/API.md, «Загрузка файлов»),
+   * то есть кнопка обещала бы ему `403` в ответ на выбранный файл.
+   * Разметку с картинками его форма при этом открывает и сохраняет —
+   * теряется только вставка новых.
+   */
+  imageCategory?: FileCategory;
 }
 
 const RICH_TEXT_FIELDS = [
@@ -41,13 +74,17 @@ const DEGREE_OPTIONS = DEGREE_CODES.map((code) => ({ value: code, label: DEGREE_
 const RANK_OPTIONS = RANK_CODES.map((code) => ({ value: code, label: RANK_LABELS[code] }));
 
 /**
- * Форма правки карточки ППС. Чистая: ничего не помнит, не запрашивает
- * и не решает, что считать ошибкой, — всё приходит пропсами
- * из `model/useTeacherCardForm.ts`.
+ * Форма карточки ППС. Чистая: ничего не помнит, не запрашивает
+ * и не решает, что считать ошибкой, — всё приходит пропсами из хука
+ * (`useMyTeacherCardForm` в кабинете, `useTeacherAdminForm` в админке).
+ *
+ * Одна форма на обоих: восемнадцать полей карточки у них общие до буквы,
+ * потому что общий у них `TeacherRequestDto`. Различия вынесены в три
+ * пропса — кнопка удаления фото, слот перед кнопками и подпись отправки,
+ * — и это ровно те различия, которые есть на самом деле.
  *
  * Полей много, но это не жадность формы, а контракт: `PUT` — полная
- * замена, преподаватель правит карточку целиком. Не правит он только
- * дисциплины — их назначает модератор, и в форме их нет.
+ * замена, карточка правится целиком.
  */
 export function TeacherCardForm({
   register,
@@ -61,6 +98,10 @@ export function TeacherCardForm({
   avatarError,
   isUploadingAvatar,
   onAvatarSelect,
+  onAvatarRemove,
+  beforeActions,
+  submitLabel = 'Сохранить',
+  imageCategory,
 }: TeacherCardFormProps) {
   return (
     <form onSubmit={onSubmit} noValidate className="mt-5 flex flex-col gap-5">
@@ -72,15 +113,15 @@ export function TeacherCardForm({
 
       {/* Фото: предпросмотр и выбор файла. Загрузка уходит сразу при
           выборе, до «Сохранить», — в кружке то, что вернул сервер.
-          Кнопки удаления здесь нет: `PUT /api/teachers/me` очистку фото
-          принимает, но карточку ППС видят посетители, и решение убрать
-          с неё лицо стоит отдельного разговора с кафедрой. */}
+          Кнопка удаления появляется, только если её дали: разбор
+          у пропса `onAvatarRemove`. */}
       <ImagePicker
         variant="avatar"
         previewUrl={avatarPreviewUrl}
         isUploading={isUploadingAvatar}
         error={avatarError}
         onSelect={onAvatarSelect}
+        onRemove={onAvatarRemove}
       />
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -184,6 +225,7 @@ export function TeacherCardForm({
               value={field.value}
               onChange={field.onChange}
               error={fieldErrors[name]?.message}
+              imageCategory={imageCategory}
             />
           )}
         />
@@ -212,12 +254,7 @@ export function TeacherCardForm({
         />
       </div>
 
-      {/* Дисциплин в форме нет не по забывчивости: их назначает модератор,
-          а присланное преподавателем поле бэкенд молча игнорирует. Строка
-          отвечает на вопрос «а где мои дисциплины?» до того, как он задан. */}
-      <p className="text-sm text-text-muted">
-        Дисциплины назначает модератор кафедры — здесь они не редактируются.
-      </p>
+      {beforeActions}
 
       <div className="flex gap-3">
         <button
@@ -230,7 +267,7 @@ export function TeacherCardForm({
           )}
         >
           {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
-          {isPending ? 'Сохраняем…' : 'Сохранить'}
+          {isPending ? 'Сохраняем…' : submitLabel}
         </button>
         <button
           type="button"

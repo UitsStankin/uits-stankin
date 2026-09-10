@@ -21,6 +21,7 @@ export type {
   AccessTokenResponse,
   ChangePasswordRequest,
   ProfileUpdateRequest,
+  UserDirectoryEntry,
 } from './auth.types';
 
 // Новости и объявления
@@ -43,11 +44,13 @@ export type {
   TeacherDegree,
   TeacherRank,
   TeacherUpsertRequest,
+  TeacherAdminRequest,
   Subject,
   SubjectPage,
   SubjectRequest,
   Helper,
   HelperPage,
+  HelperRequest,
 } from './staff.types';
 
 // Аспирантура

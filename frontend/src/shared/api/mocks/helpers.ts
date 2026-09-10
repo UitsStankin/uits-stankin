@@ -1,11 +1,13 @@
 import { http, HttpResponse } from 'msw';
 
-import type { Helper } from '@shared/types';
+import type { Helper, HelperRequest } from '@shared/types';
 
-import { pageFromUrl } from './page';
+import { DEFAULT_PAGE_SIZE, numberParam, pageResponse } from './page';
+import { problemResponse } from './problemResponse';
 
 /** `*` вместо origin — по той же причине, что и у новостей. */
 const PUBLIC_HELPERS = '*/api/public/helpers';
+const HELPERS = '*/api/helpers';
 
 /**
  * Карточка УВП со всеми полями контракта. Переопределяется точечно:
@@ -92,22 +94,114 @@ function buildHelpers(): readonly Helper[] {
 }
 
 /**
- * Публичная ручка УВП — страница карточек.
+ * Карточки УВП целиком: публичное чтение и модераторский CRUD.
+ *
+ * Мок **с состоянием**, как у карточек ППС и новостей: заведённая карточка
+ * появляется в списке, правка видна там же, удалённая исчезает. Один набор
+ * на две роли — разведённые, чтение и правка стали бы двумя разными
+ * выдумками.
  *
  * Проекции вроде `teacherListItem` здесь нет: карточка целиком помещается
- * в элементе списка, форма у ручки одна. Хендлера
- * `GET /api/public/helpers/{id}` тоже нет — ручка обслуживает форму
- * правки (блок 4), фронт на неё пока не ходит, и мок заведётся вместе
- * с формой.
+ * в элементе списка, форма у ручки одна. По той же причине нет и хендлера
+ * `GET /api/public/helpers/{id}`: контракт заводил эту ручку для формы
+ * правки — «без неё карточку приходилось искать в списке постранично», —
+ * но форме админки искать не приходится, вся карточка уже в строке
+ * таблицы. Хендлер под ручку, на которую никто не ходит, сторожил бы
+ * ненаписанный код.
  *
- * Список берётся аргументом, чтобы тест пустого раздела был одной строкой
- * `server.use(...publicHelperHandlers([]))`, а не копией хендлера
- * с другим телом.
+ * Сортировка `?sort=` — по двум полям карточки, на ней стоит проверка
+ * смены порядка в разделе.
  */
-export function publicHelperHandlers(items: readonly Helper[] = helpersFixture) {
+export function helperHandlers(items: readonly Helper[] = helpersFixture) {
+  let current = [...items];
+  let nextId = current.reduce((max, helper) => Math.max(max, helper.id), 0) + 1;
+
+  const notFound = (instance: string) =>
+    problemResponse(404, { title: 'Not Found', detail: 'Сотрудник не найден', instance });
+
   return [
-    http.get(PUBLIC_HELPERS, ({ request }) =>
-      HttpResponse.json(pageFromUrl(items, new URL(request.url))),
-    ),
+    http.get(PUBLIC_HELPERS, ({ request }) => {
+      const url = new URL(request.url);
+      const sorted = sortHelpers(current, url.searchParams.get('sort'));
+
+      return HttpResponse.json(
+        pageResponse(
+          sorted,
+          numberParam(url, 'page', 0),
+          numberParam(url, 'size', DEFAULT_PAGE_SIZE, 1),
+        ),
+      );
+    }),
+
+    http.post(HELPERS, async ({ request }) => {
+      const body = (await request.json()) as HelperRequest;
+      const created = cardFromRequest(makeHelper({ id: nextId++ }), body);
+
+      current = [...current, created];
+
+      return HttpResponse.json(created, { status: 201 });
+    }),
+
+    http.put(`${HELPERS}/:id`, async ({ params, request }) => {
+      const id = Number(params.id);
+      const existing = current.find((helper) => helper.id === id);
+
+      if (!existing) return notFound(`/api/helpers/${String(params.id)}`);
+
+      const body = (await request.json()) as HelperRequest;
+      const updated = cardFromRequest(existing, body);
+
+      current = current.map((helper) => (helper.id === id ? updated : helper));
+
+      return HttpResponse.json(updated);
+    }),
+
+    http.delete(`${HELPERS}/:id`, ({ params }) => {
+      const id = Number(params.id);
+
+      if (!current.some((helper) => helper.id === id)) {
+        return notFound(`/api/helpers/${String(params.id)}`);
+      }
+
+      current = current.filter((helper) => helper.id !== id);
+
+      return new HttpResponse(null, { status: 204 });
+    }),
   ];
+}
+
+/**
+ * Карточка из тела запроса. Адрес фото собирает сервер по ключу — здесь
+ * это делает мок, ровно как хранилище: префикс `/media`. Форма отправляет
+ * ключ и получает обратно пару «ключ и адрес», а мок, возвращающий
+ * присланное тело, отдал бы карточку без `avatarUrl` — и предпросмотр
+ * в списке молча опустел бы после сохранения.
+ */
+function cardFromRequest(base: Helper, body: HelperRequest): Helper {
+  return {
+    ...base,
+    ...body,
+    avatarUrl: body.avatar === null ? null : `/media/${body.avatar}`,
+  };
+}
+
+/**
+ * Порядок — тот же, что у Spring: `lastName`, затем `firstName`, затем
+ * `id` (`@PageableDefault`). Причины те же, что у карточек ППС: уникальный
+ * последний ключ не даёт однофамильцам меняться местами между запросами,
+ * а `localeCompare` не уносит «Ё» за «Я».
+ */
+function sortHelpers(items: readonly Helper[], sort: string | null): readonly Helper[] {
+  const [field, direction] = (sort ?? '').split(',');
+  const sign = direction === 'desc' ? -1 : 1;
+  const primary = field === 'position' ? 'position' : 'lastName';
+
+  return [...items].sort(
+    (a, b) =>
+      sign *
+      (a[primary].localeCompare(b[primary], 'ru') ||
+        a.lastName.localeCompare(b.lastName, 'ru') ||
+        a.firstName.localeCompare(b.firstName, 'ru') ||
+        a.id - b.id),
+  );
 }

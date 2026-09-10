@@ -6,7 +6,7 @@ import type { Subject, SubjectRequest } from '@shared/types';
  * /api/subjects`.
  *
  * Лежит в фиче, а не в сущности: сущность знает только чтение — то же
- * разделение, что у карточки ППС (`features/edit-teacher-card`).
+ * разделение, что у карточки ППС (`features/manage-teachers`).
  *
  * Путь тот же, что у чтения, но повторён строкой, а не импортирован
  * из сущности: экспортировать из `entities/subject` путь ради одной

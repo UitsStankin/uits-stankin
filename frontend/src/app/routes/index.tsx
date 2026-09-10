@@ -9,6 +9,7 @@ import Loader from '@shared/ui/Loader';
 import {
   ACHIEVEMENTS_ROUTE,
   ADMIN_ROUTE,
+  ADMIN_TEACHERS_ROUTE,
   ANNOUNCEMENTS_ROUTE,
   CONFERENCES_ROUTE,
   HELPERS_ROUTE,
@@ -45,6 +46,9 @@ import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
 import AdminNewsPage from '@pages/admin/NewsPage';
 import UnknownSectionPage from '@pages/admin/UnknownSectionPage';
 import SubjectsPage from '@pages/admin/SubjectsPage';
+import AdminTeachersPage from '@pages/admin/TeachersPage';
+import TeacherFormPage from '@pages/admin/TeacherFormPage';
+import AdminHelpersPage from '@pages/admin/HelpersPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -144,6 +148,12 @@ function adminSectionScreen(section: AdminSection) {
       // — тоже `NewsPage`, и два одинаковых имени в одном модуле роутера
       // не ужились бы.
       return <AdminNewsPage />;
+    case 'teachers':
+      // Имя импорта отличается от имени файла по той же причине, что
+      // и у новостей: публичный список ППС — тоже `TeachersPage`.
+      return <AdminTeachersPage />;
+    case 'helpers':
+      return <AdminHelpersPage />;
     case 'subjects':
       return <SubjectsPage />;
     default:
@@ -151,6 +161,18 @@ function adminSectionScreen(section: AdminSection) {
       // конфига, и заглушка честнее пустой страницы.
       return <PlannedSectionPage section={section} />;
   }
+}
+
+/**
+ * Адрес внутри админки, отсчитанный от `/admin`: роутер ждёт от дочернего
+ * роута относительный путь, а константы адресов — абсолютные, потому что
+ * их же ставят в `<Link>`.
+ *
+ * Функция, а не `slice` по месту: мест стало три — раскладка разделов
+ * и два адреса формы карточки ППС.
+ */
+function adminChildPath(path: string): string {
+  return path.slice(`${ADMIN_ROUTE}/`.length);
 }
 
 // Базовые роуты
@@ -356,7 +378,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <AdminHomePage /> },
           ...ADMIN_SECTIONS.map((section) => ({
-            path: section.path.slice(`${ADMIN_ROUTE}/`.length),
+            path: adminChildPath(section.path),
             // Второй `RoleRoute` внутри первого — только там, где раздел
             // строже лейаута: учётные записи закрыты от модератора,
             // и без него он дошёл бы до экрана, а `403` получил уже
@@ -369,6 +391,31 @@ export const routes: RouteObject[] = [
               ),
             errorElement: <RouteError />,
           })),
+          /*
+           * Форма карточки ППС — своим адресом, а не окном-панелью
+           * (разбор в `shared/config/routes.ts`, у `adminTeacherRoute`).
+           *
+           * Двумя плоскими записями, а не вложенными в раздел: раздел
+           * раскладывается из `ADMIN_SECTIONS` общим правилом, и ветка
+           * `children` у одного из девяти означала бы исключение в этом
+           * правиле — ради двух адресов, которые роутер ранжирует
+           * по точности сам, независимо от порядка в массиве.
+           *
+           * `new` отдельной записью, а не словом в `:id`: у неё нет
+           * параметра вовсе, и это единственное, чем «завести новую»
+           * отличается от опечатки в адресе. Опечатка обязана показать
+           * «карточка не найдена», а не пустую форму создания.
+           */
+          {
+            path: `${adminChildPath(ADMIN_TEACHERS_ROUTE)}/new`,
+            element: <TeacherFormPage />,
+            errorElement: <RouteError />,
+          },
+          {
+            path: `${adminChildPath(ADMIN_TEACHERS_ROUTE)}/:id`,
+            element: <TeacherFormPage />,
+            errorElement: <RouteError />,
+          },
           // Адрес внутри админки, которого нет. Без него такой адрес
           // ловил бы корневой '*' и говорил «страница ещё не перенесена» —
           // про раздел, которого не существует вовсе.

@@ -2,7 +2,7 @@ import { CheckCircle2 } from 'lucide-react';
 
 import { ProfileForm, useAuth, useProfileForm } from '@features/auth';
 import { ChangePasswordForm, useChangePasswordForm } from '@features/change-password';
-import { TeacherCardForm, useTeacherCardForm } from '@features/edit-teacher-card';
+import { TeacherCardForm, useMyTeacherCardForm } from '@features/manage-teachers';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { RetryButton } from '@shared/ui/StatusAction';
 import Loader from '@shared/ui/Loader';
@@ -236,7 +236,7 @@ function SavedNotice({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Обёртка ради правила хуков: `useTeacherCardForm` требует загруженную
+ * Обёртка ради правила хуков: `useMyTeacherCardForm` требует загруженную
  * карточку, а хук нельзя позвать условно. Монтируется на время правки —
  * с размонтированием умирают и начальные значения, и брошенные правки.
  */
@@ -249,7 +249,7 @@ function TeacherCardEditor({
   onSaved: () => void;
   onCancel: () => void;
 }) {
-  const form = useTeacherCardForm(card, onSaved);
+  const form = useMyTeacherCardForm(card, onSaved);
 
   return (
     <section className="rounded bg-white p-6 shadow-sm">
@@ -272,6 +272,16 @@ function TeacherCardEditor({
         avatarError={form.avatarError}
         isUploadingAvatar={form.isUploadingAvatar}
         onAvatarSelect={form.onAvatarSelect}
+        beforeActions={
+          /* Дисциплин в форме нет не по забывчивости: их назначает
+             модератор, а присланное преподавателем поле бэкенд молча
+             игнорирует. Строка отвечает на вопрос «а где мои дисциплины?»
+             до того, как он задан. У модератора на этом же месте стоят
+             сами дисциплины. */
+          <p className="text-sm text-text-muted">
+            Дисциплины назначает модератор кафедры — здесь они не редактируются.
+          </p>
+        }
       />
     </section>
   );

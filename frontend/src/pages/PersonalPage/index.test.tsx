@@ -10,7 +10,7 @@ import {
   makeTeacher,
   problemResponse,
   profileHandlers,
-  teacherHandlers,
+  myTeacherCardHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { clearSession, setAccessToken } from '@shared/api';
@@ -78,7 +78,7 @@ afterEach(() => {
 
 describe('PersonalPage, секция карточки ППС', () => {
   it('показывает карточку преподавателя', async () => {
-    server.use(...teacherHandlers(makeTeacher({ position: 'доцент кафедры' })));
+    server.use(...myTeacherCardHandlers(makeTeacher({ position: 'доцент кафедры' })));
 
     renderPersonalPage();
 
@@ -107,7 +107,7 @@ describe('PersonalPage, секция карточки ППС', () => {
    * Красной плашки здесь быть не должно, делать преподавателю нечего.
    */
   it('на 404 говорит, что карточка не привязана', async () => {
-    server.use(...teacherHandlers(null));
+    server.use(...myTeacherCardHandlers(null));
 
     renderPersonalPage();
 
@@ -188,8 +188,8 @@ describe('PersonalPage, правка карточки ППС', () => {
     return within(screen.getByText('Информация о преподавателе').closest('section')!);
   }
 
-  async function openTeacherForm() {
-    server.use(...teacherHandlers(makeTeacher()));
+  async function openTeacherForm(card = makeTeacher()) {
+    server.use(...myTeacherCardHandlers(card));
     renderPersonalPage();
     await screen.findByText('Информация о преподавателе');
 
@@ -235,6 +235,39 @@ describe('PersonalPage, правка карточки ППС', () => {
     await screen.findByRole('button', { name: 'Редактировать' });
     expect(cardValue('Образование')?.querySelector('strong')).toHaveTextContent(
       'МГТУ «СТАНКИН», 2005',
+    );
+  });
+
+  it('не предлагает вставить картинку: раздел staff преподавателю закрыт', async () => {
+    const form = await openTeacherForm();
+
+    // Модератору кнопка есть (проверка — в тестах формы админки),
+    // а здесь она обещала бы `403` в ответ на выбранный файл:
+    // «свою карточку он правит, но иллюстрацию в неё кладёт редактор»
+    // (docs/API.md, «Загрузка файлов»).
+    expect(form.formatting.queryByRole('button', { name: 'Картинка' })).not.toBeInTheDocument();
+  });
+
+  it('картинку, вставленную редактором, показывает и сохраняет', async () => {
+    // Кнопки нет, но разметка с картинками — есть: её кладёт модератор,
+    // и правка преподавателем не должна её терять.
+    const form = await openTeacherForm(
+      makeTeacher({ education: '<p>МГТУ «СТАНКИН»</p><img src="/media/staff/diplom.jpg">' }),
+    );
+
+    expect(form.education.querySelector('img')).toHaveAttribute(
+      'src',
+      '/media/staff/diplom.jpg',
+    );
+
+    fireEvent.keyDown(form.education, { key: 'a', ctrlKey: true });
+    fireEvent.click(form.formatting.getByRole('button', { name: 'Курсив' }));
+    fireEvent.click(form.save);
+
+    await screen.findByRole('button', { name: 'Редактировать' });
+    expect(cardValue('Образование')?.querySelector('img')).toHaveAttribute(
+      'src',
+      '/media/staff/diplom.jpg',
     );
   });
 

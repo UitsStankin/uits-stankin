@@ -12,7 +12,13 @@ import {
 
 import type { AdminAccess } from '@shared/types';
 
-import { ADMIN_NEWS_ROUTE, ADMIN_ROUTE, ADMIN_SUBJECTS_ROUTE } from './routes';
+import {
+  ADMIN_HELPERS_ROUTE,
+  ADMIN_NEWS_ROUTE,
+  ADMIN_ROUTE,
+  ADMIN_SUBJECTS_ROUTE,
+  ADMIN_TEACHERS_ROUTE,
+} from './routes';
 
 export interface AdminSection {
   /** Последний сегмент адреса: `/admin/subjects` — это `subjects`. */
@@ -79,17 +85,15 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'teachers',
     title: 'Преподаватели',
     icon: Users,
-    path: `${ADMIN_ROUTE}/teachers`,
+    path: ADMIN_TEACHERS_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-44',
   },
   {
     key: 'helpers',
     title: 'Учебно-вспомогательный персонал',
     icon: UserCog,
-    path: `${ADMIN_ROUTE}/helpers`,
+    path: ADMIN_HELPERS_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-44',
   },
   {
     key: 'postgraduates',
