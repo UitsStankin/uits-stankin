@@ -59,6 +59,55 @@ describe('Modal', () => {
     expect(opener).toHaveFocus();
   });
 
+  /**
+   * Кнопку удаления уносит та самая строка, которую окно удаляло, —
+   * возвращать фокус некуда, и он падает на `body`: человек
+   * с клавиатуры оказывается в начале страницы. Запасной адрес —
+   * область содержимого рядом с таблицей.
+   */
+  it('уводит фокус в содержимое страницы, если кнопки больше нет', () => {
+    render(
+      <main>
+        <button type="button">Удалить дисциплину «Базы данных»</button>
+      </main>,
+    );
+
+    const opener = screen.getByRole('button', { name: 'Удалить дисциплину «Базы данных»' });
+    opener.focus();
+
+    const { unmount } = renderModal();
+
+    // Строка исчезла вместе с записью, пока окно было открыто.
+    opener.remove();
+    unmount();
+
+    const content = document.querySelector('main');
+    expect(content).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
+  /** `tabindex` у содержимого — временный: иначе полстраницы станет остановкой табуляции. */
+  it('снимает у содержимого временный tabindex, когда фокус уходит дальше', () => {
+    render(
+      <main>
+        <button type="button">Удалить</button>
+      </main>,
+    );
+
+    const opener = screen.getByRole('button', { name: 'Удалить' });
+    opener.focus();
+
+    const { unmount } = renderModal();
+    opener.remove();
+    unmount();
+
+    const content = document.querySelector('main')!;
+    expect(content).toHaveAttribute('tabindex', '-1');
+
+    fireEvent.blur(content);
+    expect(content).not.toHaveAttribute('tabindex');
+  });
+
   it('закрывается по Escape', () => {
     const { onClose } = renderModal();
 
