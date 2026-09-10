@@ -101,6 +101,10 @@ function TeacherEditor({ card, onDone }: { card: Teacher | null; onDone: () => v
         onAvatarSelect={form.onAvatarSelect}
         onAvatarRemove={form.onAvatarRemove}
         submitLabel={card ? 'Сохранить' : 'Создать'}
+        // Картинки в «Образовании» и «Повышении квалификации» — раздел
+        // `staff`; в кабинете этого пропса нет, потому что преподавателю
+        // раздел закрыт (docs/API.md, «Загрузка файлов»).
+        imageCategory="staff"
         beforeActions={
           <>
             <SubjectsField

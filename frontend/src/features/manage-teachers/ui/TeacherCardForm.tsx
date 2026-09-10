@@ -13,6 +13,8 @@ import { ImagePicker } from '@shared/ui/ImagePicker';
 import { SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
 import { RichTextEditor } from '@shared/ui/RichTextEditor';
 
+import type { FileCategory } from '@shared/types';
+
 import type { TeacherCardFormValues } from '../model/teacherCardSchema';
 
 interface TeacherCardFormProps {
@@ -50,6 +52,17 @@ interface TeacherCardFormProps {
   beforeActions?: ReactNode;
   /** Подпись кнопки отправки: у новой карточки это не «Сохранить». */
   submitLabel?: string;
+  /**
+   * Раздел хранилища для картинок внутри «Образования» и «Повышения
+   * квалификации». Не передан — кнопки «Картинка» у полей нет вовсе.
+   *
+   * Передаёт его только модератор, и это не забывчивость в кабинете:
+   * раздел `staff` преподавателю закрыт (docs/API.md, «Загрузка файлов»),
+   * то есть кнопка обещала бы ему `403` в ответ на выбранный файл.
+   * Разметку с картинками его форма при этом открывает и сохраняет —
+   * теряется только вставка новых.
+   */
+  imageCategory?: FileCategory;
 }
 
 const RICH_TEXT_FIELDS = [
@@ -88,6 +101,7 @@ export function TeacherCardForm({
   onAvatarRemove,
   beforeActions,
   submitLabel = 'Сохранить',
+  imageCategory,
 }: TeacherCardFormProps) {
   return (
     <form onSubmit={onSubmit} noValidate className="mt-5 flex flex-col gap-5">
@@ -211,6 +225,7 @@ export function TeacherCardForm({
               value={field.value}
               onChange={field.onChange}
               error={fieldErrors[name]?.message}
+              imageCategory={imageCategory}
             />
           )}
         />

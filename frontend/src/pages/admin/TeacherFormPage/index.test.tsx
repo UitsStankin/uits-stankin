@@ -451,3 +451,39 @@ describe('TeacherFormPage, создание', () => {
     expect(requested).toBe(false);
   });
 });
+
+/**
+ * Картинки внутри «Образования» и «Повышения квалификации» — раздел
+ * хранилища `staff` (B-5, приехал с T-79). Раздел закрыт от преподавателя,
+ * поэтому кнопка есть только здесь, у модератора; в кабинете её нет
+ * (проверка — в тестах личного кабинета).
+ */
+describe('TeacherFormPage, картинки в rich-text полях', () => {
+  it('грузит картинку «Образования» в раздел staff', async () => {
+    renderForm('/admin/teachers/3');
+
+    // Ждём саму форму: редактор приезжает отдельным куском.
+    await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
+
+    const выбор = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    // Три: фото карточки и по одному у каждого rich-text поля.
+    expect(выбор).toHaveLength(3);
+
+    fireEvent.change(выбор[1], {
+      target: { files: [new File(['x'], 'diplom.png', { type: 'image/png' })] },
+    });
+
+    const описание = await screen.findByLabelText('Описание');
+    fireEvent.change(описание, { target: { value: 'Диплом' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Вставить' }));
+
+    // Раздел виден в ключе, который вернула загрузка: мок кладёт его туда,
+    // куда просили. Уйди запрос с разделом `news` — тут был бы `news`,
+    // а живой бэкенд ответил бы `403`.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Образование' }).querySelector('img'),
+      ).toHaveAttribute('src', '/media/staff/uploaded-1.jpg'),
+    );
+  });
+});
