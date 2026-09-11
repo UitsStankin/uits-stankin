@@ -13,6 +13,7 @@ import {
 import type { AdminAccess } from '@shared/types';
 
 import {
+  ADMIN_ACHIEVEMENTS_ROUTE,
   ADMIN_CONFERENCES_ROUTE,
   ADMIN_HELPERS_ROUTE,
   ADMIN_NEWS_ROUTE,
@@ -77,9 +78,8 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'achievements',
     title: 'Достижения кафедры',
     icon: Award,
-    path: `${ADMIN_ROUTE}/achievements`,
+    path: ADMIN_ACHIEVEMENTS_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-45',
   },
   {
     key: 'teachers',

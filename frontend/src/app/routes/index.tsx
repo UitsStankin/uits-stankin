@@ -50,6 +50,7 @@ import AdminTeachersPage from '@pages/admin/TeachersPage';
 import TeacherFormPage from '@pages/admin/TeacherFormPage';
 import AdminHelpersPage from '@pages/admin/HelpersPage';
 import AdminConferencesPage from '@pages/admin/ConferencesPage';
+import AdminAchievementsPage from '@pages/admin/AchievementsPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -153,6 +154,8 @@ function adminSectionScreen(section: AdminSection) {
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список конференций — тоже `ConferencesPage`.
       return <AdminConferencesPage />;
+    case 'achievements':
+      return <AdminAchievementsPage />;
     case 'teachers':
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список ППС — тоже `TeachersPage`.
