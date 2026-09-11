@@ -97,11 +97,21 @@ export function TextField({
   label,
   error,
   registration,
+  type = 'text',
   ...inputProps
-}: FieldBaseProps & Pick<ComponentProps<'input'>, 'autoComplete' | 'inputMode' | 'placeholder'>) {
+}: FieldBaseProps & {
+  /**
+   * Вид поля. `date` и `time` — родные выборы даты и времени (F-45):
+   * значение у них строка `YYYY-MM-DD` и `HH:mm`, то есть ровно то, что
+   * ждёт контракт, и разбирать её в `Date` не нужно. `email` и `tel` —
+   * ради клавиатуры телефона; формат браузер не проверяет — у форм
+   * портала стоит `noValidate`, и проверять остаётся схеме и серверу.
+   */
+  type?: 'text' | 'email' | 'tel' | 'date' | 'time';
+} & Pick<ComponentProps<'input'>, 'autoComplete' | 'inputMode' | 'placeholder'>) {
   return (
     <FieldShell id={id} label={label} error={error}>
-      <input id={id} type="text" className={inputClass} {...ariaProps(id, error)} {...inputProps} {...registration} />
+      <input id={id} type={type} className={inputClass} {...ariaProps(id, error)} {...inputProps} {...registration} />
     </FieldShell>
   );
 }
