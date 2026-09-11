@@ -4,6 +4,7 @@ import { postTypeLabel } from '@entities/news';
 import { formatDate } from '@shared/lib';
 import type { News } from '@shared/types';
 import { adminColumns } from '@shared/ui/DataTable/model/adminTable';
+import { PublicationStatus } from '@shared/ui/PublicationStatus';
 import { RowAction } from '@shared/ui/RowAction';
 
 const column = adminColumns<News>();
@@ -40,25 +41,10 @@ export function newsColumns({
       cell: ({ getValue }) => postTypeLabel(getValue()),
     }),
 
-    /*
-     * Состояние — словами, а не значком: «опубликована» и «черновик» —
-     * это то, из-за чего запись видно или не видно на сайте, и угадывать
-     * это по цвету точки модератор не должен. Цвет здесь помогает
-     * пробежать колонку глазами, но ничего не сообщает сам по себе.
-     */
     column.accessor('display', {
       header: 'Состояние',
       enableSorting: false,
-      cell: ({ getValue }) =>
-        getValue() ? (
-          <span className="whitespace-nowrap rounded bg-success/10 px-2 py-1 text-sm text-success">
-            Опубликована
-          </span>
-        ) : (
-          <span className="whitespace-nowrap rounded bg-gray-300 px-2 py-1 text-sm text-text-default">
-            Черновик
-          </span>
-        ),
+      cell: ({ getValue }) => <PublicationStatus display={getValue()} publishedLabel="Опубликована" />,
     }),
 
     column.accessor('createdAt', {
