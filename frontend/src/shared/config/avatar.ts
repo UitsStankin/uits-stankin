@@ -14,6 +14,6 @@
  *
  * Отдельный модуль, а не константа в одном из них: путь к файлу,
  * продублированный в двух местах, разъедется при первой же чистке
- * `public/assets` — а исчезнувшую картинку заметит не сборка, а посетитель.
+ * `public/img` — а исчезнувшую картинку заметит не сборка, а посетитель.
  */
-export const DEFAULT_AVATAR_URL = '/assets/images/avatars/default-user.png';
+export const DEFAULT_AVATAR_URL = '/img/avatars/default-user.png';

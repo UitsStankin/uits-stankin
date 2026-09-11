@@ -127,7 +127,7 @@ export const HISTORY_TIMELINE: readonly HistoryEvent[] = [
     title: 'Коллектив кафедры биотехнической кибернетики в 2010 году',
     icon: Users,
     photo: {
-      src: '/assets/images/Personal.jpg',
+      src: '/img/Personal.jpg',
       alt: 'Общая фотография сотрудников кафедры биотехнической кибернетики, 2010 год',
       width: 1280,
       height: 754,
@@ -222,7 +222,7 @@ export const HISTORY_TIMELINE: readonly HistoryEvent[] = [
     title: 'Коллектив кафедры управления и информатики в технических системах в 2023 году',
     icon: Users,
     photo: {
-      src: '/assets/images/personal2.jpg',
+      src: '/img/personal2.jpg',
       alt: 'Общая фотография сотрудников кафедры управления и информатики в технических системах, 2023 год',
       width: 1280,
       height: 914,
