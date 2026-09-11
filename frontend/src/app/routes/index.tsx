@@ -49,6 +49,7 @@ import SubjectsPage from '@pages/admin/SubjectsPage';
 import AdminTeachersPage from '@pages/admin/TeachersPage';
 import TeacherFormPage from '@pages/admin/TeacherFormPage';
 import AdminHelpersPage from '@pages/admin/HelpersPage';
+import AdminConferencesPage from '@pages/admin/ConferencesPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -148,6 +149,10 @@ function adminSectionScreen(section: AdminSection) {
       // — тоже `NewsPage`, и два одинаковых имени в одном модуле роутера
       // не ужились бы.
       return <AdminNewsPage />;
+    case 'conferences':
+      // Имя импорта отличается от имени файла по той же причине, что
+      // и у новостей: публичный список конференций — тоже `ConferencesPage`.
+      return <AdminConferencesPage />;
     case 'teachers':
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список ППС — тоже `TeachersPage`.
