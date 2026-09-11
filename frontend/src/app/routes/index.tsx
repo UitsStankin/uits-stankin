@@ -8,6 +8,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import Loader from '@shared/ui/Loader';
 import {
   ACHIEVEMENTS_ROUTE,
+  ADMIN_PAGES_ROUTE,
   ADMIN_ROUTE,
   ADMIN_TEACHERS_ROUTE,
   ANNOUNCEMENTS_ROUTE,
@@ -51,6 +52,8 @@ import TeacherFormPage from '@pages/admin/TeacherFormPage';
 import AdminHelpersPage from '@pages/admin/HelpersPage';
 import AdminConferencesPage from '@pages/admin/ConferencesPage';
 import AdminAchievementsPage from '@pages/admin/AchievementsPage';
+import AdminEditablePagesPage from '@pages/admin/EditablePagesPage';
+import EditablePageFormPage from '@pages/admin/EditablePageFormPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -164,6 +167,10 @@ function adminSectionScreen(section: AdminSection) {
       return <AdminHelpersPage />;
     case 'subjects':
       return <SubjectsPage />;
+    case 'pages':
+      // Имя импорта отличается от имени файла по той же причине, что
+      // и у новостей: публичная страница раздела — `EditablePagePage`.
+      return <AdminEditablePagesPage />;
     default:
       // Раздел объявлен готовым, а экрана для него нет — это ошибка
       // конфига, и заглушка честнее пустой страницы.
@@ -422,6 +429,15 @@ export const routes: RouteObject[] = [
           {
             path: `${adminChildPath(ADMIN_TEACHERS_ROUTE)}/:id`,
             element: <TeacherFormPage />,
+            errorElement: <RouteError />,
+          },
+          // Форма раздела сайта — тоже своим адресом и тоже плоской записью,
+          // но довод другой: не догрузка, а ширина документа (разбор
+          // у `adminEditablePageRoute`). Записи `new` нет: набор разделов
+          // закрыт, и негодный слаг форма разбирает сама.
+          {
+            path: `${adminChildPath(ADMIN_PAGES_ROUTE)}/:slug`,
+            element: <EditablePageFormPage />,
             errorElement: <RouteError />,
           },
           // Адрес внутри админки, которого нет. Без него такой адрес

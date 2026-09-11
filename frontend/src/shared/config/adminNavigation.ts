@@ -17,6 +17,7 @@ import {
   ADMIN_CONFERENCES_ROUTE,
   ADMIN_HELPERS_ROUTE,
   ADMIN_NEWS_ROUTE,
+  ADMIN_PAGES_ROUTE,
   ADMIN_ROUTE,
   ADMIN_SUBJECTS_ROUTE,
   ADMIN_TEACHERS_ROUTE,
@@ -114,9 +115,8 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'pages',
     title: 'Разделы сайта',
     icon: FileText,
-    path: `${ADMIN_ROUTE}/pages`,
+    path: ADMIN_PAGES_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-45',
   },
   {
     key: 'users',
