@@ -9,6 +9,8 @@ on:
     paths:
       - "backend/**"
       - "!backend/**.md"
+      - "schedule-service/**"
+      - "!schedule-service/**.md"
       - "frontend/**"
       - "!frontend/**.md"
       - ".github/workflows/**"
@@ -18,11 +20,14 @@ jobs:
   # плюс публикация образа в GHCR тем же тегом github.sha, который тянет деплой.
   # Права проброшены явно: вызванный workflow не может получить больше прав,
   # чем есть у вызывающего, а публикация пакета требует packages: write.
+  # Секреты тоже: в вызванный workflow они сами не передаются, и без
+  # SONAR_TOKEN шаг анализа SonarQube валил бы сборку, а с ней и деплой.
   build-and-test:
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
       packages: write
+    secrets: inherit
 
   # Линт, тесты и сборка фронтенда. Образ фронта публикуется в ci.yml,
   # а проверяется он здесь: на push в main frontend.yml сам не запускается
