@@ -1,21 +1,21 @@
-import { queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 
-import type { EditablePageSlug } from '@shared/types';
+import type { EditablePageSlug, PageParams } from '@shared/types';
 
-import { fetchEditablePage } from './editablePageApi';
+import { fetchEditablePage, fetchEditablePagesPage } from './editablePageApi';
 
 /**
  * Ключи кэша редактируемых разделов.
  *
- * Иерархия плоская, в отличие от `newsKeys`: списков у разделов нет —
- * публичная ручка одна и адресуется слагом. Админский список
- * (`GET /api/pages`) придёт с блоком 4 и встанет рядом отдельной веткой,
- * потому что инвалидировать его после `PUT` нужно вместе с разделом,
- * а не вместо него.
+ * Иерархия почти плоская: публичная ручка одна и адресуется слагом.
+ * Модераторский список (`GET /api/pages`) встал рядом отдельной веткой
+ * под тем же `all` — после `PUT` сбрасываются разом и он, и раздел,
+ * открытый на сайте, и блоки главной.
  */
 export const editablePageKeys = {
   all: ['editable-page'] as const,
   item: (slug: EditablePageSlug) => [...editablePageKeys.all, slug] as const,
+  adminList: (params: PageParams) => [...editablePageKeys.all, 'admin-list', params] as const,
 };
 
 /**
@@ -31,4 +31,16 @@ export const editablePageQuery = (slug: EditablePageSlug) =>
   queryOptions({
     queryKey: editablePageKeys.item(slug),
     queryFn: ({ signal }) => fetchEditablePage(slug, signal),
+  });
+
+/**
+ * Описание запроса списка разделов для админки. `keepPreviousData` —
+ * как у остальных списков админки: страниц у разделов сегодня одна,
+ * но это свойство данных, а не контракта.
+ */
+export const editablePagesListQuery = (params: PageParams) =>
+  queryOptions({
+    queryKey: editablePageKeys.adminList(params),
+    queryFn: ({ signal }) => fetchEditablePagesPage(params, signal),
+    placeholderData: keepPreviousData,
   });
