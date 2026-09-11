@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -38,19 +39,27 @@ public class SecurityConfig {
             UploadRateLimitFilter uploadRateLimitFilter,
             AuthenticationProvider authenticationProvider,
             JwtAuthenticationEntryPoint authenticationEntryPoint,
-            RestAccessDeniedHandler accessDeniedHandler
+            RestAccessDeniedHandler accessDeniedHandler,
+            @Value("${application.storage.serve-media}") boolean serveMedia,
+            @Value("${application.storage.public-base-url}") String mediaBaseUrl
     ) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/auth/**").permitAll()
-                        .requestMatchers("/error").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        .anyRequest().authenticated()
-                ).exceptionHandling(
+                .authorizeHttpRequests(auth -> {
+                    auth
+                            .requestMatchers("/api/users/auth/**").permitAll()
+                            .requestMatchers("/error").permitAll()
+                            .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                            .requestMatchers("/api/public/**").permitAll()
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+
+                    if (serveMedia) {
+                        auth.requestMatchers(HttpMethod.GET, mediaBaseUrl + "/**").permitAll();
+                    }
+
+                    auth.anyRequest().authenticated();
+                }).exceptionHandling(
                         ex -> ex.authenticationEntryPoint(authenticationEntryPoint)
                                 .accessDeniedHandler(accessDeniedHandler)
                 )

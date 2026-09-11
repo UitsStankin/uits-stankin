@@ -15,3 +15,6 @@ application:
   security:
     refresh:
       cookie-secure: false
+  # Nginx в разработке нет, а Vite проксирует /media на бэкенд (vite.config.ts)
+  storage:
+    serve-media: true
