@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import ru.stankin.uits.AbstractIntegrationTest;
@@ -35,6 +36,7 @@ import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -302,6 +304,22 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<String> response = importWorkbook(adminToken, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void parserIsCalledOutsideTheTransaction() {
+        AtomicBoolean transactionActive = new AtomicBoolean(true);
+        given(gradeSheetParseClient.parse(any(), any())).willAnswer(invocation -> {
+            transactionActive.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return parsedWith(sheet("ИДБ-25-11", student(1, "Абрамов", score("М1", "30"))));
+        });
+
+        ResponseEntity<GradeSheetImportResponseDto> response =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(transactionActive).isFalse();
+        assertThat(countRows("gradesheet_gradesheet")).isEqualTo(1);
     }
 
     @Test
