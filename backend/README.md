@@ -123,6 +123,8 @@ Invoke-RestMethod http://localhost:8080/api/public/news
 | Swagger UI и `/v3/api-docs` | доступны | отключены, дают `404` |
 | `DevDataSeeder` | наполняет пустую базу | не запускается |
 | `/actuator/health` и `/health/readiness` | доступны без токена | доступны без токена |
+| Раздача `/media` приложением (`serve-media`) | включена: nginx в разработке нет | выключена, файлы отдаёт nginx |
+| Флаг `Secure` у refresh-cookie | снят: иначе cookie не приедет по http | стоит |
 
 Swagger в проде отключён свойствами springdoc, а не правилом в `SecurityConfig`:
 при выключенной библиотеке этих обработчиков в приложении просто нет, поэтому
@@ -141,18 +143,26 @@ $env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
 
 ## Прод-контур локально
 
-`docker-compose.prod.yml` описывает боевой стек: база без проброшенного наружу порта
-и приложение из образа `ghcr.io/uitsstankin/uits-backend`, который собирает CI.
-Все секреты и тег образа заданы через `${VAR:?...}` — без переменной compose
-не стартует и пишет, чего не хватает.
+`docker-compose.prod.yml` описывает боевой стек из четырёх сервисов: postgres, backend,
+schedule-service и nginx с запечённым фронтендом. Образы `uits-backend`,
+`uits-schedule-service` и `uits-frontend` из `ghcr.io/uitsstankin` собирает CI под общим
+тегом. Наружу опубликован только порт nginx; база, приложение и микросервис живут
+во внутренней сети. Секреты и тег образа заданы через `${VAR:?...}` — без переменной
+compose не стартует и пишет, чего не хватает; мягкий дефолт только у `SERPER_API_KEY`:
+без ключа не работает один поиск публикаций, а не весь портал.
 
-Собрать образ локально и проверить, что рантайм работает не под root
-(имя с тем же префиксом, тег произвольный — на стенде он равен sha коммита):
+Собрать все три образа локально и проверить, что рантайм бэкенда работает не под root
+(имена с тем же префиксом, тег произвольный — на стенде он равен sha коммита):
 
 ```powershell
 docker build -t ghcr.io/uitsstankin/uits-backend:local .
+docker build -t ghcr.io/uitsstankin/uits-schedule-service:local ../schedule-service
+docker build -t ghcr.io/uitsstankin/uits-frontend:local ../frontend
 docker run --rm --entrypoint id ghcr.io/uitsstankin/uits-backend:local
 ```
+
+Нужны все три: образ, которого нет локально, compose пойдёт тянуть из GHCR, а тега
+`local` там нет.
 
 Поднять стек целиком (у прод- и локального compose одинаковые имена контейнера
 и тома, поэтому локальную базу нужно сначала остановить):
@@ -166,9 +176,20 @@ docker compose --env-file .env -f docker-compose.prod.yml up -d
 
 Приложение стартует только после того, как база пройдёт healthcheck
 (`depends_on.condition: service_healthy`), иначе Liquibase упрётся в неподнятый
-кластер. Проверка: `/actuator/health` отдаёт `UP`, `/swagger-ui/index.html` — `404`.
+кластер. Проверка: `docker compose -f docker-compose.prod.yml ps` показывает четыре
+сервиса `healthy`, `http://localhost/` открывает фронтенд, `http://localhost/api/public/news`
+отвечает JSON через прокси. Порт бэкенда наружу не опубликован, поэтому сам он
+проверяется изнутри контейнера:
 
-Вернуть локальное окружение:
+```powershell
+docker exec uits_backend curl -s localhost:8080/actuator/health
+docker exec uits_backend curl -s -o /dev/null -w "%{http_code}" localhost:8080/swagger-ui/index.html
+```
+
+Первая команда отдаёт `UP`, вторая — `404`.
+
+Вернуть локальное окружение — в той же сессии PowerShell: без `IMAGE_TAG`
+и `CORS_ALLOWED_ORIGINS` compose не разберёт файл даже для `down`:
 
 ```powershell
 docker compose -f docker-compose.prod.yml down
@@ -186,12 +207,13 @@ docker compose up -d
 | `POSTGRES_DB` | имя базы | нет, по умолчанию `uits_db` | `uits_db` |
 | `POSTGRES_USER` | пользователь базы | да | `uits_stankin_db` |
 | `POSTGRES_PASSWORD` | его пароль | да | `localdevpass123` |
-| `POSTGRES_HOST_PORT` | порт на хост-машине | да; в шаблоне `.env.example` уже стоит `5433` | `5433` |
+| `POSTGRES_HOST_PORT` | порт на хост-машине | нет, по умолчанию `5433` | `5433` |
 | `SCHEDULE_SERVICE_HOST_PORT` | порт микросервиса расписаний на хост-машине | нет, по умолчанию `8000` | `8000` |
 | `SCHEDULE_SERVICE_URL` | адрес микросервиса расписаний для бэкенда | нет, по умолчанию `http://localhost:8000`; в докере — `http://schedule-service:8000` | `http://localhost:8000` |
 | `JWT_SECRET_KEY` | ключ подписи access-токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
 | `JWT_EXPIRATION` | время жизни access-токена в миллисекундах | нет, по умолчанию 15 минут | `900000` |
 | `CORS_ALLOWED_ORIGINS` | origin'ы фронтенда через запятую | локально нет, по умолчанию `http://localhost:5173`; в `docker-compose.prod.yml` да | `https://uits.example` |
+| `SERPER_API_KEY` | ключ Serper.dev для поиска публикаций в Google Scholar | нет; без него `GET /api/publications/scholar` отвечает `503`, остальной портал работает | — |
 
 Внутри контейнера PostgreSQL всегда слушает порт 5432. `POSTGRES_HOST_PORT` — это порт снаружи, на хост-машине. Значение 5433 выбрано, чтобы не конфликтовать с PostgreSQL, установленным в систему напрямую.
 
@@ -252,7 +274,7 @@ Refresh-сессии (T-30):
 * путь `file:.env` относительный, поэтому **`gradlew` нужно запускать из папки `backend`** — иначе Spring файл не найдёт;
 * Spring разбирает `.env` по правилам `.properties`. Значит `#` начинает комментарий, `\` экранирует следующий символ, `${...}` разворачивается как подстановка, а кавычки не снимаются и попадают внутрь значения. Поэтому пароль — простой, без спецсимволов.
 
-Префикс `optional:` означает «файла может не быть». Это обязательно: в CI и на проде `.env` отсутствует, настройки приходят туда переменными окружения (`SPRING_DATASOURCE_URL` и прочие), которые у Spring приоритетнее любых файлов.
+Префикс `optional:` означает «файла может не быть». Это обязательно: в CI и внутри прод-контейнера `.env` нет (на сервере его читает только compose), настройки приходят туда переменными окружения (`SPRING_DATASOURCE_URL` и прочие), которые у Spring приоритетнее любых файлов.
 
 ---
 
@@ -308,7 +330,7 @@ docker inspect --format "{{json .State.Health}}" uits_postgres
 
 Интеграционные тесты поднимают **собственный** контейнер PostgreSQL через Testcontainers и подставляют свои настройки. Локальная база и `.env` им не нужны — но Docker должен быть запущен. Тесты работают в профиле `test`, поэтому сидер dev-данных в них не участвует.
 
-Сейчас в наборе **991 тест**: юнит-тесты, интеграционные на живой базе, матрица
+Сейчас в наборе **1104 теста**: юнит-тесты, интеграционные на живой базе, матрица
 доступа «роль × ручка» и двенадцать архитектурных правил, проверяющих границы слоёв
 и модулей. Прогон занимает около трёх минут и поднимает контейнер один раз на всю
 иерархию интеграционных тестов. Если прогон падает с `Could not find a valid Docker

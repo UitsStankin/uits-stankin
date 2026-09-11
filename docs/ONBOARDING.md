@@ -3,13 +3,16 @@
 > Документ для того, чтобы **понять собственный код** — каждый файл и каждую строку.
 > Написан 2026-07-21 после четырёхмесячного перерыва. Читается сверху вниз за один заход.
 >
-> ⚠️ Разбор §5–§6 — снимок кода **до Фазы 0**: обработки JWT-ошибок в фильтре и CORS
-> по белому списку в нём нет, как и появившихся позже `LoginRateLimitFilter`
-> и `UploadRateLimitFilter` в цепочке, `exceptionHandling` с JSON-ответами 401/403
-> и `DjangoAwarePasswordEncoder` (T-55c) — в §6 их искать не стоит.
-> §7 сверен с кодом 2026-08-30 и покрывает 106 файлов из 196, включая модули
-> расписания, аспирантуры, публикаций и календаря; что осталось за рамками,
-> перечислено в его шапке. §9 переписан 2026-08-26: прежняя редакция описывала
+> ⚠️ Схемы цепочки фильтров в §5–§6 и фрагменты `SecurityConfig` в §6.5 — снимок кода
+> **до Фазы 0**: обработки JWT-ошибок в фильтре и CORS по белому списку в них нет, как
+> и появившихся позже `LoginRateLimitFilter` и `UploadRateLimitFilter` в цепочке,
+> `exceptionHandling` с JSON-ответами 401/403 и открытых без токена `/actuator/health/**`
+> и `GET /media/**` (второй — только при `application.storage.serve-media: true`).
+> Сценарий логина в §6.3 приведён к текущему коду вместе с refresh-cookie (T-30),
+> `DjangoAwarePasswordEncoder` (T-55c) разобран в конце §6.5.
+> §7 сверен с кодом 2026-08-30, счётчики обновлены 2026-09-11: разобрано 145 файлов
+> из 235, включая модули расписания, аспирантуры, публикаций и календаря; что осталось
+> за рамками, перечислено в его шапке. §9 переписан 2026-08-26: прежняя редакция описывала
 > фронт до Фазы 0. Актуальные статусы дефектов — в таблице §10, находки аудитов
 > перенесённого кода — в бэклоге, разделы T-54 и T-58…T-65.
 >
@@ -34,7 +37,8 @@
 
 Переписывание портала кафедры УИТС. Старый работающий портал на **Django 4.2 + Angular 14**
 (`stankinUits/uits_portal`, проект из ВКР Маловой Я.И.) переносится на **Spring Boot 4 + React 19**
-с полным паритетом функционала — ничего не выбрасывается.
+с паритетом функционала: не переносится только то, что снято решениями
+([ARCHITECTURE.md §8](ARCHITECTURE.md)).
 
 ### Целевая картинка — что должно получиться
 
@@ -42,25 +46,27 @@
 и экзаменов, 13 редактируемых markdown-страниц, конференции, достижения, научные публикации,
 аспирантура.
 
-**Личный кабинет:** профиль, календарь событий с напоминаниями, привязка Telegram
-(бот шлёт напоминания о событиях).
+**Личный кабинет:** профиль и календарь событий. Привязка Telegram и напоминания о событиях
+из старого портала сняты решением (модули 19–20, [ARCHITECTURE.md §8](ARCHITECTURE.md), пункт 14).
 
 **Админка:** не отдельное приложение, а CRUD-экраны в том же React под ролями ADMIN/MODERATOR.
 Это замена Django Admin, которого в новом стеке нет вообще — самый большой недооценённый кусок работы.
 
-**Технически:** модульный монолит на Spring Boot (10 модулей) + один Python-микросервис,
-который парсит PDF расписания. Один VPS, docker compose, CI в GitHub Actions.
+**Технически:** модульный монолит на Spring Boot (11 модулей) + один Python-микросервис,
+который разбирает PDF расписаний и Excel-ведомости. Один VPS, docker compose, CI в GitHub Actions.
 
 ### Где мы сейчас
 
-Паритет **18 модулей из 23**. Готово: аутентификация (JWT), профиль со сменой пароля
+Паритет **20 модулей из 21** — счёт по актуальному объёму ([MIGRATION.md §3](MIGRATION.md)):
+из 23 модулей старого портала два (19–20, напоминания и Telegram-бот) сняты решением,
+не сделана одна админ-панель (23), и она целиком фронтовая. Готово: аутентификация (JWT), профиль со сменой пароля
 и правкой имени, фамилии и аватара (T-33), роли (права проверены по всем ручкам),
 новости (CRUD, санитизация rich-text, превью-картинка и миниатюра), конференции (T-28),
 достижения кафедры (T-29), преподаватели и дисциплины (T-26), УВП (T-27), редактируемые
 Markdown-страницы (13 разделов, T-25), загрузка файлов с ресайзом (T-22, T-23),
 расписание преподавателя, сводное и расписание экзаменов (T-39…T-42b, T-47),
-аспирантура (T-49), научные публикации с тегами и PDF (T-50), календарь событий
-с назначением коллег (T-53).
+аспирантура (T-49), научные публикации с тегами и PDF (T-50), поиск в Google Scholar (T-73),
+календарь событий с назначением коллег (T-53), ведомости Excel (T-66, T-68).
 
 Перенесённый код прошёл **сплошной аудит из шести проходов** (T-54): XSS вне
 rich-text, владение объектом против роли, состав ответов, стоимость одного запроса,
@@ -70,8 +76,8 @@ rich-text, владение объектом против роли, состав
 по восьми направлениям — от мутационного анализа тестов до Python-микросервиса —
 дал 20 подтверждённых находок, и все закрыты одним заходом; разбор — в бэклоге.
 
-Фронтенд ходит на этот API: вход, профиль со сменой пароля, лента новостей
-и страница новости; прочие контентные страницы и админка — впереди (см. §9).
+Фронтенд ходит на этот API; что из публичных страниц и админки уже перенесено —
+в [FRONTEND_BACKLOG.md](FRONTEND_BACKLOG.md), устройство фронта — §9.
 Продовый стенд на VPS **мёртв** (проверено 2026-07-21) — реальных пользователей и данных нет.
 
 ---
@@ -81,8 +87,9 @@ rich-text, владение объектом против роли, состав
 ```
 uits-stankin/
 ├── backend/           Spring Boot, Java 21, Gradle (Kotlin DSL) — основной модульный монолит
-├── schedule-service/  Python 3.13 + FastAPI + pdfplumber: разбор PDF расписаний, POST /parse и /parse-exams
-├── frontend/          React 19 + Vite 8 + Tailwind 4, раскладка FSD — каркас и вход, см. §9
+├── schedule-service/  Python 3.13 + FastAPI + pdfplumber и openpyxl: разбор PDF расписаний
+│                      и .xlsx-ведомостей, POST /parse, /parse-exams и /parse-gradesheet
+├── frontend/          React 19 + Vite 8 + Tailwind 4, раскладка FSD, см. §9
 ├── docs/              этот файл + ARCHITECTURE / MIGRATION / IMPLEMENTATION / BACKLOG / API
 └── .github/           workflows: тесты бэкенда, микросервиса и фронтенда, сборка
                        образа, деплой, отправка дерева зависимостей в граф GitHub;
@@ -94,27 +101,30 @@ Backend внутри:
 ```
 backend/src/main/java/ru/stankin/uits/
 ├── UitsPortalApplication.java      точка входа (main)
+├── config/                         сидер dev-данных, Jackson, OpenAPI, включение @Scheduled
 ├── security/                       вся Spring Security, 11 файлов — cross-cutting
-├── common/                         общее для модулей: хранилище файлов, обработчик
-│                                   ошибок, санитайзер и прочие валидаторы
+├── common/                         общее для модулей: хранилище файлов, клиент
+│                                   к schedule-service, обработчик ошибок,
+│                                   санитайзер и прочие валидаторы
 └── module/                         бизнес-модули, каждый по одной схеме
-    ├── auth/          только контроллер логина
-    ├── user/          профиль + смена пароля
+    ├── auth/          логин, обмен refresh-токена, выход
+    ├── user/          профиль + смена пароля, учётки для админки
     ├── news/          новости и конференции
     ├── staff/         преподаватели, УВП, дисциплины
     ├── achievements/  достижения кафедры
     ├── pages/         тринадцать markdown-разделов
     ├── schedule/      расписание пар и экзаменов, импорт из PDF
     ├── students/      аспирантура (и Student как справочник)
-    ├── publications/  научные публикации и теги
-    └── events/        календарь событий: владелец, назначенные, напоминания
+    ├── publications/  научные публикации, теги, поиск в Google Scholar
+    ├── events/        календарь событий: владелец, назначенные, напоминания
+    └── gradesheets/   ведомости: импорт Excel-книги, чтение для админки
 ```
 
 ### Почему пакеты нарезаны по фичам, а не по слоям
 
 Это осознанное решение, зафиксированное в [ARCHITECTURE.md §4.1](ARCHITECTURE.md). Все туториалы
 по Spring показывают нарезку по слоям (`controller/`, `service/`, `entity/`), поэтому она кажется
-«правильной». На 3 сущностях разницы нет, на девяти модулях — есть.
+«правильной». На 3 сущностях разницы нет, на одиннадцати модулях — есть.
 
 **Ключевая мысль: слой ≠ пакет.**
 
@@ -129,7 +139,7 @@ backend/src/main/java/ru/stankin/uits/
    чем контроллер. Значит и репозиторий public, и маппер public: любой класс проекта может дёрнуть
    любой репозиторий в обход сервиса. При нарезке по фичам можно сделать репозиторий и маппер
    package-private, оставив наружу только сервис. У модуля появляется настоящий публичный API.
-2. **Масштаб.** Девять модулей по слоям = `entity/` на 16 файлов и дальше только больше. Структура должна кричать
+2. **Масштаб.** Одиннадцать модулей по слоям = `entity/` на 24 файла и дальше только больше. Структура должна кричать
    «портал кафедры: новости, расписание, преподаватели», а не «это Spring MVC».
 3. **Локальность изменений.** Новый модуль = одна новая папка, существующие файлы не тронуты.
    По слоям — правки в шести папках и конфликты слияния с напарником.
@@ -137,11 +147,12 @@ backend/src/main/java/ru/stankin/uits/
    в отдельный сервис — это единственная структура, из которой это режется по живому.
 
 Папки соблюдение слоёв **не гарантируют**: ничто не мешает контроллеру дёрнуть репозиторий напрямую.
-Гарантирует это ArchUnit — тесты вида «controller не имеет права зависеть от repository». См. BACKLOG T-10.
+Гарантирует это ArchUnit — тесты вида «controller не имеет права зависеть от repository». См. BACKLOG T-13.
 
 ### Схема одного модуля
 
-Внутри каждого модуля одинаковые 6 папок:
+Внутри модуля — одни и те же 6 папок (у `auth` нет `dto` и `mapper`), а где нужно, рядом лежат
+`client/` — клиент внешнего сервиса (schedule, gradesheets, publications) и `enums/`:
 
 | Папка | Что это |
 |---|---|
@@ -181,9 +192,11 @@ Swagger UI после старта: `http://localhost:8080/swagger-ui.html`
 `POSTGRES_USER` / `POSTGRES_PASSWORD` из `backend/.env` — расходиться нечему,
 пока значения меняются в одном месте.
 
-**3. Нет эндпоинта регистрации.** В `AuthController` только `/login`, и регистрации
-**не будет** — по [ARCHITECTURE.md §4.5](ARCHITECTURE.md) аккаунты создаёт админ. Первого
-пользователя придётся вставить в БД руками с BCrypt-хешем.
+**3. Нет эндпоинта регистрации.** В `AuthController` — `/login`, `/refresh` и `/logout`,
+регистрации **не будет** — по [ARCHITECTURE.md §4.5](ARCHITECTURE.md) аккаунты создаёт админ.
+Локально учётки заводит `DevDataSeeder` (`@Profile("dev")`, логины и пароли — в `backend/README.md`,
+раздел «Тестовые данные»). Первый администратор прод-базы — открытый тикет T-87
+([DEPLOY.md §1.1](DEPLOY.md)).
 
 Для `./gradlew test` нужен **запущенный Docker Desktop** — тесты поднимают настоящий PostgreSQL (§8).
 
@@ -287,7 +300,7 @@ DispatcherServlet → наш @RestController
 
 | Понятие | Человеческим языком | Где у нас |
 |---|---|---|
-| **`Authentication`** | «пропуск» текущего запроса: кто пришёл + роли + аутентифицирован ли | создаётся в фильтре, строки 51–58 |
+| **`Authentication`** | «пропуск» текущего запроса: кто пришёл + роли + аутентифицирован ли | создаётся в `JwtAuthenticationFilter` |
 | **`Principal`** | собственно «кто пришёл» — объект пользователя внутри пропуска | наш `SecurityUser` |
 | **`GrantedAuthority`** | одна строка-право, напр. `"ROLE_ADMIN"` | `SecurityUser.getAuthorities()` |
 | **`SecurityContextHolder`** | глобальная переменная (`ThreadLocal`) с `Authentication` — доступна из любой точки кода в рамках запроса | `SecurityContextHolder.getContext().getAuthentication()` |
@@ -327,18 +340,27 @@ AuthController.login()
   │       │        не совпало → BadCredentialsException
   │       └─ проверяет isEnabled() / isAccountNonLocked() и т.д.
   │
-  ├─(2) userDetailsService.loadUserByUsername(...)   ← ВТОРОЙ поход в БД, дефект D-04
+  ├─(2) (SecurityUser) authentication.getPrincipal()  ← пользователь из результата, второго похода в БД нет (D-04)
+  ├─(3) userService.updateLastLogin(id)                ← точечный UPDATE last_login (D-05)
+  ├─(4) refreshTokenService.issue(user)                ← в refresh_token ложится SHA-256 хеш, наружу — сам токен
   │
-  └─(3) jwtService.generateToken(user)
+  └─(5) jwtService.generateToken(user)
           Jwts.builder()
             .subject("ivan")               ← кто
             .issuedAt(сейчас)
-            .expiration(сейчас + 24 часа)
+            .expiration(сейчас + 15 минут) ← application.security.jwt.expiration
             .signWith(секретный_ключ)      ← ПОДПИСЬ, HMAC-SHA256
             .compact()
   ▼
-{"access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJpdmFuIiwi....подпись"}
+200 {"accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJpdmFuIiwi....подпись"}
+Set-Cookie: refreshToken=…; Path=/api/users/auth; HttpOnly; SameSite=Lax; Secure
 ```
+
+Access-токен живёт 15 минут, refresh — 14 дней (T-30). Продлевает сессию `POST /api/users/auth/refresh`:
+браузер сам прикладывает cookie — её путь совпадает с префиксом ручек входа, — сервер помечает
+предъявленный токен использованным и выдаёт новую пару; повторное предъявление уже обменянного
+токена вне короткого grace-окна гасит всю цепочку сессии. `POST /api/users/auth/logout` гасит
+цепочку и стирает cookie. Флаг `Secure` снимается только в профиле dev (`application-dev.yaml`).
 
 **Что такое JWT физически.** Три части через точку, Base64:
 
@@ -351,7 +373,7 @@ Payload **не зашифрован** — кто угодно его прочи�
 Смысл не в секретности, а в **неподделываемости**: подпись можно проверить, только зная `SECRET`.
 Если поменять `"sub":"ivan"` на `"sub":"admin"` — подпись перестанет сходиться, сервер отвергнет.
 
-Отсюда правило: **никогда не клади в JWT ничего секретного.**
+Отсюда правило: **в JWT не кладётся ничего секретного.**
 
 ### 6.4. Сценарий Б: обычный запрос (токен → доступ)
 
@@ -412,7 +434,7 @@ Refresh-токен в httpOnly cookie появился в T-30, и CSRF оста
 ```
 Браузер запрещает JS с `localhost:5173` дёргать `localhost:8080`, если сервер явно не разрешил.
 Здесь разрешено всё. Для прода надо сузить до реальных доменов и добавить `setAllowCredentials(true)`,
-когда появятся cookie. См. BACKLOG T-04.
+когда появятся cookie. См. BACKLOG T-08.
 
 ```java
 .authorizeHttpRequests(auth -> auth
@@ -470,17 +492,30 @@ new DjangoAwarePasswordEncoder()
 
 ## 7. Разбор файлов бэкенда по модулям
 
-> Разобрано 106 файлов из 196 в `src/main/java` и 4 тестовых класса из 51. Число в заголовке
-> раздела — сколько файлов в нём описано; где описано не всё, стоит «X из Y».
-> Вне разбора остались: `common/PageResponseDto`, `common/FullName`, восемь классов
-> `common/exception`, `common/validation` (`SafeUrl`, `SafeHtmlNotBlank`, `BcryptCompatible`,
-> `HtmlSanitizer`), часть `common/storage` (`PdfValidator`, `OrphanFileCleanupTask`,
-> `StoredFile`), `config/DevDataSeeder`, `config/OpenApiConfig`, `config/JacksonConfig`,
-> `config/SchedulingConfig`, шесть файлов `security/` (`JwtAuthenticationEntryPoint`,
-> `RestAccessDeniedHandler`, `DjangoAwarePasswordEncoder`, `PasswordUpgradeService`,
-> `LoginRateLimitFilter`, `UploadRateLimitFilter`), `pages/EditablePageFileUsageProbe`,
-> пара `TeacherCardLookup` (интерфейс в `user`, реализация в `staff`), девять файлов
-> конференций из `module/news` (T-28) и все тесты, кроме четырёх ниже.
+> Разобрано 145 файлов из 235 в `src/main/java` и 4 из 62 в `src/test/java`. Число
+> в заголовке раздела — сколько файлов в нём описано; где описано не всё, стоит «X из Y».
+> Вне разбора остались:
+> * `common`: `PageResponseDto`, `FullName`, `SearchText`, `SortFields`, все десять классов
+>   `common/exception`, все семь файлов `common/validation` (`SafeUrl`, `SafeHtmlNotBlank`,
+>   `BcryptCompatible` с их валидаторами и `HtmlSanitizer`), часть `common/storage`
+>   (`PdfValidator`, `OrphanFileCleanupTask`, `StoredFile`);
+> * `config/` целиком: `DevDataSeeder`, `OpenApiConfig`, `JacksonConfig`, `SchedulingConfig`;
+> * шесть файлов `security/`: `JwtAuthenticationEntryPoint`, `RestAccessDeniedHandler`,
+>   `DjangoAwarePasswordEncoder`, `PasswordUpgradeService`, `LoginRateLimitFilter`,
+>   `UploadRateLimitFilter`;
+> * пять файлов refresh-токенов в `auth`: `RefreshToken`, `RefreshTokenRepository`,
+>   `RefreshTokenService`, `RefreshTokenCleanupTask`, `RefreshCookieFactory`;
+> * в `user` — `UserAdmin*` (контроллер, сервис, два DTO), `UserDirectory*` (контроллер
+>   и DTO), `UserCreateRequestDto`, `PasswordResetRequestDto`, `UserUpdateRequestDto`,
+>   `UserFileUsageProbe` и `TeacherCardLookup`;
+> * в `news` — `PostType`, `NewsFileUsageProbe` и девять файлов конференций (T-28);
+> * в `staff` — `StaffFileUsageProbe`, `StaffGradeSheetLookup`, `StaffTeacherCardLookup`
+>   (реализация `TeacherCardLookup` из `user`) и `enums/ExamScheduleType` (упомянут
+>   в разделе расписания);
+> * `achievements/AchievementFileUsageProbe`, `pages/EditablePageFileUsageProbe`,
+>   `publications/ScholarSearchCacheRepository`;
+> * модуль `gradesheets` целиком — 22 файла ведомостей (T-66, T-68);
+> * все тесты, кроме четырёх ниже.
 
 ### Корень и security (6 из 12 файлов)
 
@@ -506,7 +541,7 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 | `ProcessedImage.java` | Record из двух полей — байты и расширение. Нужен, чтобы `process()` вернул и то и другое разом: расширение выбирает процессор по распознанному формату, а имя файла из него собирает хранилище. |
 | `FileCleanup.java` | Удаление файла, оставшегося без сущности (T-35). Отвечает на два вопроса сразу: **когда** удалять — после коммита, через `TransactionSynchronization`, потому что диск транзакцию не откатывает, а исключение из `afterCommit` превратило бы удавшийся запрос в 500 при сохранённых данных (поэтому сбой уборки логируется, а не пробрасывается); и **можно ли** удалять — один файл может стоять обложкой у двух записей, и тогда правка одной сносила бы картинку у другой. Раньше у каждого сервиса была своя копия отложенного удаления без второй проверки. Обход `FileCleanup` закрыт правилом 8 `ArchitectureTest`: `FileStorage.delete` разрешён только внутри `common.storage`, иначе удаление уехало бы вперёд коммита в любом новом модуле с файлами (T-54e). |
 | `FileUsageProbe.java` | «Ссылается ли модуль на этот ключ». Интерфейс объявлен рядом с хранилищем, реализации (`NewsFileUsageProbe`, `StaffFileUsageProbe`, `AchievementFileUsageProbe`, `PublicationFileUsageProbe`, `UserFileUsageProbe`, `EditablePageFileUsageProbe`) живут в модулях: спросить чужие репозитории напрямую `FileCleanup` не может — `ArchitectureTest` запрещает модулям зависеть друг от друга, а хранилищу — знать о них. Зависимость перевёрнута: модули знают об интерфейсе, Spring собирает реализации в список. |
-| `FileController.java` | `POST /api/files`, `multipart/form-data`, под `@PreAuthorize("#category == 'avatars' or hasAnyRole('ADMIN', 'MODERATOR')")` — аноним картинки не заливает, а с T-33 свой аватар грузит любой авторизованный: контент портала наполняют редакторы, но аватар учётной записи меняет её владелец. Аноним при этом отсекается раньше, в `SecurityConfig` (`anyRequest().authenticated()`), до вычисления SpEL. Категория берётся из белого списка `news` / `avatars` / `publications` / `achievements`: она попадает в путь на диске, и произвольной строке снаружи там делать нечего. Порядок шагов принципиален: сначала `ImageProcessor` (валидация и перекодирование), только потом `FileStorage.store` — на диск уезжает уже проверенный файл. Ответ — `201` с `key` и `url`. |
+| `FileController.java` | `POST /api/files`, `multipart/form-data`, под `@PreAuthorize("#category == 'avatars' or hasAnyRole('ADMIN', 'MODERATOR')")` — аноним картинки не заливает, а с T-33 свой аватар грузит любой авторизованный: контент портала наполняют редакторы, но аватар учётной записи меняет её владелец. Аноним при этом отсекается раньше, в `SecurityConfig` (`anyRequest().authenticated()`), до вычисления SpEL. Категория берётся из белого списка `news` / `avatars` / `publications` / `achievements` / `staff` / `pages`: она попадает в путь на диске, и произвольной строке снаружи там делать нечего. Порядок шагов принципиален: сначала проверка — `ImageProcessor` (валидация и перекодирование) для картинок, `PdfValidator` (сигнатура `%PDF-` и потолок 15 МБ) для раздела `publications`, — только потом `FileStorage.store`: на диск уезжает уже проверенный файл. Для `news` рядом с картинкой пишется миниатюра с суффиксом `_thumb` (`storeVariant`). Ответ — `201` с `key` и `url`. |
 | `FileUploadResponseDto.java` | Ответ загрузки: `key` — чтобы сохранить в сущность, `url` — чтобы показать превью сразу, не собирая адрес на фронте руками. |
 | `MediaResourceConfig.java` | Обратная сторона загрузки — раздача. `WebMvcConfigurer` вешает `ResourceHandler` с `/media/**` на каталог хранилища, то есть отдаёт файлы мимо контроллеров, как статику. Парная строка — `.requestMatchers(HttpMethod.GET, mediaBaseUrl + "/**").permitAll()` в `SecurityConfig`: без неё картинка требовала бы токен, а `<img src>` его не отправляет. Обе половины включаются только свойством `application.storage.serve-media`, выставленным в `application-dev.yaml`: в проде файлы отдаёт nginx и запросы за ними до приложения не доходят, а в разработке nginx нет и Vite проксирует `/media` на бэкенд (T-86, T-88). |
 
@@ -518,38 +553,40 @@ S3 потом» — [ARCHITECTURE.md §3](ARCHITECTURE.md).
 
 ### module/auth (описан 1 из 6 файлов)
 
-**`AuthController`** — `POST /api/users/auth/login`. `record LoginRequest/LoginResponse`
-объявлены прямо в классе-контроллере (для одного эндпоинта нормально, при росте — вынести в `dto/`).
+**`AuthController`** — `POST /api/users/auth/login`, `/refresh` и `/logout`. `record LoginRequest/LoginResponse`
+объявлены прямо в классе-контроллере (при росте — вынести в `dto/`).
 Пользователь берётся из результата `authenticate()`, а не читается из БД повторно: один SELECT
 на логин вместо двух (D-04). Перед выдачей токена вызывается `updateLastLogin` — колонка
 `last_login` перестала быть мёртвой (D-05). Поле ответа — `accessToken` в camelCase;
 snake_case `access_token` из старого Angular-контракта больше не отдаётся.
+Вход и `refresh` вдобавок ставят refresh-токен в httpOnly-cookie через `RefreshCookieFactory`,
+`logout` гасит цепочку сессии и стирает cookie (T-30, сценарий — в §6.3).
 
 ### module/user (описано 7 из 18 файлов)
 
 | Файл | Что делает |
 |---|---|
 | `entity/User.java` | Таблица `users_user` — **имя из Django**, чтобы данные переехали без переименований. Роли — булевы колонки (`is_superuser`, `is_moderator`, `is_teacher`), тоже наследие Django. `@PrePersist onCreate()` проставляет `dateJoined`, если не задан. `OffsetDateTime`, т.к. в Postgres колонка `timestamp with time zone`. |
-| `repository/UserRepository.java` | `findByUsername` — Spring Data **генерит SQL из имени метода**. Убрать метод — сломается логин. Второй метод, `updateLastLogin`, написан руками: `@Modifying` + `@Query` пишут одну колонку точечным UPDATE, не поднимая сущность в память. |
+| `repository/UserRepository.java` | `findByUsername` — Spring Data **генерит SQL из имени метода**. Убрать метод — сломается логин. Метод `updateLastLogin` написан руками: `@Modifying` + `@Query` пишут одну колонку точечным UPDATE, не поднимая сущность в память. |
 | `service/UserService.java` | `updateProfile` (T-33) принимает **id**, а не сущность из токена, и перечитывает пользователя внутри транзакции — по той же причине, что и `changePassword` ниже. Порядок внутри метода принципиален: сначала проверка ключа аватара (`existsInCategory` — иначе в колонку уедет чужой файл), затем запоминание старого ключа, только потом `updateEntity`; после маппера старого ключа уже не узнать. Старый файл убирает общий `FileCleanup` (T-35). `changePassword` перечитывает пользователя по id: `@AuthenticationPrincipal` отдаёт объект, собранный при разборе токена, и он не managed — правки на нём в БД не уедут. Дальше сверка старого пароля через `matches()` и `setPassword` без `save()` — работает dirty checking внутри `@Transactional`. Неверный старый пароль — `InvalidOldPasswordException`, advice отдаёт `400` с ProblemDetail. `updateLastLogin` вызывается из `AuthController` при успешном логине. |
 | `controller/UserController.java` | `GET /api/users/profile`, `PUT /api/users/profile`, `POST /api/users/change-password`. Показательный пример `@AuthenticationPrincipal`. `PUT` — семантика полной замены: не присланное поле очищается, поэтому форма правки обязана слать все три поля. |
 | `mapper/UserMapper.java` | С T-33 — абстрактный класс, а не интерфейс: понадобился `FileStorage`, чтобы собрать `avatarUrl` из ключа, а в интерфейс зависимость не внедрить (тот же приём, что в `NewsMapper`). `toDto` не пускает `password` в JSON. `updateEntity` пишет ровно `firstName`, `lastName`, `avatar`; логин, почта, telegram-код, флаги ролей и даты перечислены явными `@Mapping(ignore = true)` — список гасит предупреждения о незамапленных полях и заставляет добавлять новое поле в форму осознанно. Ровно на этом обжёгся старый портал: `update_profile` писал всё, чего не было в `read_only_fields`, включая `is_staff` (MIGRATION §7 п.8). |
 | `dto/UserResponseDto.java` | Что отдаём наружу. Пароля здесь нет — и это не случайность. |
-| `dto/ChangePasswordRequest.java` | `@NotBlank` на оба поля и `@Size(min = 8)` на новый пароль — работают только благодаря `@Valid` в контроллере. Убрать `@Valid` — аннотации станут декорацией. Сообщения написаны по-русски, в отличие от `NewsRequestDto` и `EditablePageRequestDto`. |
+| `dto/ChangePasswordRequest.java` | `@NotBlank` на оба поля, `@Size(min = 8)` и `@BcryptCompatible` (потолок BCrypt в 72 байта, D-16) на новый пароль — работают только благодаря `@Valid` в контроллере. Убрать `@Valid` — аннотации станут декорацией. Сообщения написаны по-русски. |
 
 ### module/news (описано 7 из 18 файлов)
 
 | Файл | Что делает |
 |---|---|
 | `entity/NewsPost.java` | Таблица `news_post`. `@ManyToOne(fetch = LAZY)` на `author` = внешний ключ `author_id`, юзер подгружается при первом обращении к полю — списки поэтому читаются через `@EntityGraph` (см. репозиторий). `postType` — строка `"news"`/`"announcements"`; по-хорошему enum (задача паритета). `previewImage` хранит **ключ** файла из `common/storage`, а не URL. `display` по умолчанию `true`, `createdAt` проставляет `@PrePersist`. |
-| `repository/NewsRepository.java` | `findAllByDisplayTrue(Pageable)` — фильтр закодирован в **имени метода**, сортировка и размер страницы приходят из `Pageable`, SQL пишет Spring Data. Все четыре метода помечены `@EntityGraph(attributePaths = {"author"})`, включая переопределённые `findAll` и `findById` из `JpaRepository`: без этого каждый список новостей давал бы N+1 запрос за авторами. |
+| `repository/NewsRepository.java` | `findAllByDisplayTrue(Pageable)` — фильтр закодирован в **имени метода**, сортировка и размер страницы приходят из `Pageable`, SQL пишет Spring Data. Все шесть методов, отдающих новости, помечены `@EntityGraph(attributePaths = {"author"})`, включая переопределённые `findAll` и `findById` из `JpaRepository`: без этого каждый список новостей давал бы N+1 запрос за авторами. Три `exists…`-метода сущностей не поднимают — их зовёт `NewsFileUsageProbe`. |
 | `service/NewsService.java` | Полный CRUD плюс три вещи, которых не видно снаружи. Автор берётся из `SecurityContextHolder` через `getCurrentUser()` с развёрнутыми проверками. `content` прогоняется через `HtmlSanitizer` — поле уходит в браузер как разметка, и без чистки модератор (или тот, кто угнал его учётку) положил бы туда скрипт (T-21); пустоту после чистки ловит `@SafeHtmlNotBlank` на DTO (T-35). Ключ превью проверяется через `fileStorage.existsInCategory`, иначе в базу уедет ссылка на несуществующий или чужой файл (T-23, T-35). Уборка файла — через общий `FileCleanup`. |
 | `controller/NewsController.java` | Семь ручек. Публичные — `GET /api/public/news` (постранично, `sort = createdAt DESC` по умолчанию) и `GET /api/public/news/{id}`, обе отдают только `display = true`. Остальные — список, чтение, `POST`, `PUT`, `DELETE` — под `@PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")` и видят скрытые новости. `POST` отвечает `201` с заголовком `Location` на созданную новость. |
-| `mapper/NewsMapper.java` | Не интерфейс, а **абстрактный класс**: ему нужен `FileStorage`, чтобы собрать `previewImageUrl` из ключа. Инъекция в поле через `@Autowired` — единственная в проекте, и она вынужденная: MapStruct генерит наследника с конструктором без аргументов. `authorName` собирается `@Named`-методом с фильтрацией null и пустых строк (D-09), `toEntity` и `updateEntity` игнорируют `id`, `createdAt`, `author` — их нельзя задать снаружи. |
+| `mapper/NewsMapper.java` | Не интерфейс, а **абстрактный класс**: ему нужен `FileStorage`, чтобы собрать `previewImageUrl` из ключа. Инъекция в поле через `@Autowired` вынужденная: MapStruct генерит наследника с конструктором без аргументов. Тот же приём — у всех мапперов, которым нужны бины: конференций, достижений, публикаций, УВП, преподавателей и учёток. `authorName` собирается `@Named`-методом с фильтрацией null и пустых строк (D-09), `toEntity` и `updateEntity` игнорируют `id`, `createdAt`, `author` — их нельзя задать снаружи. |
 | `dto/NewsRequestDto.java` | `@Pattern(regexp = "news\|announcements")` на `postType` — единственная защита от произвольной строки в этом поле, enum'а по-прежнему нет. `display` объявлен `Boolean` с `@NotNull`, а не `boolean`: примитив молча получил бы `false` при отсутствии поля в запросе, а так клиент обязан решить явно. `@Size(max = 100)` на `previewImage` совпадает с длиной колонки под ключ. |
 | `dto/NewsResponseDto.java` | Наружу отдаётся `authorName` строкой, а не вложенный объект юзера. Превью приезжает двумя полями: `previewImage` — ключ для последующего `PUT`, `previewImageUrl` — готовый адрес для `<img>`, собранный маппером. |
 
-### module/staff (описано 16 из 27 файлов)
+### module/staff (описано 24 из 28 файлов)
 
 Модули 7 и 9 паритета, T-26. Ключевое решение: **карточка живёт отдельно
 от учётной записи** — ФИО, отчество и аватар хранятся в `employee_teacher`,
@@ -560,12 +597,12 @@ snake_case `access_token` из старого Angular-контракта бол�
 | Файл | Что делает |
 |---|---|
 | `entity/Teacher.java` | Таблица `employee_teacher`. ФИО и аватар — собственные колонки, `@OneToOne` на `User` стал необязательным. `degree`/`rank` — enum'ы с `@Enumerated(EnumType.STRING)`: без `STRING` Hibernate писал бы порядковый номер, и вставка константы в середину списка молча перенумеровала бы всю таблицу. `subjects` — однонаправленная `@ManyToMany` через `employee_teacher_subjects`, **без каскадов**: удаление преподавателя чистит связку, но не сами дисциплины. `@OrderBy("name")` сортирует коллекцию при загрузке. |
-| `entity/Subject.java` | Таблица `subject_subject`: `name` (уникален, `uq_subject_name` в БД) и `description`. Обратной ссылки на преподавателей нет — вопрос «кто ведёт дисциплину» пока никому не нужен. |
+| `entity/Subject.java` | Таблица `subject_subject`: `name` (уникален: `uq_subject_name` из changeset 011 и регистронезависимый индекс `uq_subject_name_lower` по `lower(name)` из 032) и `description`. Обратной ссылки на преподавателей нет — вопрос «кто ведёт дисциплину» пока никому не нужен. |
 | `enums/TeacherDegree.java`, `enums/TeacherRank.java` | Коды степеней и званий **буква в букву со старым порталом** (включая неудачный `READER` вместо `DOCENT`): совпадение кодов делает перенос данных копированием колонки. Подписей нет — их рисует фронт. Пакет `enums`, а не `entity`: enum'ы нужны и в DTO, а `ArchitectureTest` запрещает DTO зависеть от `..entity..`. |
 | `repository/TeacherRepository.java` | `@EntityGraph` на `findAll` больше нет: карточка списка не читает `user`, N+1 исчезла by design, JOIN стал лишним. `findByUserUsername` — поиск своей карточки по username из токена. |
-| `repository/SubjectRepository.java` | Пустой интерфейс — хватает наследников `JpaRepository`. |
+| `repository/SubjectRepository.java` | Три метода без учёта регистра: `existsByNameIgnoreCase` и `existsByNameIgnoreCaseAndIdNot` — проверки дубля для `SubjectService`, `findByNameIgnoreCase` — сопоставление дисциплины из ведомости (`StaffGradeSheetLookup`). |
 | `service/TeacherService.java` | Список, детальная, CRUD и `/me`. Аватар — по схеме обложки новости (T-23): ключ проверяется через `fileStorage.existsInCategory`, старый файл убирает `FileCleanup`. Неизвестные `subjectIds`, негодная учётная запись и ключ несуществующего фото → `FieldValidationException` → 400 со словарём `errors` по своему полю (T-81). Текущий пользователь определяется по `authentication.getName()` (username строкой), а не через объект `User` — иначе пришлось бы расширять закрытый список допущенных к `User` в `ArchitectureTest` (правило 4а). В `updateMyCard` состав дисциплин не трогается — по контракту преподаватель их не правит. `education` и `qualification` прогоняются через `HtmlSanitizer`: на старом портале оба поля выводились через `[innerHTML]`, то есть уходят в браузер как разметка (T-54a). Чистка стоит в `prepare()` — общей точке `createTeacher` и `applyUpdate`, потому что путей записи три, а `applyUpdate` собирает два из них; `bio` не чистится сознательно, это плоский текст. `deleteTeacher` уносит с собой расписания занятий и экзаменов (`ON DELETE CASCADE`), а достижения, записи аспирантуры и ведомости остаются с обнулённым `teacher_id` (`ON DELETE SET NULL`); разница описана таблицей в `API.md` и прибита `TeacherDeletionIntegrationTest` (T-82). |
-| `service/SubjectService.java` | Список и CRUD (правка и удаление — T-57; удаление назначенной дисциплины — `409`). Обработки дубля в коде нет намеренно: `uq_subject_name` кидает `DataIntegrityViolationException`, а её маппинг на 409 уже есть в `GlobalExceptionHandler`. |
+| `service/SubjectService.java` | Список и CRUD (правка и удаление — T-57; удаление назначенной дисциплины — `409`). Название обрезается по краям и проверяется на дубль без учёта регистра (`existsByNameIgnoreCase`, на правке — `existsByNameIgnoreCaseAndIdNot`, чтобы запись не конфликтовала сама с собой); дубль — `FieldValidationException` → 400 со словарём `errors` по полю `name`. Гонку двух одновременных запросов ловит индекс `uq_subject_name_lower` (changeset 032): его `DataIntegrityViolationException` `GlobalExceptionHandler` превращает в 409. |
 | `controller/TeacherController.java` | Семь ручек: две публичные (список — сортировка `lastName`, `firstName`, `id`; детальная с дисциплинами), CRUD под `ADMIN`/`MODERATOR` (`POST` — `201` + `Location`), `GET`/`PUT /api/teachers/me` под `hasRole('TEACHER')`. Литерал `me` в пути выигрывает у шаблона `{id}` — это штатное поведение Spring MVC. |
 | `controller/SubjectController.java` | `GET`/`POST /api/subjects` и `PUT`/`DELETE /api/subjects/{id}` (T-57) под `ADMIN`/`MODERATOR` — словарь для формы карточки. |
 | `mapper/TeacherMapper.java` | Абстрактный класс, как `NewsMapper`: `FileStorage` собирает `avatarUrl` из ключа. Дисциплины в детальный DTO сортируются `@Named`-методом по имени — на `@OrderBy` сущности полагаться нельзя: после `PUT` в той же транзакции коллекция в памяти ещё не отсортирована базой. `toEntity`/`updateEntity` игнорируют `id`, `user`, `subjects`. |
@@ -584,7 +621,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 
 | Файл | Что делает |
 |---|---|
-| `entity/Achievement.java` | Таблица `achievements_achievement` — имя из Django (приложение `achievements`, модель `Achievement`). Колонки при этом названы `preview_image` и `display`, хотя в Django они `image` и `is_published`: у трёх контент-таблиц проекта одно имя на один смысл, а перенос данных всё равно пишется скриптом с явным перечислением колонок. `display` по умолчанию `false` — в старом портале достижение тоже создавалось снятым с публикации. Обязательны `title` (100 символов, как в Django), `description`, `content` и `preview_image`. `@ManyToOne(fetch = LAZY)` на `Teacher` — одна из двух межмодульных связей помимо ссылок на `User`; вторая появилась в T-41a, это `Schedule.teacher` в модуле расписания. |
+| `entity/Achievement.java` | Таблица `achievements_achievement` — имя из Django (приложение `achievements`, модель `Achievement`). Колонки при этом названы `preview_image` и `display`, хотя в Django они `image` и `is_published`: у трёх контент-таблиц проекта одно имя на один смысл, а перенос данных всё равно пишется скриптом с явным перечислением колонок. `display` по умолчанию `false` — в старом портале достижение тоже создавалось снятым с публикации. Обязательны `title` (100 символов, как в Django), `description`, `content` и `preview_image`. `@ManyToOne(fetch = LAZY)` на `Teacher` — межмодульная связь помимо ссылок на `User`; на карточку ППС тоже ссылаются `Schedule`, `ExamSchedule`, `Postgraduate` и `GradeSheet`. |
 | `repository/AchievementRepository.java` | Пять методов, и все помечены `@EntityGraph(attributePaths = {"teacher"})`, включая переопределённые `findAll` и `findById`: без этого страница из двадцати достижений давала бы двадцать лишних запросов за преподавателями. `findAllByTeacherIdAndDisplayTrue` обслуживает блок достижений в карточке ППС — фильтр по ссылке и по видимости закодирован в имени метода. |
 | `service/AchievementService.java` | Чтение, запись и уборка файлов. `prepare()` вызывается на обоих путях записи — `update` пишет dirty checking'ом, без `save()`, и зацепиться за «перед сохранением» там не за что (урок T-21). Содержание чистится `HtmlSanitizer`, и пустота после чистки ловится дважды: `@SafeHtmlNotBlank` на DTO отдаёт `400` со словарём `errors` по полю `content` (общий путь с новостями, T-35), а проверка в `prepare()` остаётся последней линией на случай вызова сервиса в обход `@Valid`. Преподаватель ищется через `TeacherService.getTeacherEntity`, а не через чужой репозиторий: публичная граница модуля — сервис. Файл обложки убирает `FileCleanup`, ключи перед удалением сравниваются. |
 | `controller/AchievementController.java` | Восемь ручек. Публичных три: список, детальная и `GET /api/public/teachers/{teacherId}/achievements` — последняя живёт здесь, а не в `TeacherController`, потому что отдаёт достижения, а не карточку. Остальные пять — CRUD под `hasAnyRole('ADMIN', 'MODERATOR')`. Сортировка по умолчанию — `createdAt`, `id` по убыванию: без второго ключа порядок строк с одинаковой датой Postgres не гарантирует. |
@@ -616,11 +653,11 @@ snake_case `access_token` из старого Angular-контракта бол�
 | Файл | Что делает |
 |---|---|
 | `entity/EditablePage.java` | Таблица `editable_pages_editablepage` и колонка `page` — **имена из Django**, как и в остальных модулях. Поле при этом названо `slug`: внутри класса `EditablePage` имя `page` не значит ничего, а связь поля с колонкой держит `@Column(name = "page")`. `slug` и `createdAt` помечены `updatable = false` — Hibernate не включит их в `UPDATE`, поэтому правка текста не может увести раздел на чужой адрес или переписать дату создания. `@PrePersist` и `@PreUpdate` ведут `createdAt` и `updatedAt` силами приложения: триггеров в схеме нет. |
-| `repository/EditablePageRepository.java` | `findBySlug` — единственный собственный метод, остальное даёт `JpaRepository`. `Optional` здесь честный, а не «на всякий случай»: уникальность слага держит БД (`uq_editable_page_page` в changeset 007), двух строк с одним адресом не будет. |
+| `repository/EditablePageRepository.java` | Собственных методов два: `findBySlug` и `existsByTextContaining` — второй зовёт `EditablePageFileUsageProbe`, чтобы уборка сирот не удалила картинку из текста раздела. `Optional` здесь честный, а не «на всякий случай»: уникальность слага держит БД (`uq_editable_page_page` в changeset 007), двух строк с одним адресом не будет. |
 | `service/EditablePageService.java` | `getBySlug` кидает `NotFoundException` — advice превращает её в `404` с ProblemDetail. `getAll` отдаёт постраничный список в общей обёртке `PageResponseDto`. `update` — самое поучительное место модуля. Сущность, прочитанная внутри `@Transactional`, остаётся managed, и на коммите Hibernate сам сравнивает её с исходным снимком и выпускает `UPDATE` (dirty checking) — **ради самого сохранения `save()` здесь не нужен**. `saveAndFlush` стоит ради второй половины имени: flush выполняется **до** сборки DTO, поэтому `@PreUpdate` успевает проставить `updatedAt`, и в ответ уходит та же дата, что легла в БД (T-32). Заменить его на `save()` — flush снова уедет на коммит, и дефект D-11 вернётся. Убрать `@Transactional` теперь не значит потерять правку — `saveAndFlush` сохранит и detached-сущность, — но чтение и запись разъедутся на две транзакции, а `merge` внутри потянет лишний SELECT: в `application.yaml` стоит `open-in-view: false`, поэтому вне транзакции сущность становится detached сразу после запроса в репозиторий. |
 | `controller/EditablePageController.java` | `GET /api/public/pages/{slug}` открыт всем — под общее правило `/api/public/**` → `permitAll` в `SecurityConfig`. `GET /api/pages` и `PUT /api/pages/{slug}` закрыты `hasAnyRole('ADMIN', 'MODERATOR')`. `@PageableDefault(size = 20, sort = "id")` здесь важен сортировкой, а не размером: 20 — это и есть дефолт Spring, а вот сортировки по умолчанию нет вовсе, и порядок строк определял бы Postgres. |
 | `mapper/EditablePageMapper.java` | Один `toDto`. Ни одной `@Mapping` — имена полей DTO совпадают с полями сущности, и MapStruct раскладывает всё сам. Поле `id` в DTO просто не объявлено, поэтому наружу не уезжает. |
-| `dto/EditablePageRequestDto.java` | Принимаются ровно два поля — `title` и `text`. Слага в теле нет: он приходит в пути и в сущности неизменяем. `@NotBlank` и `@NotNull` работают только в паре с `@Valid` в контроллере, без неё это декорация. На `text` стоит `@NotNull`, а не `@NotBlank`: пустой текст допустим — именно с ним разделы и заводятся сидом. ⚠️ Сообщения об ошибках написаны по-английски и с опечаткой («Title cant be empty») — строка скопирована из `NewsRequestDto`. Сервис и хранилище при этом отвечают по-русски: на клиент прилетает смесь двух языков. |
+| `dto/EditablePageRequestDto.java` | Принимаются ровно два поля — `title` и `text`. Слага в теле нет: он приходит в пути и в сущности неизменяем. `@NotBlank` и `@NotNull` работают только в паре с `@Valid` в контроллере, без неё это декорация. На `text` стоит `@NotNull`, а не `@NotBlank`: пустой текст допустим — именно с ним разделы и заводятся сидом. |
 | `dto/EditablePageResponseDto.java` | Слаг, заголовок, текст и обе даты. Адресация разделов идёт по слагу, поэтому `id` наружу не нужен. |
 
 До T-32 `update` собирал ответ **до** flush: `@PreUpdate` проставлял `updatedAt` уже
@@ -633,8 +670,8 @@ snake_case `access_token` из старого Angular-контракта бол�
 
 | Файл | Что делает |
 |---|---|
-| `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8) и `open-in-view: false`: вне транзакции сущность становится detached сразу после запроса в репозиторий, ленивые поля за пределами сервиса молча не подгружаются. `profiles.default: dev` — локальный запуск получает `DevDataSeeder`, прод обязан явно задать `prod`. Здесь же лимиты `multipart` (15 МБ) и корень файлового хранилища. Закомментирован `logging.level.org.springframework.security: DEBUG` — **его стоит включать при разборе проблем с Security**, он печатает всю цепочку фильтров. |
-| `db/changelog/db.changelog-master.yaml` | Оглавление: подключает 28 changeset-файлов (001–028) по порядку; таблица ниже разбирает первые восемь, остальные описаны в бэклоге по тикетам. Liquibase идёт строго по этому списку и запоминает выполненное в служебной таблице `databasechangelog` — уже применённый файл нельзя переименовать или поправить задним числом, изменение оформляется новым changeset-файлом. |
+| `application.yaml` | Настройки. Ключевое — `ddl-auto: validate` (§8) и `open-in-view: false`: вне транзакции сущность становится detached сразу после запроса в репозиторий, ленивые поля за пределами сервиса молча не подгружаются. `profiles.default: dev` — локальный запуск получает `DevDataSeeder`, прод обязан явно задать `prod`. Здесь же лимиты `multipart` (15 МБ) и корень файлового хранилища. `application.storage.serve-media: false` — загруженные файлы в проде отдаёт nginx, а не приложение; раздачу включает `application-dev.yaml` (T-88). `server.forward-headers-strategy: native` с `server.tomcat.remoteip.internal-proxies` берут IP клиента из `X-Forwarded-For` только от доверенного прокси — диапазона docker-сетей, откуда приходит nginx (T-86): иначе лимит входа по IP видел бы один адрес на всех, а заголовок, подставленный самим клиентом, открывал бы новое ведро на каждую попытку. В `application-dev.yaml` закомментирован `logging.level.org.springframework.security: DEBUG` — **его стоит включать при разборе проблем с Security**, он печатает всю цепочку фильтров. |
+| `db/changelog/db.changelog-master.yaml` | Оглавление: подключает 32 changeset-файла (001–032) по порядку; таблица ниже разбирает первые восемь, остальные описаны в бэклоге по тикетам. Liquibase идёт строго по этому списку и запоминает выполненное в служебной таблице `databasechangelog` — уже применённый файл нельзя переименовать или поправить задним числом, изменение оформляется новым changeset-файлом. |
 | `changesets/001-create-users-table.yml` | Таблица `users_user`. |
 | `changesets/002-create-news-table.yml` | Таблица `news_post` + FK `fk_news_author` на `users_user(id)`. |
 | `changesets/003-create-teacher-table.yml` | Таблица `employee_teacher` + FK `fk_teacher_user`, `user_id` уникален (это и есть OneToOne на уровне БД). |
@@ -648,14 +685,14 @@ snake_case `access_token` из старого Angular-контракта бол�
 и `createIndex` откат генерируется автоматически, а для `modifyDataType` (004)
 и произвольного `sql` (008) — нет, и без явного блока шаг стал бы необратимым.
 
-### Тесты (4 из 51 файла)
+### Тесты (4 из 62 файлов)
 
 | Файл | Что делает |
 |---|---|
-| `AbstractIntegrationTest.java` | База для всех интеграционных тестов. Поднимает **настоящий PostgreSQL в Docker** (Testcontainers), `@DynamicPropertySource` подсовывает Spring его координаты, тестовый JWT-секрет и временный каталог хранилища. Каталог — одна константа на всю иерархию: путь входит в ключ кэша контекста Spring, и свой путь в каждом классе поднимал бы контекст заново. `@ActiveProfiles("test")` не даёт сработать `DevDataSeeder`. `@BeforeEach` делает `TRUNCATE news_post, employee_teacher, users_user RESTART IDENTITY CASCADE` — изоляция тестов друг от друга; `editable_pages_editablepage` в списке нет намеренно, её наполняет Liquibase-сид, и TRUNCATE снёс бы справочные данные на весь прогон. Хелперы `createUser` и `login` дают пользователя с нужными ролями и токен через настоящий `POST /login`. |
+| `AbstractIntegrationTest.java` | База для всех интеграционных тестов. Поднимает **настоящий PostgreSQL в Docker** (Testcontainers), `@DynamicPropertySource` подсовывает Spring его координаты, тестовый JWT-секрет и временный каталог хранилища. Каталог — одна константа на всю иерархию: путь входит в ключ кэша контекста Spring, и свой путь в каждом классе поднимал бы контекст заново. `@ActiveProfiles("test")` не даёт сработать `DevDataSeeder`. `@BeforeEach` одним `TRUNCATE … RESTART IDENTITY CASCADE` чистит таблицы, которые наполняют тесты, — от `users_user` и `refresh_token` до публикаций, кэша Scholar и календаря (полный список — в `cleanDatabase`); это изоляция тестов друг от друга; `editable_pages_editablepage` в списке нет намеренно, её наполняет Liquibase-сид, и TRUNCATE снёс бы справочные данные на весь прогон. Хелперы `createUser` и `login` дают пользователя с нужными ролями и токен через настоящий `POST /login`. |
 | `AuthIntegrationTest.java` | Четыре случая логина: верный пароль → `200` и непустой токен; неверный → `401` с ProblemDetail; пустые поля → `400` (это `@Valid` на `LoginRequest`, до аутентификации); заблокированный пользователь (`is_active = false`) → `401`. Последний проверяет, что `SecurityUser.isEnabled()` действительно читается Security. |
-| `NewsIntegrationTest.java` | Самый большой тест проекта, около семисот строк. Матрица доступа: админ и модератор создают новость → запись в БД с правильным автором, обычный юзер → **403 и в БД пусто**, аноним → `401`. Контракт: `201` с заголовком `Location`, форма страницы, срез по `page` и `size`, `400` на неизвестное поле сортировки. Публичные ручки отдают только `display = true`, скрытая новость по id — `404`. Отдельный блок — санитизация: `<script>` и `onerror` вырезаются, форматирование и относительные картинки остаются. |
-| `UserIntegrationTest.java` | Профиль по валидному токену и четыре случая смены пароля: успех, неверный старый → `400`, пустой новый → `400` со списком полей, слишком короткий → `400`. Токен собирается напрямую через `jwtService`, а не через `POST /login`: тест намеренно **обходит логин** и проверяет фильтр и сам эндпоинт. Пароль в базу кладётся хешем — `matches()` на сырой строке всегда даст false. |
+| `NewsIntegrationTest.java` | Самый большой тест проекта, около тысячи строк. Матрица доступа: админ и модератор создают новость → запись в БД с правильным автором, обычный юзер → **403 и в БД пусто**, аноним → `401`. Контракт: `201` с заголовком `Location`, форма страницы, срез по `page` и `size`, `400` на неизвестное поле сортировки. Публичные ручки отдают только `display = true`, скрытая новость по id — `404`. Отдельный блок — санитизация: `<script>` и `onerror` вырезаются, форматирование и относительные картинки остаются. |
+| `UserIntegrationTest.java` | Профиль по валидному токену, пять случаев смены пароля: успех, неверный старый → `400`, пустой новый → `400` со списком полей, слишком короткий → `400`, длиннее 72 байт → `400` (D-16) — и правка профиля (T-33). Токен собирается напрямую через `jwtService`, а не через `POST /login`: тест намеренно **обходит логин** и проверяет фильтр и сам эндпоинт. Пароль в базу кладётся хешем — `matches()` на сырой строке всегда даст false. |
 
 Остальные файлы `src/test` не разобраны — полный список даст сам каталог
 (`TestRole` — не тест, а общий для тестов enum ролей); ориентиры по свежим
@@ -663,7 +700,7 @@ snake_case `access_token` из старого Angular-контракта бол�
 
 ---
 
-### module/schedule (описано 25 из 28 файлов)
+### module/schedule (27 файлов и общий клиент из `common/client`)
 
 Расписание преподавателя, T-39…T-42 и T-47, плюс расписание экзаменов, T-48.
 В модуле живут две независимые ветки: пары и экзамены. Документы у них разные, PDF разные,
@@ -680,8 +717,9 @@ Python-микросервис `schedule-service/` — решение зафик�
 | `entity/ScheduleLesson.java` | Пара: день недели, номер пары, группа, дисциплина, вид занятия, аудитория, подгруппа. Колонка `group` экранирована кавычками — слово зарезервировано, и без них падает первая же вставка, а `ddl-auto: validate` этого не ловит. |
 | `entity/ScheduleLessonDate.java` | Даты проведения в формате `ДД.ММ` без года — как в оригинале. Одиночная дата пишется с `end_date = null`, флаг `alternatively_period` означает «через неделю». |
 | `repository/ScheduleRepository.java` | `findByTeacherId` и `findAllBy` с `@EntityGraph` на преподавателя, пары и даты — иначе сводная выборка даёт запрос на каждое расписание. `findWithLockByTeacherId` берёт `PESSIMISTIC_WRITE`: без него два одновременных импорта одному преподавателю падали с `StaleStateException`. |
-| `client/ScheduleServiceClient.java` | `RestClient` к микросервису, два вызова: `/parse` для пар и `/parse-exams` для экзаменов, оба через общий `send` — обработка ошибок у них одна по построению. Ошибки разведены по тому, кто чинит: `422` и `413` от сервиса становятся `400` с его текстом, обрыв связи и всё прочее — `503`. |
-| `client/ScheduleServiceClientConfig.java` | Транспорт вынесен в бин, чтобы его можно было подменить в тестах. Версия HTTP закреплена на 1.1: JDK-клиент по умолчанию просит переход на HTTP/2, а uvicorn его не понимает и рвёт запрос. |
+| `client/ScheduleServiceClient.java` | Тонкая обёртка над общим `ParsingServiceClient`, два метода: `/parse` для пар и `/parse-exams` для экзаменов. Различаются они только путём и типом ответа. |
+| `common/client/ParsingServiceClient.java` | Общая половина клиентов к микросервису: у ведомостей своя обёртка `GradeSheetParseClient` поверх того же класса, поэтому обработка ошибок у всех трёх ручек одна по построению. `parse` шлёт multipart и разводит ошибки по тому, кто чинит: `422` от сервиса становится `400` с его текстом, `413` — `400` со своим текстом «файл слишком велик», обрыв связи и всё прочее — `503`. |
+| `common/client/ScheduleServiceClientConfig.java` | Транспорт вынесен в бин `RestClient`, общий для обеих обёрток, чтобы его можно было подменить в тестах. Версия HTTP закреплена на 1.1: JDK-клиент по умолчанию просит переход на HTTP/2, а uvicorn его не понимает и рвёт запрос. |
 | `service/ScheduleImportService.java` | Оркестрация обоих импортов: файл уходит в микросервис **вне** транзакции — иначе соединение с базой занято весь HTTP-вызов, до 30 секунд. Проверка файла общая (`requireUsable`), чтобы предел в 5 МБ не разъехался между двумя ручками. |
 | `service/ScheduleService.java` | Замена расписания целиком, чтение одного и сводное, список ссылок на экзамены. Пустой разбор отклоняется `400`: восстановить стёртое нечем, ручки удаления в API нет. |
 | `controller/ScheduleController.java` | Семь ручек: два импорта для модератора (пары и экзамены) и пять публичных чтений — расписание одного преподавателя, сводное с повторяемым `?teacherId=`, экзамены одного, сводные экзамены с `?teacherId=` и `?group=`, ссылки на PDF экзаменов с `?type=`. |
@@ -698,7 +736,7 @@ Python-микросервис `schedule-service/` — решение зафик�
 | `dto/ExamScheduleFilesResponseDto.java` | Не разобранные экзамены, а строка со ссылками на PDF из карточки ППС (T-47). Имя с `Files` появилось в разборе именований после T-48e: до него оно называлось `ExamScheduleResponseDto` и путалось с разобранными экзаменами. |
 | `enums/…` | Тип экзаменов (`GRADUATION` / `NON_GRADUATION`) лежит в `module/staff/enums` — он описывает поля карточки ППС, и обратная зависимость сломала бы границы модулей. |
 
-### module/students (описано 9 из 13 файлов)
+### module/students (13 файлов)
 
 Аспирантура, T-49. Модуль закрывает сразу два пункта матрицы паритета: 14 (аспирантура)
 и 13 (студенты). Отдельной страницы студентов в старом портале нет — приложение `guidance`
@@ -710,14 +748,15 @@ Python-микросервис `schedule-service/` — решение зафик�
 | `entity/Student.java` | ФИО, группа, уровень образования, научная специальность, тема ВКР, год поступления. Таблица `guidance_student` — имя из Django. Колонка `group` снова экранирована, как в расписании. `educationLevel` — `EnumType.STRING`: порядковый номер привязал бы данные к порядку констант в файле. |
 | `entity/Postgraduate.java` | Связка «аспирант ↔ руководитель», обе ссылки необязательные и с `ON DELETE SET NULL`: удаление карточки ППС обнуляет руководителя, а не роняет запись. Собственных полей у сущности нет — это наследство схемы оригинала, и меняем мы его не по вкусу, а по необходимости переноса данных. |
 | `enums/EducationLevel.java` | Четыре кода закрытого словаря. В базе Django на этих местах лежат русские строки, поэтому перенос данных потребует явного маппинга. |
-| `repository/PostgraduateRepository.java` | Четыре метода на два независимых фильтра, все с `@EntityGraph` на студента и руководителя: без графа список из сорока записей даёт восемьдесят один запрос. |
+| `repository/PostgraduateRepository.java` | Два метода, оба с `@EntityGraph` на студента и руководителя: `findWithDetailsById` для одной записи и JPQL-запрос `search(q, teacherId, speciality)`. Необязательные фильтры записаны как `:param is null or …`, а `q` ищет подстроку сразу по полям студента и ФИО руководителя (T-78). Без графа список из сорока записей даёт восемьдесят один запрос. |
 | `repository/StudentRepository.java` | Пустой `JpaRepository`: студент сохраняется явно, а не каскадом от записи — каскад на `@ManyToOne` тянет `MERGE` и начинает молча переписывать чужую строку. |
-| `service/PostgraduateService.java` | Выборка с ветвлением по фильтрам, создание и правка одной транзакцией, удаление записи вместе со студентом. Проверка «состоять в аспирантуре может только аспирант» стоит и на создании, и на правке — в оригинале её на правке не было, и сменой уровня запись портилась молча. |
-| `controller/PostgraduateController.java` | Публичный список с `?teacherId=` и `?speciality=`, CRUD для модератора. |
+| `service/PostgraduateService.java` | Выборка одним запросом `search` со строкой поиска, экранированной под `like`, чтение одной записи, создание и правка одной транзакцией, удаление записи вместе со студентом. Проверка «состоять в аспирантуре может только аспирант» стоит и на создании, и на правке — в оригинале её на правке не было, и сменой уровня запись портилась молча. |
+| `controller/PostgraduateController.java` | Публичный список с поиском `?q=` (T-78) и фильтрами `?teacherId=` и `?speciality=`; для модератора — `GET /api/postgraduates/{id}` и CRUD. |
 | `mapper/PostgraduateMapper.java` | Плоский ответ вместо вложенных объектов оригинала: там незаполненный руководитель подменялся строкой «Не назначено», а год поступления становился строкой «Не назначен» — тип поля плавал в зависимости от данных. |
 | `dto/PostgraduateResponseDto.java`, `PostgraduateRequestDto.java`, `StudentRequestDto.java` | Одна схема на список и на запись; данные студента вложены в тело запроса, руководитель — идентификатором. |
+| `dto/PostgraduateDetailsResponseDto.java`, `StudentResponseDto.java` | Ответ `GET /api/postgraduates/{id}` в той же раскладке, что и тело запроса: студент — вложенным `StudentResponseDto`, руководитель — `teacherId`. |
 
-### module/publications (описано 19 из 26 файлов)
+### module/publications (описано 25 из 26 файлов)
 
 Научные публикации с тегами, T-50. Теги — рубрикатор для фильтра: отдельная таблица
 нужна, чтобы набор тем оставался конечным и одинаково написанным, иначе фильтр
@@ -753,7 +792,7 @@ Python-микросервис `schedule-service/` — решение зафик�
 
 | Файл | Что делает |
 |---|---|
-| `entity/UserEvent.java` | Название, описание, начало и конец, флаг «весь день», цвет, статус и частота напоминаний. Владелец — `@ManyToOne` на `users_user`, назначенные — `@ManyToMany` через `events_userevent_assigned_users`. `nextNotificationAt` и `startNotified` — колонки будущего планировщика, код модуля их не трогает; в оригинале первая объявлена `auto_now=True` и затиралась при каждом сохранении, из-за чего напоминание не срабатывало никогда. |
+| `entity/UserEvent.java` | Название, описание, начало и конец, флаг «весь день», цвет, статус и частота напоминаний. Владелец — `@ManyToOne` на `users_user`, назначенные — `@ManyToMany` через `events_userevent_assigned_users`. `nextNotificationAt` и `startNotified` — колонки планировщика напоминаний, снятого решением T-71 (ARCHITECTURE §8, пункт 14), код модуля их не трогает; в оригинале первая объявлена `auto_now=True` и затиралась при каждом сохранении, из-за чего напоминание не срабатывало никогда. |
 | `enums/EventStatus.java`, `enums/NotificationFrequency.java` | `@Enumerated(EnumType.STRING)`: в базе лежит имя константы, а не порядковый номер — вставка новой константы в середину перечисления иначе переименовала бы задним числом уже сохранённые строки. |
 | `repository/UserEventRepository.java` | `findVisibleTo` — `left join` по таблице связи с `distinct` и отдельным `countQuery`: без `distinct` лимит страницы съедают дубли одного события, и соседние на страницу не помещаются. `findWithDetailsById` и `findWithDetailsByIdIn` с `@EntityGraph` догружают владельца и назначенных — второй прогревает контекст под список, как теги у публикаций. |
 | `service/UserEventService.java` | Выборка, CRUD, проверка видимости и дат. Владелец берётся из `SecurityContext`, а не из тела запроса. Назначенные разрешаются через `UserService` — публичную границу чужого модуля, репозиторий пользователей модулю недоступен. Чужое событие даёт `404`, а не `403`. |
@@ -783,13 +822,13 @@ public class NewsService {
 
 **Liquibase — кто хозяин схемы.** В `application.yaml` стоит `ddl-auto: validate`: Hibernate
 **не создаёт и не меняет таблицы**, только сверяет их с сущностями при старте и падает при
-расхождении. Схему создаёт Liquibase. Практически: **добавил поле в Entity → обязан добавить
+расхождении. Схему создаёт Liquibase. Практически: **новое поле в Entity требует нового
 changeset**, иначе приложение не стартует. Liquibase помнит применённое в служебной таблице
 `databasechangelog`. Правило: применённый changeset **не редактируют** — добавляют новый.
 
 **MapStruct.** Интерфейс с `@Mapper(componentModel="spring")` — реализацию (`NewsMapperImpl`)
 генерит annotation processor при компиляции в `build/generated/`. Если IDE ругается
-«не найден бин NewsMapper» — просто пересобери проект.
+«не найден бин NewsMapper» — достаточно пересобрать проект.
 
 **Testcontainers.** Не H2 и не моки — настоящая БД в контейнере на время тестов. Поэтому тесты
 ловят реальные ошибки схемы, FK и SQL-диалекта, но требуют запущенного Docker.
@@ -798,15 +837,19 @@ changeset**, иначе приложение не стартует. Liquibase п
 
 ## 9. Фронтенд — честная картина
 
-> Раздел переписан 2026-08-26, дополнен 2026-08-27 (F-13, F-14).
+> Раздел переписан 2026-08-26, дополнен 2026-08-27 (F-13, F-14), сверен 2026-09-11.
 > Прежняя редакция описывала июльский скаффолд:
 > белый экран, `RouterProvider` не подключён, два `QueryClient`, заглушка вместо
 > HTTP-клиента, опечатка `layouts/AppLAayout/`. Ничего из этого в коде больше нет —
 > Фаза 0 фронта закрыта 2026-07-29, тикеты F-10…F-12 — 2026-08-26.
+>
+> Здесь описано устройство фронта и решения, на которых он стоит. Какие страницы,
+> разделы админки и тесты уже есть, раздел не ведёт — это меняется быстрее документа;
+> источник правды — [FRONTEND_BACKLOG.md](FRONTEND_BACKLOG.md).
 
-Фронт **запускается, ходит на этот бэкенд, пускает в учётную запись и показывает
-новости**. Из 23 пунктов меню содержимое есть у одного — «Новости кафедры»;
-остальные по-прежнему ведут на заглушку «страница ещё не перенесена».
+Фронт **запускается, ходит на этот бэкенд и пускает в учётную запись**. Публичные
+разделы переносятся блоками 2–3 бэклога фронта, админка `/admin` — блоком 4;
+адреса, до которых перенос ещё не дошёл, ведут на заглушку «Страница ещё не перенесена».
 
 ### Что уже сделано
 
@@ -817,9 +860,9 @@ changeset**, иначе приложение не стартует. Liquibase п
 | Типы контракта | Доменные модели перенесены из Angular-оригинала и приведены к Spring: `Page<T>` со счётом страниц с нуля, профиль с `id` и `superuser` вместо джанговских `pk` и `isSuperuser`. Классы превращены в `type` — инстансы классов ломают structural sharing в TanStack Query. |
 | Аутентификация | Вход на `POST /api/users/auth/login`, профиль из `GET /api/users/profile` через `useQuery(['profile'])`, форма на react-hook-form + zod. Access-токен живёт **в памяти вкладки** — в `localStorage` его видит любой скрипт страницы, а XSS уносит сессию целиком; после перезагрузки токен возвращается обменом httpOnly-cookie (F-15). В хранилище остаётся один признак сессии: без него пришлось бы дёргать `refresh` на каждой загрузке публичной страницы. Сессия реактивна (`useSyncExternalStore`): вход и выход видны шапке сразу, а выход в одной вкладке разлогинивает соседние. Превышение лимита попыток входа показывает на форме обратный отсчёт из `Retry-After`. |
 | Выход | `POST /api/users/auth/logout` гасит цепочку refresh-токенов на сервере и стирает cookie, локально забывается токен и чистится кэш. Ответа не ждём: обрыв связи не должен оставлять человека в интерфейсе, из которого он попросил выйти. До T-30 отзыва не существовало вовсе (D-03), и выход был только локальным. |
-| Роли | `moderator` и `superuser` из профиля включают в меню профиля пункт «Админ-панель». Самой админки ещё нет. |
+| Роли | `moderator` и `superuser` из профиля включают в меню профиля пункт «Админ-панель». Раздел `/admin` закрыт `RoleRoute` на уровне модератора, а разделы строже (учётные записи) — вторым `RoleRoute` на уровне администратора. |
 | Новости | Лента `/about/news` с постраничной навигацией и статья `/about/news/:id` (F-14). Сущность `entities/news` — чтение, ключи кэша, карточка; в `shared/ui` — пагинатор и блок состояний, потому что тем же списком приходят преподаватели, конференции и достижения. Номер страницы живёт в адресе (`?page=3`), счёт в адресе с единицы, а в запросе с нуля — Spring считает страницы с нуля, и пересчёт сделан ровно в одном месте. Переход из ленты в статью не делает запроса: списочная и детальная ручки отдают один DTO, и запись подсаживается из кэша списка. `content` рисуется через `dangerouslySetInnerHTML` — границей санитизации выбран бэкенд (T-21), разбор решения в шапке `NewsArticle.tsx`. |
-| Тесты | **Vitest** + Testing Library + jsdom; конфиг общий с Vite, поэтому алиасы FSD и React Compiler описаны один раз, а не дважды. Запросы в тестах перехватывает **MSW** — тем же набором хендлеров, что и браузер под флагом `VITE_ENABLE_MOCKS`. 33 проверки: полоса пагинатора, разбор номера страницы и `id` из адреса, подсадка записи из кэша списка, лента новостей целиком. Половина проверок ленты — состояния, до которых на живом бэкенде не добраться: пустой список, `500`, страница за пределами данных. Линт, тесты и сборку гоняет CI на каждый PR — `.github/workflows/frontend.yml`. |
+| Тесты | **Vitest** + Testing Library + jsdom; конфиг общий с Vite, поэтому алиасы FSD и React Compiler описаны один раз, а не дважды. Запросы в тестах перехватывает **MSW** — тем же набором хендлеров, что и браузер под флагом `VITE_ENABLE_MOCKS`. Проверки лежат рядом с кодом (`*.test.ts(x)`) — у страниц, общих компонентов `shared/ui` и API-клиента; покрытие и его пробелы ведёт D-F9 бэклога фронта. Моки нужны прежде всего для состояний, до которых на живом бэкенде не добраться: пустой список, `500`, страница за пределами данных. Линт, тесты и сборку гоняет CI на каждый PR — `.github/workflows/frontend.yml`. |
 
 Проверено на живом бэкенде: вход тремя тестовыми учётками (админ, обычный
 пользователь, преподаватель), неверный пароль, битый токен, перезагрузка
@@ -858,8 +901,8 @@ changeset**, иначе приложение не стартует. Liquibase п
 ### Стек
 
 React 19 и TypeScript 6, сборка Vite 8, роутер React Router 8. Серверное
-состояние — TanStack Query 5 поверх axios; состояние интерфейса — zustand,
-и в нём ровно один флаг (открыта ли мобильная панель). Формы — react-hook-form
+состояние — TanStack Query 5 поверх axios; состояние интерфейса — zustand
+(`appStore` и `toastStore` в `shared/store`). Формы — react-hook-form
 с zod, стили — Tailwind 4, иконки — lucide вместо двух иконочных шрифтов
 оригинала.
 
@@ -883,8 +926,8 @@ frontend/src/
 ├── app/        роутер, провайдеры, лейауты — единственный слой, которому можно знать про всё
 ├── pages/      страницы роутера
 ├── widgets/    самостоятельные куски интерфейса: шапка, меню, подвал, лента записей
-├── features/   действия пользователя: auth, change-password
-├── entities/   предметные сущности: news (чтение, карточка, ключи кэша)
+├── features/   действия пользователя: вход, смена пароля, формы админки (manage-*)
+├── entities/   предметные сущности — новости, преподаватели, конференции и др. (чтение, карточка, ключи кэша)
 └── shared/     api-клиент, типы контракта, конфиг, примитивы ui
 ```
 
@@ -899,26 +942,22 @@ frontend/src/
 
 ### Чего нет
 
-* **Страниц.** Преподаватели, редактируемые страницы, конференции, достижения,
-  расписание — заглушки. Личный кабинет и новости сделаны. Очередь и порядок —
+* **Части страниц.** Что не перенесено и в каком порядке пойдёт — открытые тикеты
   [FRONTEND_BACKLOG.md](FRONTEND_BACKLOG.md).
-* **Админки.** Блок 4 бэклога и самый большой недооценённый кусок: в Django она
-  была из коробки, здесь пишется руками под каждую сущность.
-* **Тестов у всего, кроме новостей, объявлений и главной.** Стенд заведён и CI
-  гоняет его на каждый PR, но покрыты три страницы: вход, профиль, смена пароля,
-  карточка ППС и рендер Markdown проверок не имеют, как и `shared/api` с обменом
-  refresh-токена.
-  Раскатывать по мере появления страниц — то же правило, что у границ
-  ошибок (D-F9).
+* **Части админки.** Блок 4 бэклога и самый большой недооценённый кусок: в Django она
+  была из коробки, здесь пишется руками под каждую сущность. Раздел, до которого
+  очередь не дошла, показывает в `/admin` заглушку со своим номером тикета.
+* **Тестов у всего подряд.** Раскатываются по мере появления страниц — то же правило,
+  что у границ ошибок; пробелы ведут D-F9 (тесты) и D-F8 (границы ошибок).
 
-Осознанные долги: бандл в 751 КБ одним куском, без кода-сплиттинга (D-F6),
-и границы ошибок стоят не на каждом роуте (D-F8). Два прежних пункта отсюда ушли: access
+Осознанные долги: размер бандла и код-сплиттинг (D-F6), границы ошибок
+не на каждом роуте (D-F8). Два прежних пункта отсюда ушли: access
 переехал из `localStorage` в память вкладки вместе с обменом refresh-токена
 (F-15 на T-30), а лента перестала быть смешанной — фильтр `?postType=` приехал
 с T-36, и F-20 с F-28 развели новости и объявления по разделам (D-F7).
 
-Фронт остаётся **критическим путём**: пока страниц нет, каждый новый модуль
-бэкенда пишется вслепую и проверяется одним Swagger'ом. Первое, что срез уже
+Фронт остаётся **критическим путём**: пока у модуля бэкенда нет страницы,
+он проверяется одним Swagger'ом. Первое, что срез уже
 нашёл в контракте, — недостающий фильтр `postType`; он же и первое, что по этой
 заявке приехало (T-36).
 
@@ -976,7 +1015,7 @@ D-12 — в T-34, D-13 — в T-35, D-03 — в T-30, D-14…D-16 — при с�
 4. Почему `SecurityUser` — отдельный класс, а не интерфейс на `User`?
 5. Что вернёт `hasRole('ROLE_ADMIN')` для админа — и почему это ловушка?
 6. Зачем `ddl-auto: validate`, если есть `update`?
-7. Что сделает Hibernate при `findAll()` в `TeacherRepository`, если убрать `@EntityGraph`?
+7. Что сделает Hibernate при `findAll()` в `NewsRepository`, если убрать `@EntityGraph`?
 8. Почему `@Valid` обязателен, хотя аннотации стоят на полях DTO?
 9. Почему в JWT нельзя класть пароль, если он подписан?
 10. Что сломается, если у `NewsPost.author` поменять `LAZY` на `EAGER`?
