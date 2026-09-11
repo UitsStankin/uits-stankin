@@ -172,7 +172,7 @@ jobs:
           push: true
           # Имя образа только строчными буквами: GHCR не принимает UitsStankin.
           # Тег по sha, не latest: версия на проде однозначно сходится с коммитом,
-          # а docker pull не может отдать закэшированный старый образ под тем же именем
+          # а для отката остаётся прежний тег, который никто не перезаписывает
           tags: ghcr.io/uitsstankin/uits-backend:${{ github.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend

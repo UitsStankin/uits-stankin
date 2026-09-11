@@ -92,7 +92,7 @@ base64 не содержит одинарной кавычки, а она уро
 ## 4. Как устроен деплой
 
 Запускается автоматически на push в `main` с изменениями в `backend/**`,
-`frontend/**` или `.github/workflows/**`. Ручного шага нет: релиз — это merge PR
+`schedule-service/**`, `frontend/**` или `.github/workflows/**`. Ручного шага нет: релиз — это merge PR
 из `dev` в `main`.
 
 Порядок работы `deploy.yml`:
