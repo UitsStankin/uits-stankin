@@ -103,6 +103,10 @@ application:
   storage:
     root: ${STORAGE_ROOT:./media}
     public-base-url: ${STORAGE_PUBLIC_BASE_URL:/media}
+    # Раздача загруженных файлов самим приложением. В проде её делает nginx
+    # (frontend/nginx.conf) и до Spring запросы за картинками не доходят;
+    # включается в application-dev.yaml
+    serve-media: false
     orphan-cleanup:
       cron: ${ORPHAN_CLEANUP_CRON:0 45 3 * * *}
       min-age: ${ORPHAN_CLEANUP_MIN_AGE:86400000}

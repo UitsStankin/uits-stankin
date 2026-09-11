@@ -18,6 +18,11 @@ COPY . .
 ENV VITE_API_BASE_URL=""
 RUN npm run build
 
+# Service worker моков нужен только в разработке, а Vite копирует public в dist
+# как есть. Регистрировать его в прод-бандле некому, раздавать чужой воркер
+# с боевого домена незачем
+RUN rm -f dist/mockServiceWorker.js
+
 # ---- Этап 2: раздача ----
 # Unprivileged-вариант официального образа: мастер-процесс не под root,
 # внутри слушается 8080, наружу порт публикует compose. Обычный nginx:alpine
