@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
@@ -95,6 +96,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handlePropertyReference(PropertyReferenceException ex) {
         return problemDetail(HttpStatus.BAD_REQUEST,
                 "Неизвестное поле сортировки: " + ex.getPropertyName() + ".");
+    }
+
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ProblemDetail handleInvalidDataAccessApiUsage(InvalidDataAccessApiUsageException ex) {
+        String message = ex.getMessage();
+        if (message != null && message.startsWith("Sort expression")) {
+            return problemDetail(HttpStatus.BAD_REQUEST, "Недопустимое поле сортировки.");
+        }
+        return handleUnexpected(ex);
     }
 
     @ExceptionHandler(Exception.class)

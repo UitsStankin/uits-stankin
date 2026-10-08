@@ -371,6 +371,17 @@ class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getNews_WhenSortFieldHasQuotes_Returns400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/news?sort=\"abc\"",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
     void getNews_WhenSortFieldIsValid_AppliesSorting() {
         User admin = createAdmin();
         saveNews(admin, "Alpha", true);
