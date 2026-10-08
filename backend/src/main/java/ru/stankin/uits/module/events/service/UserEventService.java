@@ -24,9 +24,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import static ru.stankin.uits.common.SortFields.validate;
+
 @Service
 @RequiredArgsConstructor
 public class UserEventService {
+
+    private static final Set<String> SORT_FIELDS = Set.of("id", "name", "startedAt", "endedAt", "status");
 
     private final UserEventRepository eventRepository;
     private final UserEventMapper eventMapper;
@@ -34,6 +38,7 @@ public class UserEventService {
 
     @Transactional(readOnly = true)
     public PageResponseDto<UserEventResponseDto> getEvents(EventStatus status, Pageable pageable) {
+        validate(pageable.getSort(), SORT_FIELDS);
         Page<UserEvent> page = eventRepository.findVisibleTo(currentUser().getId(), status, pageable);
         warmUpDetails(page.getContent());
 
