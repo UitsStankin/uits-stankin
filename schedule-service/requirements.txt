@@ -3,4 +3,4 @@ openpyxl==3.1.5
 pdfplumber==0.11.10
 pydantic==2.13.5
 python-multipart==0.0.32
-uvicorn[standard]==0.52.4
+uvicorn[standard]==0.53.0
