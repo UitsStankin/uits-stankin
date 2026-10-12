@@ -245,6 +245,14 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void unknownSortFieldGives400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/events?sort=xyz", HttpMethod.GET, auth(teacherToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void singleEventIsVisibleToOwnerAndAssignee() {
         Long id = event("Общее", "2026-09-01T10:00:00+03:00", teacher,
                 EventStatus.NOT_STARTED, colleague).getId();
