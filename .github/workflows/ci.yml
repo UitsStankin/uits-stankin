@@ -110,7 +110,7 @@ jobs:
         working-directory: schedule-service
 
       - name: Анализ SonarQube
-        if: steps.gate.outputs.build == 'true'
+        if: steps.gate.outputs.build == 'true' && github.actor != 'dependabot[bot]'
         run: ./gradlew sonar --no-daemon
         working-directory: backend
         env:
