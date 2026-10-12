@@ -166,7 +166,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Сборка и публикация образа
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: backend
           push: true
@@ -178,7 +178,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
 
       - name: Сборка и публикация образа микросервиса
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: schedule-service
           push: true
@@ -189,7 +189,7 @@ jobs:
       # Фронтенд запечён в образ вместе с nginx (ARCHITECTURE §7.1): доставлять
       # dist на сервер не нужно, откат делается предыдущим тегом образа
       - name: Сборка и публикация образа фронтенда
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: frontend
           push: true
