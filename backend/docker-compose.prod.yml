@@ -129,10 +129,13 @@ services:
       - backend
     ports:
       - "80:8080"
+      - "443:8443"
     volumes:
       - media_data:/srv/media:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -141,11 +144,23 @@ services:
     networks:
       - uits_network
 
+  certbot:
+    image: certbot/certbot:v5.8.0
+    profiles: ["tools"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    mem_limit: 128m
+
 volumes:
   postgres_data:
     name: uits_postgres_data
   media_data:
     name: uits_media_data
+  letsencrypt:
+    name: uits_letsencrypt
+  certbot_webroot:
+    name: uits_certbot_webroot
 
 networks:
   uits_network:
