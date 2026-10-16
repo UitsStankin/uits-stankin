@@ -1,0 +1,130 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-create-schedule-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: schedule_schedule
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: imported_file_name
+                  type: VARCHAR(256)
+              - column:
+                  name: teacher_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_schedule_teacher
+        - addForeignKeyConstraint:
+            baseTableName: schedule_schedule
+            baseColumnNames: teacher_id
+            constraintName: fk_schedule_teacher
+            referencedTableName: employee_teacher
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createTable:
+            tableName: schedule_schedulelesson
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: week_number
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: class_time
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cabinet
+                  type: VARCHAR(128)
+              - column:
+                  name: subgroup
+                  type: VARCHAR(128)
+              - column:
+                  name: schedule_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: schedule_schedulelesson
+            baseColumnNames: schedule_id
+            constraintName: fk_schedule_lesson_schedule
+            referencedTableName: schedule_schedule
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createTable:
+            tableName: schedule_schedulelessondate
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: start_date
+                  type: VARCHAR(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_date
+                  type: VARCHAR(5)
+              - column:
+                  name: alternatively_period
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lesson_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: schedule_schedulelessondate
+            baseColumnNames: lesson_id
+            constraintName: fk_schedule_lesson_date_lesson
+            referencedTableName: schedule_schedulelesson
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: schedule_schedulelesson
+            indexName: idx_schedule_lesson_schedule_id
+            columns:
+              - column:
+                  name: schedule_id
+        - createIndex:
+            tableName: schedule_schedulelessondate
+            indexName: idx_schedule_lesson_date_lesson_id
+            columns:
+              - column:
+                  name: lesson_id

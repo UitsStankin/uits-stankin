@@ -1,0 +1,126 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-create-event-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: events_userevent
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: started_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: all_day
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: color
+                  type: VARCHAR(7)
+                  defaultValue: '#000000'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_notified
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notification_frequency
+                  type: VARCHAR(10)
+                  defaultValue: NONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_notification_at
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: NOT_STARTED
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: events_userevent_assigned_users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: userevent_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: events_userevent
+            baseColumnNames: user_id
+            constraintName: fk_userevent_owner
+            referencedTableName: users_user
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: events_userevent_assigned_users
+            baseColumnNames: userevent_id
+            constraintName: fk_userevent_assigned_event
+            referencedTableName: events_userevent
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: events_userevent_assigned_users
+            baseColumnNames: user_id
+            constraintName: fk_userevent_assigned_user
+            referencedTableName: users_user
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: events_userevent_assigned_users
+            columnNames: userevent_id, user_id
+            constraintName: uq_userevent_assigned_user
+        - createIndex:
+            tableName: events_userevent
+            indexName: idx_userevent_owner
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: events_userevent_assigned_users
+            indexName: idx_userevent_assigned_user
+            columns:
+              - column:
+                  name: user_id

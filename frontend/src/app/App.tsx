@@ -1,21 +1,20 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // Данные считаются свежими 5 минут
-      refetchOnWindowFocus: false, // Не обновлять при фокусе на окне
-    },
-  },
-});
+import { RouterProvider } from 'react-router';
+import { QueryProvider } from './providers/QueryProvider';
+import { router } from './routes';
+import ToastViewport from '@shared/ui/Toast';
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <QueryProvider>
+      <RouterProvider router={router} />
+      {/*
+        Рядом с роутером, а не внутри лейаута: сообщение поднимается
+        из мутации и переживает переход между страницами — форма могла
+        закрыться раньше, чем пришёл ответ. Внутри лейаута такой тост
+        исчезал бы вместе со страницей, которая его подняла.
+      */}
+      <ToastViewport />
+    </QueryProvider>
   );
 }
 

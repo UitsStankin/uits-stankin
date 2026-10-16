@@ -2,31 +2,112 @@ spring:
   application:
     name: uits-backend
 
+  # Профиль по умолчанию, если явно не задан другой (SPRING_PROFILES_ACTIVE).
+  # Локальный запуск получает dev (включает DevDataSeeder), тесты задают
+  # профиль test, прод обязан задавать prod — иначе в базу попадут тестовые данные.
+  profiles:
+    default: dev
+
   datasource:
-    url: jdbc:postgresql://localhost:5433/uits_db
-    username: postgres
-    password: password
+    url: jdbc:postgresql://localhost:${POSTGRES_HOST_PORT:5433}/${POSTGRES_DB:uits_db}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
-    # не юзаем ddl-auto=update, схему Liquibase сгенерит
     hibernate:
       ddl-auto: validate
-    show-sql: true # для отладки
-    properties:
-      hibernate:
-        format_sql: true
+    open-in-view: false
 
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
-#logging:
-#  level:
-#    org.springframework.security: DEBUG
+  config:
+    import: optional:file:.env[.properties]
+
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+
+server:
+  # За nginx адрес TCP-соединения принадлежит контейнеру прокси, и лимит попыток
+  # входа по IP считал бы одно ведро на всех сразу. native включает RemoteIpValve
+  # самого Tomcat: адрес подменяется до фильтров Spring, поэтому лимит, логи
+  # и обработчики видят одно и то же значение
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      # Кому верить, когда он присылает X-Forwarded-For. Список обязателен:
+      # без него заголовку верят от кого угодно, и клиент, подставив его сам,
+      # получал бы новое ведро на каждую попытку входа. Здесь только диапазон
+      # docker-сетей, из которого приходит nginx; дефолт Tomcat шире — он
+      # доверяет ещё 10.x, 192.168.x и loopback. Локальный запуск и тесты идут
+      # с 127.0.0.1, то есть не от доверенного прокси, и заголовок там
+      # по-прежнему игнорируется
+      internal-proxies: '172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}'
+    # Сколько тела отклонённого запроса Tomcat дочитывает перед ответом
+    # (по умолчанию 2MB): без запаса над max-request-size клиент вместо 413
+    # видит обрыв соединения
+    max-swallow-size: 20MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
 
 application:
   security:
     jwt:
       secret-key: ${JWT_SECRET_KEY}
-      expiration: ${JWT_EXPIRATION:86400000}
+      expiration: ${JWT_EXPIRATION:900000}
+    refresh:
+      expiration: ${REFRESH_EXPIRATION:1209600000}
+      grace-period: ${REFRESH_GRACE_PERIOD:60000}
+      max-session: ${REFRESH_MAX_SESSION:5184000000}
+      cookie-secure: ${REFRESH_COOKIE_SECURE:true}
+      cleanup-cron: ${REFRESH_CLEANUP_CRON:0 15 3 * * *}
+    login-rate-limit:
+      attempts: ${LOGIN_RATE_LIMIT_ATTEMPTS:5}
+      username-attempts: ${LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS:10}
+      period: ${LOGIN_RATE_LIMIT_PERIOD:60000}
+      eviction-cron: ${LOGIN_RATE_LIMIT_EVICTION_CRON:0 */10 * * * *}
+    upload-rate-limit:
+      attempts: ${UPLOAD_RATE_LIMIT_ATTEMPTS:30}
+      period: ${UPLOAD_RATE_LIMIT_PERIOD:60000}
+      eviction-cron: ${UPLOAD_RATE_LIMIT_EVICTION_CRON:0 */10 * * * *}
+  schedule-service:
+    url: ${SCHEDULE_SERVICE_URL:http://localhost:8000}
+    connect-timeout: ${SCHEDULE_SERVICE_CONNECT_TIMEOUT:3s}
+    read-timeout: ${SCHEDULE_SERVICE_READ_TIMEOUT:30s}
+  serper:
+    url: ${SERPER_URL:https://google.serper.dev}
+    key: ${SERPER_API_KEY:}
+    connect-timeout: ${SERPER_CONNECT_TIMEOUT:3s}
+    read-timeout: ${SERPER_READ_TIMEOUT:30s}
+    cache-ttl: ${SERPER_CACHE_TTL:30d}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  storage:
+    root: ${STORAGE_ROOT:./media}
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:/media}
+    # Раздача загруженных файлов самим приложением. В проде её делает nginx
+    # (frontend/nginx.conf) и до Spring запросы за картинками не доходят;
+    # включается в application-dev.yaml
+    serve-media: false
+    orphan-cleanup:
+      cron: ${ORPHAN_CLEANUP_CRON:0 45 3 * * *}
+      min-age: ${ORPHAN_CLEANUP_MIN_AGE:86400000}
+      categories: ${ORPHAN_CLEANUP_CATEGORIES:news,avatars,achievements,publications,staff,pages}

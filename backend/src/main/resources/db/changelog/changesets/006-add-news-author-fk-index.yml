@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-add-news-author-fk-index
+      author: eeffeecct
+      changes:
+        - createIndex:
+            tableName: news_post
+            indexName: idx_news_author_id
+            columns:
+              - column:
+                  name: author_id

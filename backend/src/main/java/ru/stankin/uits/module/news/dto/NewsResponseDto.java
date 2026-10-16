@@ -17,7 +17,11 @@ public class NewsResponseDto {
     String shortDescription;
     String postType;
     String previewImage;
+    String previewImageUrl;
+    String previewThumbnailUrl;
+    String previewImageDescription;
     String content;
     OffsetDateTime createdAt;
+    Boolean display;
     String authorName;
 }

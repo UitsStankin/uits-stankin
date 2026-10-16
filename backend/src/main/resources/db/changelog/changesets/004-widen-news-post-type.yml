@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-widen-news-post-type
+      author: eeffeecct
+      comment: >-
+        post_type хранит значения 'news' и 'announcements', но колонка была
+        VARCHAR(12) — 'announcements' (13 символов) не помещался и любая
+        попытка создать анонс падала на уровне БД.
+      changes:
+        - modifyDataType:
+            tableName: news_post
+            columnName: post_type
+            newDataType: VARCHAR(20)
+      rollback:
+        - modifyDataType:
+            tableName: news_post
+            columnName: post_type
+            newDataType: VARCHAR(12)

@@ -1,81 +1,161 @@
-name: CI/CD Deploy
+name: Deploy
 
-# Когда запускать пайплайн
+# Деплой на VPS. Запускается только на push в main (то есть после merge PR)
+# и только после зелёной сборки с тестами из ci.yml.
 on:
   push:
     branches: [ main ]
+    # Правка документации не повод перезапускать боевой стенд
+    paths:
+      - "backend/**"
+      - "!backend/**.md"
+      - "schedule-service/**"
+      - "!schedule-service/**.md"
+      - "frontend/**"
+      - "!frontend/**.md"
+      - ".github/workflows/**"
 
 jobs:
-  # ==================== JOB 1: Сборка и тесты ====================
+  # Переиспользование workflow ci.yml: та же сборка и тесты, что на PR,
+  # плюс публикация образа в GHCR тем же тегом github.sha, который тянет деплой.
+  # Права проброшены явно: вызванный workflow не может получить больше прав,
+  # чем есть у вызывающего, а публикация пакета требует packages: write.
+  # Секреты тоже: в вызванный workflow они сами не передаются, и без
+  # SONAR_TOKEN шаг анализа SonarQube валил бы сборку, а с ней и деплой.
   build-and-test:
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
 
-    steps:
-      - name: Checkout кода
-        uses: actions/checkout@v4
+  # Линт, тесты и сборка фронтенда. Образ фронта публикуется в ci.yml,
+  # а проверяется он здесь: на push в main frontend.yml сам не запускается
+  frontend-checks:
+    uses: ./.github/workflows/frontend.yml
 
-      - name: Установка JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Кэширование Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle.kts') }}
-          restore-keys: gradle-
-
-      - name: Права на gradlew
-        run: chmod +x ./gradlew
-        working-directory: backend
-
-      - name: Сборка и тесты
-        run: ./gradlew build
-        working-directory: backend
-        # Тесты с Testcontainers работают в GitHub Actions из коробки,
-        # потому что Docker уже установлен на ubuntu-latest runners
-
-  # ==================== JOB 2: Деплой на VPS ====================
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-test  # запускается только если тесты прошли
+    # Запускается, только если прошли тесты обеих зон и образы опубликованы
+    needs: [build-and-test, frontend-checks]
+    # Доступы к VPS должны жить в секретах этого environment, а не репозитория:
+    # секрет репозитория читает любой job любого workflow на любой ветке
+    environment: production
+    timeout-minutes: 15
 
     steps:
+      # На сервер уезжает только compose-файл: собирать там больше нечего,
+      # приложение приходит готовым образом из registry
       - name: Checkout кода
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Копируем файлы на сервер
-        uses: appleboy/scp-action@v0.1.7
+      - name: Копируем compose-файл на сервер
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345  # v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "backend/"
+          source: "backend/docker-compose.prod.yml"
           target: "/opt/uits/"
 
-      - name: Билд и запуск на сервере
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Пишем .env на сервер
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          envs: IMAGE_TAG,POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,CORS_ALLOWED_ORIGINS,SERPER_API_KEY
+          # Прод-значения живут в секретах environment production, а не в файле,
+          # который правят руками на сервере. IMAGE_TAG пишется туда же: откат
+          # тогда сводится к правке одной строки и `up -d`, без прогона workflow.
+          #
+          # Значение пишется в одинарных кавычках, и это не косметика.
+          # Содержимое .env compose интерполирует: пароль вида `p$ss` без
+          # кавычек превращается в `p` — подстрока `$ss` читается как пустая
+          # переменная, приложение молча получает не тот пароль. Решётка после
+          # пробела точно так же обрезает хвост значения как комментарий.
+          # Кавычки снимают оба случая; не переживают они только собственную
+          # одинарную кавычку внутри значения, поэтому такой секрет валит шаг
+          # явной ошибкой вместо пустой строки в .env.
+          #
+          # umask 077 закрывает файл до его создания — между записью и chmod
+          # иначе есть окно, когда .env читаем всем.
           script: |
+            set -e
             cd /opt/uits/backend
 
-            # Собираем Docker-образ прямо на сервере
-            docker build -t uits-backend:latest .
+            for name in IMAGE_TAG POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD \
+                        JWT_SECRET_KEY CORS_ALLOWED_ORIGINS SERPER_API_KEY; do
+              eval "value=\${$name}"
+              case "$value" in
+                *"'"*)
+                  echo "секрет $name содержит одинарную кавычку — .env такого не переживёт" >&2
+                  exit 1
+                  ;;
+              esac
+            done
 
-            # Останавливаем старые контейнеры и запускаем новые
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d
+            umask 077
+            {
+              printf "IMAGE_TAG='%s'\n" "$IMAGE_TAG"
+              printf "POSTGRES_DB='%s'\n" "$POSTGRES_DB"
+              printf "POSTGRES_USER='%s'\n" "$POSTGRES_USER"
+              printf "POSTGRES_PASSWORD='%s'\n" "$POSTGRES_PASSWORD"
+              printf "JWT_SECRET_KEY='%s'\n" "$JWT_SECRET_KEY"
+              printf "CORS_ALLOWED_ORIGINS='%s'\n" "$CORS_ALLOWED_ORIGINS"
+              printf "SERPER_API_KEY='%s'\n" "$SERPER_API_KEY"
+            } > .env
+            chmod 600 .env
+
+      - name: Запуск на сервере
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          # Переменные окружения шага не попадают в ssh-сессию сами по себе —
+          # их нужно перечислить здесь. IMAGE_TAG среди них больше нет:
+          # он лежит в .env, откуда compose читает его сам
+          envs: GHCR_USER,GHCR_TOKEN
+          script: |
+            set -e
+            cd /opt/uits/backend
+
+            # Пакет в GHCR приватный, без логина pull получит 403
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # Без имени сервиса: тем же тегом едет и образ микросервиса,
+            # раньше он приезжал неявно на `up`
+            docker compose -f docker-compose.prod.yml pull
+
+            # Логин дальше не нужен: всё, что тянется из registry, уже локально
+            docker logout ghcr.io
+
+            # --wait держит шаг, пока healthcheck каждого сервиса не позеленеет,
+            # и отдаёт ненулевой код, если не дождался. Без него деплой считался
+            # успешным и тогда, когда приложение падало на миграциях: `up -d`
+            # рапортует о запуске контейнера, а не о готовности приложения.
+            # База при этом не останавливается — compose пересоздаёт только
+            # изменившиеся сервисы.
+            if ! docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 240; then
+              docker compose -f docker-compose.prod.yml ps
+              docker compose -f docker-compose.prod.yml logs --tail 200 backend
+              exit 1
+            fi
 
             # Чистим старые образы, чтобы не забивать диск
             docker image prune -f
-
-            echo "=== Деплой завершён ==="

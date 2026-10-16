@@ -26,11 +26,14 @@ public class NewsPost {
     private String shortDescription;
 
     // 'news' or 'announcements'
-    @Column(name = "post_type", length = 12, nullable = false)
+    @Column(name = "post_type", length = 20, nullable = false)
     private String postType;
 
     @Column(name = "preview_image", length = 100)
     private String previewImage;
+
+    @Column(name = "preview_thumbnail", length = 100)
+    private String previewThumbnail;
 
     @Column(name = "preview_image_description", length = 256)
     private String previewImageDescription;

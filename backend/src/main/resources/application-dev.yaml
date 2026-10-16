@@ -1,0 +1,20 @@
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Раскомментировать при разборе того, как запрос проходит цепочку фильтров
+# Spring Security. Уровень шумный, поэтому живёт только в dev-профиле.
+#logging:
+#  level:
+#    org.springframework.security: DEBUG
+
+application:
+  security:
+    refresh:
+      cookie-secure: false
+  # Nginx в разработке нет, а Vite проксирует /media на бэкенд (vite.config.ts)
+  storage:
+    serve-media: true

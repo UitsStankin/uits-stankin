@@ -1,0 +1,55 @@
+name: Dependency graph
+
+# Отправка дерева зависимостей Gradle в граф зависимостей GitHub.
+#
+# Без этого шага Java-части проекта в графе нет: `build.gradle.kts` GitHub
+# самостоятельно не резолвит, и security-алерты по бэкенду не приходят вовсе —
+# ни по объявленным библиотекам, ни по транзитивным версиям из BOM Spring Boot.
+# Проверено в T-54f: в графе были только npm, pip и github-actions, а найденные
+# вручную уязвимости — включая критические в tomcat-embed-core — не показывал
+# никто.
+#
+# Запуск с dev и main, но не из веток PR-ов: сабмишен из ветки наполнял бы граф
+# состоянием, которого в проекте ещё нет. Главной веткой репозитория числится main,
+# и алерты Dependabot считаются по ней, но код попадает туда редко — на 2026-08-30
+# она отстала от dev на 411 коммитов. Поэтому список уходит и из dev: иначе первая
+# же отправка случилась бы неизвестно когда, а до тех пор алертов по Java
+# не приходило бы вовсе — ровно то состояние, которое и нашёл T-54f.
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - "backend/build.gradle.kts"
+      - "backend/settings.gradle.kts"
+      - "backend/gradle/**"
+      - ".github/workflows/dependency-graph.yml"
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # Запись графа зависимостей идёт под этим правом, отдельного токена не нужно
+      contents: write
+
+    steps:
+      - name: Checkout кода
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Установка JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Права на gradlew
+        run: chmod +x ./gradlew
+        working-directory: backend
+
+      # Экшен сам резолвит конфигурации и отправляет результат: в граф попадают
+      # и объявленные зависимости, и транзитивные с фактическими версиями
+      - name: Сабмишен дерева зависимостей
+        uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6  # v6
+        with:
+          build-root-directory: backend

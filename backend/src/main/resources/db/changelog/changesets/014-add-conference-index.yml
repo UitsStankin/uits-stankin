@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-add-conference-index
+      author: eeffeecct
+      changes:
+        # под запрос публичного списка: WHERE display = true ORDER BY created_at DESC
+        - createIndex:
+            tableName: news_conferenceannouncement
+            indexName: idx_conference_display_created_at
+            columns:
+              - column:
+                  name: display
+              - column:
+                  name: created_at

@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-teacher-card-columns
+      author: eeffeecct
+      changes:
+        - addColumn:
+            tableName: employee_teacher
+            columns:
+              - column:
+                  name: last_name
+                  type: VARCHAR(150)
+              - column:
+                  name: first_name
+                  type: VARCHAR(150)
+              - column:
+                  name: patronymic
+                  type: VARCHAR(150)
+              - column:
+                  name: avatar
+                  type: VARCHAR(100)
+              - column:
+                  name: email
+                  type: VARCHAR(254)
+              - column:
+                  name: messenger
+                  type: VARCHAR(50)
+              - column:
+                  name: experience
+                  type: INT
+              - column:
+                  name: exam_schedule_graduation
+                  type: VARCHAR(200)
+              - column:
+                  name: exam_schedule_non_graduation
+                  type: VARCHAR(200)
+        - dropNotNullConstraint:
+            tableName: employee_teacher
+            columnName: user_id
+            columnDataType: BIGINT

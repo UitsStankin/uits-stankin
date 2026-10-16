@@ -69,6 +69,9 @@ public class User {
     @Column(name = "date_joined", nullable = false, updatable = false)
     private OffsetDateTime dateJoined;
 
+    @Column(name = "tokens_not_before")
+    private OffsetDateTime tokensNotBefore;
+
     @PrePersist
     protected void onCreate() {
         if (dateJoined == null) {

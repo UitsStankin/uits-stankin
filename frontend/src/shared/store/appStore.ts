@@ -1,45 +1,23 @@
 import { create } from 'zustand';
 import type { AppStore } from './appStore.types';
-import { defaultAppConfig } from './appStore.constants';
 
+/**
+ * Состояние интерфейса, общее для нескольких виджетов.
+ *
+ * Пока в нём одно: открыта ли панель мобильного меню. Она нужна сразу двум
+ * виджетам — кнопка-бургер живёт в Header, а сама панель в Navbar. Тянуть
+ * состояние через AppLayout пропсами значило бы связать виджеты между собой
+ * лейаутом; в оригинале это решено так же — флагом mobileNavCollapse
+ * в глобальном сторе NGXS.
+ *
+ * До этого здесь лежала заготовка шаблона Espire — layoutType, тема, локаль,
+ * sidebarCollapsed. Все 137 строк вместе с типами и константами ссылались
+ * только друг на друга: useAppStore не вызывался ни из одного компонента.
+ * Заменены на то, что реально используется.
+ */
 export const useAppStore = create<AppStore>((set) => ({
-  // === STATE ===
-  config: defaultAppConfig,
+  isMobileNavOpen: false,
 
-  // === ACTIONS ===
-  updateConfig: (newConfig) =>
-    set((state) => ({
-      config: { ...state.config, ...newConfig },
-    })),
-
-  setLayout: (layout) =>
-    set((state) => ({
-      config: { ...state.config, layoutType: layout },
-    })),
-
-  toggleTheme: () =>
-    set((state) => {
-      const next = state.config.theme === 'light' ? 'dark' : 'light';
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.toggle('dark', next === 'dark');
-      }
-      return { config: { ...state.config, theme: next } };
-    }),
-
-  toggleSidebar: () =>
-    set((state) => {
-      const current = state.config.layoutType;
-      const next = current === 'default' ? 'compact' : 'default';
-      return { config: { ...state.config, layoutType: next } };
-    }),
-
-  setLocale: (locale) =>
-    set((state) => ({
-      config: { ...state.config, locale },
-    })),
+  openMobileNav: () => set({ isMobileNavOpen: true }),
+  closeMobileNav: () => set({ isMobileNavOpen: false }),
 }));
-
-// === Селекторы (выносим логику из компонентов) ===
-export const selectLayout = (state: AppStore) => state.config.layoutType;
-export const selectTheme = (state: AppStore) => state.config.theme;
-export const selectLocale = (state: AppStore) => state.config.locale;

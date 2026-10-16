@@ -1,0 +1,36 @@
+/**
+ * Моки контракта — общая точка входа для тестов и для dev-режима.
+ *
+ * `server.ts` (Node) и `browser.ts` (воркер) отсюда НЕ экспортируются
+ * намеренно: они тянут разные окружения, и общий реэкспорт затащил бы
+ * `msw/node` в браузерный бандл.
+ */
+export { handlers } from './handlers';
+export { authHandlers } from './auth';
+export { achievementHandlers, achievementsFixture, makeAchievement } from './achievements';
+export { conferenceHandlers, conferencesFixture, makeConference } from './conferences';
+export { editablePageHandlers } from './editablePages';
+export { fileHandlers } from './files';
+export { helperHandlers, helpersFixture, makeHelper } from './helpers';
+export { makeNews, newsFixture, newsHandlers } from './news';
+export { makeProfile, profileHandlers } from './profile';
+export { pageResponse } from './page';
+export {
+  makePostgraduate,
+  postgraduatesFixture,
+  publicPostgraduateHandlers,
+} from './postgraduates';
+export {
+  makeTeacher,
+  myTeacherCardHandlers,
+  teacherHandlers,
+  teacherListItem,
+  teachersFixture,
+} from './teachers';
+export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
+export {
+  makeUserDirectoryEntry,
+  userDirectoryFixture,
+  userDirectoryHandlers,
+} from './users';
+export { problemResponse } from './problemResponse';

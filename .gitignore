@@ -1,0 +1,15 @@
+﻿.idea/
+.vscode/
+.DS_Store
+/CLAUDE.md
+.postman/
+postman/
+
+/media/
+backend/media/
+
+schedule-service/.venv/
+__pycache__/
+.pytest_cache/
+.coverage
+coverage.xml

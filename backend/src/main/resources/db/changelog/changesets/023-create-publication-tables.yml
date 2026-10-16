@@ -1,0 +1,119 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-create-publication-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: scientific_publications_tag
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_tag_name
+        - createTable:
+            tableName: scientific_publications_scientificpublication
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  type: VARCHAR(200)
+              - column:
+                  name: file
+                  type: VARCHAR(100)
+              - column:
+                  name: year
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: pages
+                  type: VARCHAR(50)
+              - column:
+                  name: vol_n
+                  type: VARCHAR(100)
+              - column:
+                  name: isbn
+                  type: VARCHAR(20)
+        - createTable:
+            tableName: scientific_publications_scientificpublication_tags
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: scientificpublication_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: scientific_publications_scientificpublication_tags
+            baseColumnNames: scientificpublication_id
+            constraintName: fk_publication_tags_publication
+            referencedTableName: scientific_publications_scientificpublication
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: scientific_publications_scientificpublication_tags
+            baseColumnNames: tag_id
+            constraintName: fk_publication_tags_tag
+            referencedTableName: scientific_publications_tag
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: scientific_publications_scientificpublication_tags
+            columnNames: scientificpublication_id, tag_id
+            constraintName: uq_publication_tag
+        - createIndex:
+            tableName: scientific_publications_scientificpublication
+            indexName: idx_publication_year
+            columns:
+              - column:
+                  name: year
+        - createIndex:
+            tableName: scientific_publications_scientificpublication_tags
+            indexName: idx_publication_tags_tag
+            columns:
+              - column:
+                  name: tag_id

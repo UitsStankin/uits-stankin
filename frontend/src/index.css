@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Tailwind 4 не подхватывает tailwind.config.ts сам — только по этой директиве.
+   Без неё тема (цвета, h-header, p-gutter, z-sticky) и плагины
+   forms/typography не применяются. */
+@config "../tailwind.config.ts";

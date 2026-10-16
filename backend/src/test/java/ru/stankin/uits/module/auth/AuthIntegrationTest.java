@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.stankin.uits.AbstractIntegrationTest;
@@ -12,6 +13,7 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,8 +30,6 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnToken_WhenLoginAndPasswordAreCorrect() {
-        userRepository.deleteAll();
-
         User user = new User();
         user.setUsername("student_ivan");
         user.setPassword(passwordEncoder.encode("super_password"));
@@ -52,12 +52,11 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().access_token()).isNotBlank();
+        assertThat(response.getBody().accessToken()).isNotBlank();
     }
 
     @Test
-    void shouldReturn403_WhenPasswordIsWrong() {
-        userRepository.deleteAll();
+    void shouldReturn401_WhenPasswordIsWrong() {
         User user = new User();
         user.setUsername("hacker");
         user.setPassword(passwordEncoder.encode("real_pass"));
@@ -67,12 +66,60 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
         var badRequest = new AuthController.LoginRequest("hacker", "wrong_pass");
 
-        ResponseEntity<Object> response = restTemplate.postForEntity(
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
                 "/api/users/auth/login",
                 badRequest,
-                Object.class
+                ProblemDetail.class
         );
 
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        assertThat(response.getBody().getDetail()).isEqualTo("Неверный логин или пароль.");
+    }
+
+    @Test
+    void shouldReturn400_WhenLoginFieldsAreBlank() {
+        var blankRequest = new AuthController.LoginRequest("", "");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/users/auth/login",
+                blankRequest,
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ProblemDetail problem = response.getBody();
+        assertThat(problem).isNotNull();
+        assertThat(problem.getDetail()).isEqualTo("Ошибка валидации.");
+
+        Map<String, Object> properties = problem.getProperties();
+        assertThat(properties).isNotNull();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> errors = (Map<String, Object>) properties.get("errors");
+        assertThat(errors).containsKeys("username", "password");
+    }
+
+    @Test
+    void shouldReturn401_WhenUserIsBlocked() {
+        User user = new User();
+        user.setUsername("hacker");
+        user.setPassword(passwordEncoder.encode("real_pass"));
+        user.setActive(false);
+        user.setDateJoined(OffsetDateTime.now());
+        userRepository.save(user);
+
+        var loginRequest = new AuthController.LoginRequest("hacker", "real_pass");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/users/auth/login",
+                loginRequest,
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Неверный логин или пароль.");
     }
 }

@@ -1,78 +1,71 @@
-import { cn } from '@/shared/lib/cn';
+import { cn } from '@shared/lib/cn';
+import { Logo } from '@shared/ui/Logo';
+import { useAppStore } from '@shared/store';
+import { useAuth, useLogout } from '@features/auth';
+import { BurgerButton } from './ui/BurgerButton';
+import { LoginLink } from './ui/LoginLink';
+import { SessionSkeleton } from './ui/SessionSkeleton';
+import { UserMenu } from './ui/UserMenu';
+import { useDropdownState } from './model/useDropdownState';
+import { buildProfileMenu } from './lib/profileMenu';
 import type { HeaderProps } from './Header.types';
 
-export default function Header({ 
-  onToggleSidebar, 
-  isSidebarCollapsed,
-  className,
-  showUserMenu = true 
-}: HeaderProps) {
+/**
+ * Верхняя полоса — логотип слева, вход или профиль справа.
+ * Соответствует header-nav из горизонтального лейаута портала.
+ */
+export default function Header({ className }: HeaderProps) {
+  const { profile, canEdit, isLoading } = useAuth();
+  const logout = useLogout();
+  const menu = useDropdownState();
+  const isMobileNavOpen = useAppStore((s) => s.isMobileNavOpen);
+  const openMobileNav = useAppStore((s) => s.openMobileNav);
+
+  const items = buildProfileMenu({ canManage: canEdit });
+
+  // В оригинале: «Имя Фамилия», а если имени нет — логин. Склейка через
+  // filter: в контракте имя и фамилия по отдельности могут быть `null`,
+  // и шаблонная строка написала бы в шапке «Demo null».
+  const displayName = profile
+    ? [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.username
+    : '';
+
   return (
-    <header className={cn(
-      'h-header',
-      'bg-white border-b border-default',
-      'flex items-center justify-between',
-      'px-gutter',
-      'sticky top-0 z-sticky',
-      className
-    )}>
-      {/* Левая часть */}
-      <div className="flex items-center gap-4">
-        {/* Кнопка гамбургера (только мобильные) */}
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            className={cn(
-              'md:hidden p-2 rounded hover:bg-gray-200',
-              'text-text-default transition-colors'
-            )}
-            aria-label="Toggle sidebar"
-          >
-            <HamburgerIcon collapsed={isSidebarCollapsed} />
-          </button>
-        )}
-        
-        {/* Логотип */}
-        <Logo variant={isSidebarCollapsed ? 'icon' : 'full'} />
-      </div>
-
-      {/* Правая часть */}
-      <div className="flex items-center gap-3">
-        {showUserMenu && <UserProfileMenu />}
-      </div>
-    </header>
-  );
-}
-
-// === Внутренние компоненты ===
-
-function HamburgerIcon({ collapsed }: { collapsed?: boolean }) {
-  return (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      {collapsed ? (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-      ) : (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    <header
+      className={cn(
+        'h-header',
+        'border-b border-default bg-white',
+        'flex items-center justify-between',
+        'px-gutter',
+        'sticky top-0 z-sticky',
+        className
       )}
-    </svg>
-  );
-}
+    >
+      {/* Как в оригинале: на узком экране слева бургер, а логотип скрыт —
+          он показывается внутри выехавшей панели. */}
+      <BurgerButton isNavOpen={isMobileNavOpen} onClick={openMobileNav} />
+      <Logo className="hidden lg:block" />
 
-function Logo({ variant }: { variant: 'icon' | 'full' }) {
-  return (
-    <div className="font-bold text-text-heading">
-      {variant === 'icon' ? 'M' : 'MyApp'}
-    </div>
-  );
-}
-
-function UserProfileMenu() {
-  // Заглушка — здесь будет реальный компонент с аватаром и дропдауном
-  return (
-    <button className="flex items-center gap-2 p-1 rounded hover:bg-gray-100">
-      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-medium">
-        U
-      </div>
-    </button>
+      {/* Три состояния, а не два: «вошёл», «ещё не знаем» и «не вошёл».
+          Среднее — это первые миллисекунды после перезагрузки страницы
+          с сохранённым токеном. */}
+      {profile ? (
+        <UserMenu
+          displayName={displayName}
+          email={profile.email}
+          avatarUrl={profile.avatarUrl}
+          items={items}
+          isOpen={menu.isOpen}
+          onToggle={menu.toggle}
+          onNavigate={menu.close}
+          onLogout={logout}
+          containerRef={menu.containerRef}
+        />
+      ) : isLoading ? (
+        <SessionSkeleton />
+      ) : (
+        <LoginLink />
+      )}
+    </header>
   );
 }

@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-subject-name-lower-unique
+      author: eeffeecct
+      changes:
+        - sql:
+            sql: CREATE UNIQUE INDEX uq_subject_name_lower ON subject_subject (lower(name))
+      rollback:
+        - sql:
+            sql: DROP INDEX uq_subject_name_lower

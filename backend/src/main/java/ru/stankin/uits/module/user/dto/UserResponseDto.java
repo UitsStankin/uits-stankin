@@ -16,6 +16,7 @@ public class UserResponseDto {
     private String lastName;
     private String email;
     private String avatar;
+    private String avatarUrl;
 
     private boolean teacher;
     private boolean moderator;

