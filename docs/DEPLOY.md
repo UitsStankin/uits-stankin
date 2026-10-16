@@ -3,9 +3,8 @@
 Порядок выкатки на боевой стенд и того, что нужно сделать до неё. Код деплоя закрыт
 (T-17c, T-84, T-85), незакрытым остаётся всё, что требует живого сервера, — T-17d.
 
-> Стенд на VPS мёртв с 2026-07-21, реальных пользователей нет. `deploy.yml` целиком
-> не выполнялся ни разу: каждый его шаг проверен локально по отдельности, но в бою
-> workflow сработает впервые. Ошибки в нём всплывут на первой же выкатке.
+> Старый VPS мёртв с 2026-07-21. С 2026-10-16 работает новый стенд (Ubuntu 24.04, 2 vCPU / 4 ГБ):
+> `deploy.yml` прошёл на нём целиком, TLS включён (§8). Реальных пользователей нет.
 
 ---
 
@@ -45,10 +44,12 @@ unset HASH
 обновить его будет нечем, и пользователя выбросит. TLS — не завершающий штрих,
 а условие работоспособности.
 
+Сертификат выпускается по §8; при работающем TLS `REFRESH_COOKIE_SECURE` остаётся `true`.
+
 Временно снизить `REFRESH_COOKIE_SECURE` до `false` допустимо только на проверочной
-выкатке без реальных людей: refresh-токен пойдёт по открытому каналу. Делается это
-строкой `REFRESH_COOKIE_SECURE='false'` в `/opt/uits/backend/.env` и `up -d`; следующий
-деплой перепишет `.env` из секретов, и флаг вернётся в `true` сам.
+выкатке без реальных людей и без сертификата: refresh-токен пойдёт по открытому каналу.
+Делается это строкой `REFRESH_COOKIE_SECURE='false'` в `/opt/uits/backend/.env` и `up -d`;
+следующий деплой перепишет `.env` из секретов, и флаг вернётся в `true` сам.
 
 ### 1.3 Скрипты бэкапа на сервер не попадают
 
@@ -71,7 +72,8 @@ unset HASH
    `deploy.yml` вызывает `docker` без `sudo`.
 5. `mkdir -p /opt/uits/backend`, владелец — пользователь деплоя. Именно этот путь
    ждёт `deploy.yml`.
-6. Домен: A-запись на адрес сервера.
+6. Имя для сертификата: A-запись домена на адрес сервера либо бесплатное имя
+   `<ip через дефис>.sslip.io` (§8), без покупки домена.
 7. **Проверить `docker pull` с самого сервера — и из GHCR, и с Docker Hub.** Три образа
    проекта лежат в GHCR, но `postgres:17-alpine` из прод-compose и `alpine:3.20` из скриптов
    бэкапа тянутся с Docker Hub, а он ограничивает загрузку с российских адресов
@@ -154,8 +156,15 @@ base64 не содержит одинарной кавычки, а она уро
 ssh <user>@<host> 'cd /opt/uits/backend && docker compose -f docker-compose.prod.yml ps'
 ```
 
-Все четыре сервиса должны быть `healthy`. Дальше — открыть домен в браузере
-и проверить вход: именно он ломается первым, если TLS ещё нет (§1.2).
+Все четыре сервиса должны быть `healthy`. Снаружи проверяются редирект и сертификат:
+
+```
+curl -sI http://<имя>/ | head -n 3        # 301 и Location: https://<имя>/
+curl -s -o /dev/null -w "%{http_code} %{ssl_verify_result}\n" https://<имя>/   # 200 0
+```
+
+Дальше — открыть адрес в браузере и проверить вход, в том числе после обновления страницы:
+именно вход ломается первым, если TLS не работает (§1.2).
 
 Один раз после первого деплоя — проверить подсеть docker-сети:
 
@@ -211,3 +220,55 @@ docker compose -f docker-compose.prod.yml up -d
 4. Проверить восстановление: `restore-check.sh` разворачивает бэкап в одноразовые
    тома и контейнер, рабочих данных не касаясь. Бэкап, который ни разу
    не восстанавливали, бэкапом не является.
+
+---
+
+## 8. TLS: выпуск и продление сертификата
+
+Решение — nginx и certbot (ARCHITECTURE §7, T-94). Имя на стенде — `168-113-168-29.sslip.io`:
+сервис возвращает адрес, зашитый в имени, поэтому домен покупать не нужно. Для настоящего домена
+достаточно A-записи, замены имени в командах ниже и в секрете `CORS_ALLOWED_ORIGINS`
+(`https://<имя>`, без слеша на конце).
+
+**Порядок обязателен: сертификат должен лежать в томе `uits_letsencrypt` до выкатки образа
+с блоком 443.** Без файла сертификата nginx не стартует, и стенд ляжет.
+
+### 8.1 Первый выпуск
+
+Один раз, по ssh из `/opt/uits/backend`. Стенд на это время недоступен: порт 80 нужен
+временному серверу для файла-проверки.
+
+```
+docker compose -f docker-compose.prod.yml stop nginx
+docker run -d --rm --name acme-tmp -p 80:80 -v uits_certbot_webroot:/usr/share/nginx/html nginx:alpine
+docker run --rm -v uits_letsencrypt:/etc/letsencrypt -v uits_certbot_webroot:/var/www/certbot \
+  certbot/certbot:v5.8.0 certonly --webroot -w /var/www/certbot --cert-name uits \
+  -d <имя> --email <почта> --agree-tos --no-eff-email --staging \
+  --deploy-hook "chmod -R a+rX /etc/letsencrypt/archive /etc/letsencrypt/live"
+```
+
+После тестового выпуска та же команда без `--staging` и с `--force-renewal` заменяет
+сертификат боевым. Затем `docker stop acme-tmp` и `docker compose -f docker-compose.prod.yml up -d nginx`.
+Тома, созданные `docker run`, compose подхватывает без ошибок.
+
+* `--staging` сначала: у боевого Let's Encrypt жёсткие лимиты на неудачные попытки.
+* `--cert-name uits`: путь `live/uits/` в `nginx.conf` не зависит от домена.
+* `--deploy-hook`: certbot создаёт ключ с правами только для root, а nginx в контейнере
+  работает не под root и без смены прав ключ не прочитает.
+* Если certbot после успешной проверки не возвращает управление, наличие сертификата
+  смотрится командой `docker run --rm -v uits_letsencrypt:/etc/letsencrypt certbot/certbot:v5.8.0 certificates`;
+  у боевого сертификата нет пометки `TEST_CERT`.
+
+### 8.2 Продление
+
+Сервис `certbot` в compose стоит под профилем `tools`, поэтому `up -d --wait` его не запускает.
+Продление — недельный cron пользователя деплоя; certbot меняет сертификат, только когда до конца
+срока остаётся меньше 30 дней, после чего nginx перечитывает файлы:
+
+```
+0 4 * * 1 cd /opt/uits/backend && { docker compose -f docker-compose.prod.yml --profile tools run --rm certbot renew --quiet && docker exec uits_nginx nginx -s reload; } >> /opt/uits/backups/renew.log 2>&1
+```
+
+Проверка без траты лимитов: `docker compose -f docker-compose.prod.yml --profile tools run --rm certbot renew --dry-run`.
+Продление работает по тому же webroot: путь `/.well-known/acme-challenge/` отдаётся по http,
+редирект на него не распространяется.
