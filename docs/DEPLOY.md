@@ -21,6 +21,23 @@
 После первого деплоя портал поднимется, но войти в него будет некому: ни администратора,
 ни модератора. Варианты — в T-87.
 
+Способ для стенда, без правок кода и без пароля в git. В ssh-сессии на сервере, из `/opt/uits/backend`:
+
+```
+set -a; . ./.env; set +a
+read -rs -p "Пароль админа: " PW; echo
+HASH=$(printf '%s\n' "$PW" | docker run -i --rm httpd:2.4-alpine htpasswd -niBC 10 x | cut -d: -f2)
+unset PW
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v h="$HASH" <<'SQL'
+INSERT INTO users_user (username, password, email, is_superuser, is_staff, is_moderator, is_active, date_joined)
+VALUES ('admin', :'h', 'admin@example.com', true, true, true, true, now());
+SQL
+unset HASH
+```
+
+Роль администратора даёт `is_superuser`. Пароль сразу сменить штатной ручкой
+`POST /api/users/change-password`: смена закрывает все сессии, после неё нужен новый вход.
+
 ### 1.2 Без TLS не работает вход
 
 `REFRESH_COOKIE_SECURE` по умолчанию `true`, то есть refresh-токен уезжает в cookie
@@ -179,11 +196,13 @@ docker compose -f docker-compose.prod.yml up -d
 
 1. Скопировать `backend/ops/backup.sh` и `restore-check.sh` в `/opt/uits/backend/ops/`
    и выдать право на запуск (`chmod +x`): в git у скриптов бита исполнения нет.
-2. Создать каталог `/var/backups/uits` и файл `/var/log/uits-backup.log`, отдать их
-   пользователю деплоя и под ним же поставить ночной бэкап в cron (`crontab -e`):
+2. Создать каталог для копий и поставить ночной бэкап в cron пользователя деплоя
+   (`crontab -e`). Каталог `/opt/uits/backups` создаётся без `sudo`, и на стенде
+   использован именно он; `/var/backups/uits` с файлом `/var/log/uits-backup.log`
+   требует `sudo` и `chown`, итог тот же:
 
    ```
-   15 3 * * * cd /opt/uits/backend && BACKUP_ROOT=/var/backups/uits ops/backup.sh >> /var/log/uits-backup.log 2>&1
+   15 3 * * * cd /opt/uits/backend && BACKUP_ROOT=/opt/uits/backups ops/backup.sh >> /opt/uits/backups/backup.log 2>&1
    ```
 
 3. Настроить увоз копий за пределы машины. Бэкап на том же диске, что и база,
