@@ -4,7 +4,7 @@ set -euo pipefail
 BACKUP_ROOT=${BACKUP_ROOT:-./backups}
 RCLONE_CONFIG_DIR=${RCLONE_CONFIG_DIR:-$HOME/.config/rclone}
 RCLONE_IMAGE=${RCLONE_IMAGE:-rclone/rclone:1.75.2}
-REMOTE=${REMOTE:-timeweb:uits-stankin-backet1/stand}
+REMOTE=${REMOTE:-timeweb-crypt:}
 REMOTE_KEEP_DAYS=${REMOTE_KEEP_DAYS:-30}
 MAX_AGE_DAYS=${MAX_AGE_DAYS:-1}
 
@@ -33,9 +33,15 @@ rclone() {
         "$RCLONE_IMAGE" "$@"
 }
 
-rclone copy "/data/$latest" "$REMOTE/$latest"
-rclone check "/data/$latest" "$REMOTE/$latest"
+base=${REMOTE%/}
+case "$base" in
+    *:) target="$base$latest" ;;
+    *) target="$base/$latest" ;;
+esac
+
+rclone copy "/data/$latest" "$target"
+rclone cryptcheck "/data/$latest" "$target"
 
 rclone delete "$REMOTE" --min-age "${REMOTE_KEEP_DAYS}d"
 
-echo "выгрузка завершена: $latest -> $REMOTE/$latest"
+echo "выгрузка завершена: $latest -> $target"
