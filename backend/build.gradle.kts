@@ -16,6 +16,9 @@ description = "Project for Uits"
 // иначе она начнёт удерживать Tomcat ниже BOM.
 extra["tomcat.version"] = "11.0.25"
 
+extra["jackson-bom.version"] = "3.1.7"
+extra["jackson-2-bom.version"] = "2.21.7"
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
