@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Прогон укладывается в две минуты. Без явного лимита дефолт GitHub — 6 часов:
     # зависший runner молча съедает минуты Actions и держит жёлтый статус
     timeout-minutes: 15
@@ -92,7 +92,7 @@ jobs:
         run: ./gradlew build --no-daemon
         working-directory: backend
         # Тесты с Testcontainers работают в GitHub Actions из коробки:
-        # Docker уже установлен на ubuntu-latest runners
+        # Docker уже установлен на ubuntu-24.04 runners
 
       - name: Установка Python 3.13
         if: steps.gate.outputs.build == 'true'
@@ -139,7 +139,7 @@ jobs:
   # Образ собирается здесь, а не на VPS: сборка на боевой машине ест её ресурсы,
   # а результат нигде не хранится (ARCHITECTURE §8).
   publish-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build-and-test
     # На pull request образ не публикуется — публикуется то, что уже влито.
     # Условие покрывает и push в dev, и вызов из deploy.yml на push в main.

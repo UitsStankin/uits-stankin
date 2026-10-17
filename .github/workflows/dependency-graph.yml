@@ -27,7 +27,7 @@ on:
 
 jobs:
   submit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       # Запись графа зависимостей идёт под этим правом, отдельного токена не нужно
