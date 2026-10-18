@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, ty
 import { Link } from 'react-router';
 import { ArrowUpRight, X } from 'lucide-react';
 
+import { cn } from '@shared/lib/cn';
 import { Logo } from '@shared/ui/Logo';
 
 import { isPathActive } from '../lib/navTree';
@@ -10,6 +11,7 @@ import type { MenuGroup } from '../lib/menuGroups';
 interface MenuSheetProps {
   groups: readonly MenuGroup[];
   pathname: string;
+  isClosing?: boolean;
   onClose: () => void;
   footer?: ReactNode;
 }
@@ -36,7 +38,7 @@ function initialGroupKey(groups: readonly MenuGroup[], pathname: string): string
  * простым списком с тонкими линиями. Показывается один раздел за раз, а не все
  * сразу: так на экране не двадцать строк текста, а пять-девять.
  */
-export function MenuSheet({ groups, pathname, onClose, footer }: MenuSheetProps) {
+export function MenuSheet({ groups, pathname, isClosing = false, onClose, footer }: MenuSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [activeKey, setActiveKey] = useState(() => initialGroupKey(groups, pathname));
@@ -81,7 +83,7 @@ export function MenuSheet({ groups, pathname, onClose, footer }: MenuSheetProps)
     <div
       ref={sheetRef}
       id="site-menu"
-      className="u-menu"
+      className={cn('u-menu', isClosing && 'u-menu--closing')}
       role="dialog"
       aria-modal="true"
       aria-label="Разделы сайта"

@@ -119,6 +119,7 @@ export default function Header({ className, overlay = false, showThemeToggle = f
         <MenuSheet
           groups={MENU_GROUPS}
           pathname={pathname}
+          isClosing={menu.isClosing}
           onClose={closeMenu}
           footer={isGuest ? <LoginLink onClick={menu.close} /> : null}
         />

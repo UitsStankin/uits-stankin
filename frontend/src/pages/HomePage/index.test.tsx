@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   editablePageHandlers,
@@ -159,6 +159,45 @@ describe('HomePage', () => {
 
       await screen.findByText('Просто текст', {}, { timeout: 5000 });
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+  });
+
+  describe('карусель «Главное сейчас»', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('идёт кольцом: настоящие карточки читаются, копии для петли скрыты', async () => {
+      renderWithProviders(<HomePage />);
+
+      const carousel = await region('Главное сейчас');
+      expect(await within(carousel).findByRole('group', { name: '1 из 3' })).toBeInTheDocument();
+      expect(within(carousel).getAllByRole('group')).toHaveLength(3);
+
+      const copies = carousel.querySelectorAll('[data-slide]');
+      expect(copies).toHaveLength(9);
+      expect(carousel.querySelectorAll('[data-slide][inert]')).toHaveLength(6);
+    });
+
+    it('не показывает номер карточки', async () => {
+      renderWithProviders(<HomePage />);
+
+      const carousel = await region('Главное сейчас');
+      await within(carousel).findByRole('group', { name: '1 из 3' });
+
+      expect(within(carousel).queryByText(/\d{2}\s*\/\s*\d{2}/)).not.toBeInTheDocument();
+    });
+
+    it('листает стрелками по бокам на одну карточку', async () => {
+      const scrollBy = vi.fn();
+      HTMLElement.prototype.scrollBy = scrollBy;
+      renderWithProviders(<HomePage />);
+
+      const carousel = await region('Главное сейчас');
+      fireEvent.click(await within(carousel).findByRole('button', { name: 'Следующая карточка' }));
+      fireEvent.click(within(carousel).getByRole('button', { name: 'Предыдущая карточка' }));
+
+      expect(scrollBy).toHaveBeenCalledTimes(2);
     });
   });
 

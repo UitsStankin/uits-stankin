@@ -1,6 +1,7 @@
 import { Outlet, ScrollRestoration, useLocation, useNavigation } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import { ADMIN_ROUTE, HOME_ROUTE } from '@shared/config/routes';
+import { useAmbientMotion } from '@shared/lib/useAmbientMotion';
 import { useDocumentTheme } from '@shared/lib/useDocumentTheme';
 import Header from '@widgets/Header';
 import Footer from '@widgets/Footer';
@@ -24,6 +25,7 @@ export default function AppLayout({ className }: AppLayoutProps) {
   const isAdmin = pathname === ADMIN_ROUTE || pathname.startsWith(`${ADMIN_ROUTE}/`);
 
   useDocumentTheme(!isAdmin);
+  useAmbientMotion();
 
   return (
     <div

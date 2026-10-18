@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { useAppStore, useThemeStore } from '@shared/store';
@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe('Header', () => {
-  it('открывает лист меню со всеми разделами и закрывает его по Escape', () => {
+  it('открывает лист меню со всеми разделами и закрывает его по Escape', async () => {
     renderWithProviders(<Header />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Открыть меню' }));
@@ -26,7 +26,9 @@ describe('Header', () => {
     );
 
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Лист сначала гаснет и только потом уходит из дерева.
+    expect(sheet).toHaveClass('u-menu--closing');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('показывает ссылки одного раздела и переключается между разделами', () => {
@@ -43,14 +45,14 @@ describe('Header', () => {
     expect(within(sheet).queryByRole('link', { name: 'История кафедры' })).not.toBeInTheDocument();
   });
 
-  it('закрывает лист меню кнопкой и возвращает фокус на кнопку меню', () => {
+  it('закрывает лист меню кнопкой и возвращает фокус на кнопку меню', async () => {
     renderWithProviders(<Header />);
 
     const opener = screen.getByRole('button', { name: 'Открыть меню' });
     fireEvent.click(opener);
     fireEvent.click(screen.getByRole('button', { name: 'Закрыть меню' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(opener).toHaveFocus();
   });
 

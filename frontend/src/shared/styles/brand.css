@@ -214,16 +214,14 @@
 .u-section-head .u-section-title { margin: 0; }
 
 .u-promo { padding-block: var(--u-space-lg) var(--u-space-xl); }
-.u-promo-track, .u-events-track { display: grid; grid-auto-flow: column; gap: var(--u-space-md); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
-.u-promo-track::-webkit-scrollbar, .u-events-track::-webkit-scrollbar { display: none; }
-.u-promo-track { grid-auto-columns: 100%; }
+.u-events-track { display: grid; grid-auto-flow: column; gap: var(--u-space-md); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.u-events-track::-webkit-scrollbar { display: none; }
 .u-promo-card { scroll-snap-align: start; display: grid; gap: var(--u-space-lg); align-items: center; padding: var(--u-space-xl) var(--u-space-lg); border-radius: var(--u-radius-lg); background: var(--u-paper-2); min-width: 0; }
 .u-promo-kind { margin: 0 0 var(--u-space-sm); font-size: var(--u-text-xs); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--u-accent); }
 .u-promo-card h3 { margin: 0; font-size: clamp(1.75rem, 2vw + 1rem, 2.6rem); font-weight: 700; line-height: var(--u-lh-h1); overflow-wrap: anywhere; }
 .u-promo-card p.u-promo-text { margin: var(--u-space-sm) 0 var(--u-space-lg); color: var(--u-ink-2); max-width: 46ch; }
 .u-promo-figure { font-size: clamp(3.5rem, 7vw, 6.5rem); font-weight: 700; line-height: 0.95; letter-spacing: -0.03em; color: var(--u-accent); font-variant-numeric: tabular-nums; }
 .u-promo-figure small { display: block; margin-top: var(--u-space-xs); font-size: var(--u-text-xs); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--u-ink-2); }
-.u-slider-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--u-space-md); margin-top: var(--u-space-md); }
 
 .u-numbers { padding-block: var(--u-space-2xl); }
 .u-stats { display: grid; gap: var(--u-space-xl); grid-template-columns: minmax(0, 1fr); align-items: stretch; }
@@ -544,7 +542,7 @@
   transition: background-color 320ms var(--u-ease-soft), border-color 320ms var(--u-ease-soft);
 }
 .u-top--overlay[data-scrolled="true"] {
-  background-color: color-mix(in oklch, var(--u-paper) 94%, transparent);
+  background-color: color-mix(in oklch, var(--u-paper) 98%, transparent);
   border-bottom-color: var(--u-rule);
 }
 
@@ -679,18 +677,16 @@
 .u-promo-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .u-promo-figure { color: var(--u-ink); text-align: center; }
 .u-promo-figure small { color: var(--u-ink-2); }
-.u-slider-nav { margin-top: var(--u-space-md); }
-.u-slider-count { margin: 0; font-size: var(--u-text-md); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--u-ink); }
-.u-slider-count span { color: var(--u-muted); font-weight: 400; }
-.u-slider-buttons { display: flex; gap: var(--u-space-xs); }
 @media (min-width: 60rem) {
-  .u-promo-track { grid-auto-columns: 100%; }
-  .u-promo-card { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: var(--u-space-xl); min-height: 26rem; padding: var(--u-space-md); }
+    .u-promo-card { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: var(--u-space-xl); min-height: 26rem; padding: var(--u-space-md); }
   .u-promo-copy { padding: var(--u-space-xl) 0 var(--u-space-xl) var(--u-space-xl); }
   .u-promo-media { min-height: 100%; }
 }
 
-.u-menu { animation: u-menu-fade 240ms var(--u-ease-out) both; }
+.u-menu { scrollbar-width: none; animation: u-menu-fade 240ms var(--u-ease-out) both; }
+.u-menu::-webkit-scrollbar { display: none; }
+.u-menu--closing { pointer-events: none; animation: u-menu-out 200ms var(--u-ease-soft) both; }
+@keyframes u-menu-out { from { opacity: 1; } to { opacity: 0; } }
 .u-menu-body { display: grid; gap: var(--u-space-md); align-items: start; padding-block: var(--u-space-sm) var(--u-space-2xl); }
 .u-menu-tabs { display: flex; flex-wrap: wrap; gap: 0 var(--u-space-lg); }
 .u-menu-tab { position: relative; display: inline-flex; flex: none; align-items: center; min-height: var(--u-control-h); padding: 0; border: 0; background: transparent; color: var(--u-muted); font-family: var(--u-font-body); font-size: 1.125rem; font-weight: 600; text-align: left; white-space: nowrap; }
@@ -715,7 +711,7 @@
   .u-menu-tab::after { inset: auto auto 4px 0; width: 2.5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .u-menu, .u-menu-panel { animation: none; }
+  .u-menu, .u-menu--closing, .u-menu-panel { animation: none; }
 }
 
 .u-themed :is(a, button, input, select, textarea, summary, [role="tab"], [role="button"]) {
@@ -776,4 +772,23 @@
 .u-themed .u-pick:hover { border-color: var(--u-ink-2); background: var(--u-paper-2); color: var(--u-ink); }
 .u-themed .u-pick--danger:hover { border-color: var(--u-brand-red); background: transparent; color: var(--u-brand-red); }
 .u-foot-actions .u-btn-ghost { min-height: var(--u-control-h-sm); padding: 0 var(--u-space-md); font-size: 0.875rem; }
+
+:root[data-motion="paused"] .u-pattern-spin,
+:root[data-motion="paused"] .u-beam-ring::before { animation-play-state: paused; }
+
+.u-promo { max-width: none; padding-inline: 0; }
+.u-promo-stage { position: relative; }
+.u-promo-track { position: relative; display: flex; gap: var(--u-space-md); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.u-promo-track::-webkit-scrollbar { display: none; }
+.u-promo-track .u-promo-card { flex: 0 0 88%; scroll-snap-align: center; scroll-snap-stop: always; opacity: 0.5; transition: opacity 320ms var(--u-ease-soft); }
+.u-promo-track .u-promo-card[data-active="true"] { opacity: 1; }
+.u-promo-track--single .u-promo-card { flex-basis: 100%; }
+.u-promo-arrow { position: absolute; top: 50%; z-index: 2; translate: 0 -50%; display: none; box-shadow: 0 6px 20px color-mix(in oklch, #000000 18%, transparent); }
+.u-promo-arrow--prev { left: var(--u-space-sm); }
+.u-promo-arrow--next { right: var(--u-space-sm); }
+@media (min-width: 48rem) {
+  .u-promo-track .u-promo-card { flex-basis: min(84%, 68rem); }
+  .u-promo-track--single .u-promo-card { flex-basis: 100%; }
+  .u-promo-arrow { display: inline-flex; }
+}
 

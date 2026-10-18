@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { ArrowLeft, ArrowRight, Megaphone, Trophy, type LucideIcon } from 'lucide-react';
 
 import { achievementRoute, conferenceRoute, newsItemRoute } from '@shared/config/routes';
@@ -6,6 +6,7 @@ import { ButtonLink } from '@shared/ui/brand/Button';
 import type { Achievement, Conference, News } from '@shared/types';
 
 import { dayAndMonth } from '../lib/homeFormat';
+import { useEndlessTrack } from '../model/useEndlessTrack';
 
 type PromoTone = 'violet' | 'green' | 'blue';
 
@@ -27,8 +28,6 @@ interface PromoSliderProps {
   achievement: Achievement | undefined;
   announcement: News | undefined;
 }
-
-const CARD_GAP_PX = 16;
 
 function buildCards({ conference, achievement, announcement }: PromoSliderProps): PromoCard[] {
   const cards: PromoCard[] = [];
@@ -79,36 +78,21 @@ function buildCards({ conference, achievement, announcement }: PromoSliderProps)
   return cards;
 }
 
-function pad(value: number): string {
-  return String(value).padStart(2, '0');
-}
-
 /**
- * Карусель «Главное сейчас»: по одной карточке на экран, без «выглядывающей»
- * соседней — обрезанный край читался как недоделка. Слева текст и кнопка,
- * справа обложка; без обложки — дата крупно либо значок. Под карточкой
- * счётчик и две круглые кнопки.
+ * Карусель «Главное сейчас»: бесконечная лента карточек, одна за другой по
+ * кольцу, без номеров. Активная карточка стоит по центру, соседние видны
+ * по краям и приглушены. Слева текст и кнопка, справа обложка; без обложки
+ * дата крупно либо значок. Стрелки — по бокам ленты.
  */
 export function PromoSlider(props: PromoSliderProps) {
   const cards = buildCards(props);
   const trackRef = useRef<HTMLDivElement>(null);
-  const [index, setIndex] = useState(0);
+  const { copies, step } = useEndlessTrack(trackRef, cards.length);
 
   if (cards.length === 0) return null;
 
-  const step = () => {
-    const first = trackRef.current?.firstElementChild;
-    return first
-      ? first.getBoundingClientRect().width + CARD_GAP_PX
-      : (trackRef.current?.clientWidth ?? 0);
-  };
-
-  const scrollByCard = (direction: 1 | -1) => {
-    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 'auto'
-      : 'smooth';
-    trackRef.current?.scrollBy({ left: direction * step(), behavior });
-  };
+  const isLoop = cards.length > 1;
+  const middleCopy = (copies - 1) / 2;
 
   return (
     <section
@@ -117,79 +101,89 @@ export function PromoSlider(props: PromoSliderProps) {
       aria-roledescription="карусель"
       aria-label="Главное сейчас"
     >
-      <div
-        ref={trackRef}
-        className="u-promo-track"
-        tabIndex={0}
-        aria-label="Карточки, листаются по горизонтали"
-        onScroll={(event) => {
-          const width = step();
-          setIndex(width > 0 ? Math.round(event.currentTarget.scrollLeft / width) : 0);
-        }}
-      >
-        {cards.map((card, position) => {
-          const Icon = card.icon;
+      <div className="u-promo-stage">
+        <div
+          ref={trackRef}
+          className={isLoop ? 'u-promo-track' : 'u-promo-track u-promo-track--single'}
+          tabIndex={0}
+          aria-label="Карточки, листаются по горизонтали"
+          onKeyDown={(event) => {
+            if (!isLoop) return;
+            if (event.key === 'ArrowRight') {
+              event.preventDefault();
+              step(1);
+            } else if (event.key === 'ArrowLeft') {
+              event.preventDefault();
+              step(-1);
+            }
+          }}
+        >
+          {Array.from({ length: copies }, (_, copy) =>
+            cards.map((card, position) => {
+              const Icon = card.icon;
+              const isReal = copy === middleCopy;
 
-          return (
-            <article
-              key={card.key}
-              className="u-promo-card"
-              data-tone={card.tone}
-              role="group"
-              aria-roledescription="слайд"
-              aria-label={`${position + 1} из ${cards.length}`}
-            >
-              <div className="u-promo-copy">
-                <p className="u-promo-kind">{card.kind}</p>
-                <h3>{card.title}</h3>
-                <p className="u-promo-text">{card.text}</p>
-                <ButtonLink to={card.href} icon={<ArrowRight size={16} aria-hidden />}>
-                  {card.cta}
-                </ButtonLink>
-              </div>
-
-              <div className="u-promo-media" aria-hidden>
-                {card.image ? (
-                  <img className="u-promo-img" src={card.image} alt="" loading="lazy" />
-                ) : card.figure ? (
-                  <div className="u-promo-figure">
-                    {card.figure.day}
-                    <small>{card.figure.month}</small>
+              return (
+                <article
+                  key={`${card.key}-${copy}`}
+                  className="u-promo-card"
+                  data-slide=""
+                  data-active={isLoop ? undefined : 'true'}
+                  data-tone={card.tone}
+                  role={isReal ? 'group' : undefined}
+                  aria-roledescription={isReal ? 'слайд' : undefined}
+                  aria-label={isReal ? `${position + 1} из ${cards.length}` : undefined}
+                  aria-hidden={isReal ? undefined : true}
+                  inert={isReal ? undefined : true}
+                >
+                  <div className="u-promo-copy">
+                    <p className="u-promo-kind">{card.kind}</p>
+                    <h3>{card.title}</h3>
+                    <p className="u-promo-text">{card.text}</p>
+                    <ButtonLink to={card.href} icon={<ArrowRight size={16} aria-hidden />}>
+                      {card.cta}
+                    </ButtonLink>
                   </div>
-                ) : (
-                  <Icon size={72} strokeWidth={1.25} />
-                )}
-              </div>
-            </article>
-          );
-        })}
-      </div>
 
-      {cards.length > 1 && (
-        <div className="u-slider-nav">
-          <p className="u-slider-count" aria-hidden>
-            {pad(index + 1)} <span>/ {pad(cards.length)}</span>
-          </p>
-          <div className="u-slider-buttons">
+                  <div className="u-promo-media" aria-hidden>
+                    {card.image ? (
+                      <img className="u-promo-img" src={card.image} alt="" loading="lazy" />
+                    ) : card.figure ? (
+                      <div className="u-promo-figure">
+                        {card.figure.day}
+                        <small>{card.figure.month}</small>
+                      </div>
+                    ) : (
+                      <Icon size={72} strokeWidth={1.25} />
+                    )}
+                  </div>
+                </article>
+              );
+            }),
+          )}
+        </div>
+
+        {isLoop && (
+          <>
             <button
               type="button"
-              className="u-round-btn"
+              className="u-round-btn u-promo-arrow u-promo-arrow--prev"
               aria-label="Предыдущая карточка"
-              onClick={() => scrollByCard(-1)}
+              onClick={() => step(-1)}
             >
               <ArrowLeft size={20} aria-hidden />
             </button>
             <button
               type="button"
-              className="u-round-btn"
+              className="u-round-btn u-promo-arrow u-promo-arrow--next"
               aria-label="Следующая карточка"
-              onClick={() => scrollByCard(1)}
+              onClick={() => step(1)}
             >
               <ArrowRight size={20} aria-hidden />
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
