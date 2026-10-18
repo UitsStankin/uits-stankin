@@ -73,7 +73,7 @@ export function ImageBar({
           autoFocus
           placeholder="Что на картинке — для тех, кто её не увидит"
           className={cn(
-            'min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1',
+            'min-w-0 flex-1 rounded border border-field bg-surface px-2 py-1',
             'text-base text-text-default placeholder:text-text-muted',
             'focus:border-primary focus:ring-0',
           )}
@@ -104,7 +104,7 @@ export function ImageBar({
  * картинка. Декоративно: то же самое написано рядом текстом.
  */
 function Thumbnail({ url, isUploading, failed }: { url: string | null; isUploading: boolean; failed: boolean }) {
-  const frame = 'flex h-12 w-16 shrink-0 items-center justify-center rounded border border-gray-300 bg-white';
+  const frame = 'flex h-12 w-16 shrink-0 items-center justify-center rounded border border-field bg-surface';
 
   if (isUploading) {
     return (

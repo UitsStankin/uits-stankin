@@ -22,10 +22,6 @@ interface UserMenuProps {
   containerRef: RefObject<HTMLDivElement | null>;
 }
 
-/** Пункты меню выглядят одинаково, ссылка это или кнопка. */
-const itemClass =
-  'flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-100 hover:text-primary';
-
 /**
  * Меню профиля справа в шапке: аватар, имя и выпадающий список.
  *
@@ -45,71 +41,53 @@ export function UserMenu({
   const avatarSrc = avatarUrl ?? DEFAULT_AVATAR_URL;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="u-user">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-controls="profile-menu"
-        className="flex items-center gap-2 rounded p-1 transition-colors hover:bg-gray-100"
+        className="u-user-btn"
       >
-        <img
-          src={avatarSrc}
-          alt=""
-          className="h-9 w-9 rounded-full object-cover"
-          // Аватар декоративный: имя рядом уже озвучено, дублировать незачем.
-          aria-hidden
-        />
-        <span className="hidden text-sm font-bold text-gray-900 sm:inline">
-          {displayName}
-        </span>
+        <img src={avatarSrc} alt="" className="u-user-ava" aria-hidden />
+        <span className="u-user-name">{displayName}</span>
         <ChevronDown
           size={16}
           aria-hidden
-          className={cn('shrink-0 text-gray-900 transition-transform', isOpen && 'rotate-180')}
+          className={cn('shrink-0 transition-transform', isOpen && 'rotate-180')}
         />
       </button>
 
       {isOpen && (
-        <div
-          id="profile-menu"
-          className={cn(
-            // Те же параметры панели, что у выпадающих навбара:
-            // белая, тень 0 2px 12px rgba(0,0,0,.1), радиус $border-radius.
-            'absolute top-full right-0 z-dropdown mt-2 w-64 rounded bg-white py-1.25',
-            'shadow-[0_2px_12px_0_rgba(0,0,0,0.1)]'
-          )}
-        >
-          <div className="flex items-center gap-2 border-b border-default px-3 pb-2">
-            <img src={avatarSrc} alt="" className="h-10 w-10 rounded-full object-cover" aria-hidden />
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-bold text-gray-900">{displayName}</span>
-              {email && <span className="truncate text-xs text-text-default">{email}</span>}
+        <div id="profile-menu" className="u-user-panel">
+          <div className="u-user-id">
+            <img src={avatarSrc} alt="" className="u-user-ava" aria-hidden />
+            <div className="min-w-0">
+              <strong>{displayName}</strong>
+              {email && <small>{email}</small>}
             </div>
           </div>
 
-          <ul className="pt-1">
+          <ul>
             {items.map((item) => {
               const Icon = item.icon;
               return (
                 <li key={item.key}>
                   {item.kind === 'logout' ? (
-                    // Кнопка, а не ссылка: за выходом не стоит адреса,
-                    // он ничего не открывает.
                     <button
                       type="button"
                       onClick={() => {
                         onNavigate();
                         onLogout();
                       }}
-                      className={itemClass}
+                      className="u-user-item"
                     >
                       <Icon size={18} className="shrink-0" aria-hidden />
                       {item.title}
                     </button>
                   ) : (
-                    <Link to={item.path} onClick={onNavigate} className={itemClass}>
+                    <Link to={item.path} onClick={onNavigate} className="u-user-item">
                       <Icon size={18} className="shrink-0" aria-hidden />
                       {item.title}
                     </Link>

@@ -1,47 +1,101 @@
+import { useState } from 'react';
+
+import { scrollToId } from '@shared/lib/smoothScroll';
+
+import type { ProgramKey } from './lib/programs';
 import { useHomeContent } from './model/useHomeContent';
+import { ContactsBlock } from './ui/ContactsBlock';
+import { EventsSlider } from './ui/EventsSlider';
+import { Hero } from './ui/Hero';
 import { HomeBlock } from './ui/HomeBlock';
-import { HomeFeed } from './ui/HomeFeed';
+import { NewsTimeline } from './ui/NewsTimeline';
+import { PeopleList } from './ui/PeopleList';
+import { ProgramsBlock } from './ui/ProgramsBlock';
+import { PromoSlider } from './ui/PromoSlider';
+import { ScheduleBand } from './ui/ScheduleBand';
+import { StatsBento } from './ui/StatsBento';
 
 /**
  * Титульная страница портала. Сборка: состояние из модели, разметка
  * из чистых компонентов, страница только соединяет одно с другим.
  *
- * Четыре куска, как в оригинале: редактируемый блок над лентой, последние
- * новости, последние объявления, редактируемый блок под ними. Оба блока —
- * те же редактируемые разделы, что в F-23, только собственного адреса
- * у них нет.
+ * Порядок разделов — витрина кафедры: первый экран с поиском расписания,
+ * «главное сейчас», цифры, расписание, уровни обучения, мероприятия,
+ * новости, преподаватели, контакты. Оба редактируемых блока (`home-before`,
+ * `home-after`) остаются: первый — сразу под первым экраном, второй — перед
+ * контактами.
  *
- * Секции две, а не одна смешанная. До F-28 была одна: главная делалась под
- * «фильтра по типу у ручки нет», а фильтр к тому моменту существовал уже
- * сутки — разбор в D-F7.
+ * Два состояния живут здесь, потому что их делят соседи: запрос расписания
+ * (форма на первом экране заполняет поле в блоке расписания) и выбранный
+ * уровень обучения (ссылки первого экрана переключают вкладки ниже).
  *
- * **На чистой базе оба блока пусты**, и главная состоит из двух секций.
- * Это дырка в данных, а не в вёрстке: ченджсет `008-seed-editable-pages`
- * заводит все тринадцать разделов с пустым текстом, а в старом портале
- * `home-before` и `home-after` были объявлены в `DEFAULT_EDITABLE_PAGES`
- * и не использовались нигде — главная там была свёрстана руками.
- * Содержимое старой главной, переложенное в Markdown, лежит в
- * FRONTEND_BACKLOG рядом с F-17 и ждёт форму правки из F-45.
+ * **На чистой базе оба блока пусты**, и страница обходится без них. Запасного
+ * текста «на случай пустоты» здесь нет намеренно: он стал бы вторым
+ * источником правды — модератор открыл бы форму правки, увидел пустое поле
+ * и текст на экране, которого в форме нет.
  *
- * Запасного текста «на случай пустоты» здесь нет намеренно: он стал бы
- * вторым источником правды — модератор открыл бы форму правки, увидел
- * пустое поле и текст на экране, которого в форме нет.
- *
- * Ширина шире, чем у ленты (`max-w-5xl` против `max-w-4xl`): на главной
- * под карточками записей лежит ещё и текст блоков, и колонка, комфортная
- * для одной ленты, для витрины узка.
+ * Единственный `h1` страницы — заголовок первого экрана. Раньше он приходил
+ * из `home-before`, но заголовок страницы, который можно стереть правкой
+ * блока, — слишком хрупкая опора.
  */
 export default function HomePage() {
-  const { before, after, news, announcements, hrefForItem } = useHomeContent();
+  const content = useHomeContent();
+  const [scheduleQuery, setScheduleQuery] = useState('');
+  const [program, setProgram] = useState<ProgramKey>('bac');
+
+  const latestAnnouncement = content.announcements.items[0];
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-gutter">
-      <HomeBlock text={before} />
+    <>
+      <Hero
+        announcement={latestAnnouncement}
+        onSearch={(query) => {
+          setScheduleQuery(query);
+          scrollToId('schedule');
+        }}
+        onPickProgram={setProgram}
+      />
 
-      <HomeFeed postType="news" feed={news} hrefForItem={hrefForItem} />
-      <HomeFeed postType="announcements" feed={announcements} hrefForItem={hrefForItem} />
+      <HomeBlock text={content.before} />
 
-      <HomeBlock text={after} />
-    </div>
+      <PromoSlider
+        conference={content.conferences.items[0]}
+        achievement={content.achievements.items[0]}
+        announcement={latestAnnouncement}
+      />
+
+      <StatsBento
+        schedules={content.schedules}
+        exams={content.exams}
+        teachers={content.teachers}
+        news={content.news}
+        announcements={content.announcements}
+        conferences={content.conferences}
+        achievements={content.achievements}
+      />
+
+      <ScheduleBand
+        schedules={content.schedules}
+        exams={content.exams}
+        query={scheduleQuery}
+        onQueryChange={setScheduleQuery}
+      />
+
+      <ProgramsBlock value={program} onChange={setProgram} />
+
+      <EventsSlider conferences={content.conferences} achievements={content.achievements} />
+
+      <NewsTimeline
+        news={content.news}
+        announcements={content.announcements}
+        hrefForItem={content.hrefForItem}
+      />
+
+      <PeopleList teachers={content.teachers} />
+
+      <HomeBlock text={content.after} />
+
+      <ContactsBlock text={content.contacts} />
+    </>
   );
 }

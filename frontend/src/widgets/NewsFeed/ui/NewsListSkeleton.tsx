@@ -18,12 +18,12 @@ interface NewsListSkeletonProps {
  */
 export function NewsListSkeleton({ label }: NewsListSkeletonProps) {
   return (
-    <div role="status" className="flex animate-pulse flex-col gap-gutter-sm">
+    <div role="status" className="grid animate-pulse grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
       {/* Серые прямоугольники диктору ничего не говорят — для него
           загрузка проговаривается словами. */}
       <span className="sr-only">{label}</span>
 
-      {[0, 1, 2].map((index) => (
+      {[0, 1, 2, 3, 4, 5].map((index) => (
         <NewsCardSkeleton key={index} />
       ))}
     </div>

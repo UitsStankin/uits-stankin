@@ -46,7 +46,7 @@ export function TeacherProfile({ teacher }: TeacherProfileProps) {
 
   return (
     <div className="flex flex-col gap-gutter-sm">
-      <header className="flex flex-col items-center gap-6 rounded bg-white p-6 text-center shadow-sm sm:flex-row sm:items-start sm:p-8 sm:text-left">
+      <header className="flex flex-col items-center gap-6 rounded-lg bg-surface p-6 text-center shadow-sm sm:flex-row sm:items-start sm:p-8 sm:text-left">
         <img
           src={teacher.avatarUrl ?? DEFAULT_AVATAR_URL}
           // Фото декоративное: имя стоит рядом заголовком, и «фото
@@ -159,7 +159,7 @@ export function TeacherProfile({ teacher }: TeacherProfileProps) {
 /** Раздел карточки: белая плашка с заголовком. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded bg-white p-6 shadow-sm md:p-8">
+    <section className="rounded-lg bg-surface p-6 shadow-sm md:p-10">
       <h2 className="text-h5 text-text-heading">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>

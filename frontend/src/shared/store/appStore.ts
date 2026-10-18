@@ -16,8 +16,8 @@ import type { AppStore } from './appStore.types';
  * Заменены на то, что реально используется.
  */
 export const useAppStore = create<AppStore>((set) => ({
-  isMobileNavOpen: false,
+  isMenuOpen: false,
 
-  openMobileNav: () => set({ isMobileNavOpen: true }),
-  closeMobileNav: () => set({ isMobileNavOpen: false }),
+  openMenu: () => set({ isMenuOpen: true }),
+  closeMenu: () => set({ isMenuOpen: false }),
 }));

@@ -37,7 +37,7 @@ export function ProfileCard({
   onEdit,
 }: ProfileCardProps) {
   return (
-    <section className="rounded bg-white p-6 shadow-sm">
+    <section className="rounded bg-surface p-6 shadow-sm">
       <header className="border-b border-default pb-4">
         <h2 className="text-h5 text-text-heading">Информация об аккаунте</h2>
         <p className="mt-1 text-sm text-text-muted">
@@ -86,7 +86,7 @@ export function ProfileCard({
           type="button"
           onClick={onEdit}
           className={cn(
-            'rounded bg-primary px-4 py-2.5 text-base font-bold text-white transition',
+            'rounded-pill bg-primary px-4 py-2.5 text-base font-bold text-on-primary transition',
             'hover:brightness-95',
           )}
         >

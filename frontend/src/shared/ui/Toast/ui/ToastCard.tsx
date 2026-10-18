@@ -17,7 +17,7 @@ export function ToastCard({ tone, text, onClose }: ToastCardProps) {
     <div
       className={cn(
         'pointer-events-auto flex w-full items-start gap-3 rounded px-4 py-3 shadow-lg',
-        'bg-white text-base text-text-default',
+        'bg-surface text-base text-text-default',
         // Полоса слева, а не заливка всей плашки: длинный текст отказа
         // на цветном фоне читается хуже, а отличить успех от ошибки
         // достаточно и по ней с иконкой.

@@ -17,7 +17,7 @@ import StatusBlock from '@shared/ui/StatusBlock';
 export default function UnknownSectionPage() {
   return (
     <div className="flex flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Раздел не найден</h1>
+      <h1 className="u-page-title">Раздел не найден</h1>
 
       <StatusBlock
         title="Такого раздела нет"

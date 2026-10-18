@@ -58,14 +58,14 @@ export default function Pagination({ page, totalPages, buildHref, className }: P
           ) : (
             <li key={slot}>
               {slot === page ? (
-                <span aria-current="page" className={cn(slotClass, 'bg-primary text-white')}>
+                <span aria-current="page" className={cn(slotClass, 'bg-primary text-on-primary')}>
                   {slot}
                 </span>
               ) : (
                 <Link
                   to={buildHref(slot)}
                   aria-label={`Страница ${slot}`}
-                  className={cn(slotClass, 'bg-white text-text-default hover:bg-secondary')}
+                  className={cn(slotClass, 'bg-surface text-text-default hover:bg-secondary')}
                 >
                   {slot}
                 </Link>
@@ -88,7 +88,7 @@ export default function Pagination({ page, totalPages, buildHref, className }: P
 }
 
 const slotClass =
-  'flex h-9 min-w-9 items-center justify-center rounded px-3 text-base font-bold shadow-sm transition-colors';
+  'flex h-10 min-w-10 items-center justify-center rounded-pill px-3 text-base font-bold shadow-sm transition-colors';
 
 /**
  * Стрелка «туда-сюда». На краю списка это `span`, а не ссылка
@@ -108,7 +108,7 @@ function Arrow({
 }) {
   if (disabled) {
     return (
-      <span aria-hidden className={cn(slotClass, 'bg-white text-gray-500 opacity-50')}>
+      <span aria-hidden className={cn(slotClass, 'bg-surface text-gray-500 opacity-50')}>
         {icon}
       </span>
     );
@@ -118,7 +118,7 @@ function Arrow({
     <Link
       to={href}
       aria-label={label}
-      className={cn(slotClass, 'bg-white text-text-default hover:bg-secondary')}
+      className={cn(slotClass, 'bg-surface text-text-default hover:bg-secondary')}
     >
       {icon}
     </Link>

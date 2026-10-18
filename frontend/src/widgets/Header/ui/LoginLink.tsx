@@ -1,17 +1,16 @@
 import { Link } from 'react-router';
 
 import { LOGIN_ROUTE } from '@shared/config/routes';
+import { cn } from '@shared/lib/cn';
 
-/**
- * Ссылка входа для неавторизованных. Текст и адрес — как в оригинале
- * (nav-profile, шаблон #login).
- */
-export function LoginLink() {
+interface LoginLinkProps {
+  className?: string;
+  onClick?: () => void;
+}
+
+export function LoginLink({ className, onClick }: LoginLinkProps) {
   return (
-    <Link
-      to={LOGIN_ROUTE}
-      className="text-sm text-gray-900 transition-colors hover:text-primary"
-    >
+    <Link to={LOGIN_ROUTE} onClick={onClick} className={cn('u-btn-ghost u-nw', className)}>
       Вход для персонала
     </Link>
   );

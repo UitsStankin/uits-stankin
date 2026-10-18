@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      try {
+        var saved = localStorage.getItem('uits-theme');
+        var isAdmin = location.pathname === '/admin' || location.pathname.indexOf('/admin/') === 0;
+        document.documentElement.dataset.theme = !isAdmin && saved === 'dark' ? 'dark' : 'light';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

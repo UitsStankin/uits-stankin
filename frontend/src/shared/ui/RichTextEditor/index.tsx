@@ -81,5 +81,5 @@ export function RichTextEditor(props: RichTextEditorProps) {
  * успела бы только моргнуть.
  */
 function EditorPlaceholder() {
-  return <div aria-hidden="true" className="h-52 rounded border border-gray-300 bg-light" />;
+  return <div aria-hidden="true" className="h-52 rounded border border-field bg-light" />;
 }

@@ -27,6 +27,13 @@ export {
   teacherListItem,
   teachersFixture,
 } from './teachers';
+export {
+  examsFixture,
+  makeExam,
+  makeLesson,
+  scheduleFixture,
+  scheduleHandlers,
+} from './schedule';
 export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
 export {
   makeUserDirectoryEntry,

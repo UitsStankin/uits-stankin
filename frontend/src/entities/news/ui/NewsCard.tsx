@@ -31,8 +31,8 @@ export function NewsCard({ news, href, className }: NewsCardProps) {
     // и дату, и анонс — диктор читал бы абзац вместо заголовка.
     <article
       className={cn(
-        'relative flex flex-col overflow-hidden rounded bg-white shadow-sm transition-shadow',
-        'hover:shadow focus-within:shadow sm:flex-row',
+        'u-lift relative flex h-full flex-col overflow-hidden rounded-lg bg-surface shadow-sm',
+        'hover:shadow focus-within:shadow',
         className,
       )}
     >
@@ -46,11 +46,11 @@ export function NewsCard({ news, href, className }: NewsCardProps) {
           // Двадцать карточек — двадцать картинок; без lazy они уезжают
           // в сеть все разом и забивают канал ещё до первого экрана.
           loading="lazy"
-          className="h-48 w-full shrink-0 object-cover sm:h-auto sm:w-56"
+          className="aspect-[16/10] w-full shrink-0 object-cover"
         />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-6">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
           <span className="rounded-pill bg-secondary px-2.5 py-0.5 font-bold text-text-heading">
             {postTypeLabel(news.postType)}

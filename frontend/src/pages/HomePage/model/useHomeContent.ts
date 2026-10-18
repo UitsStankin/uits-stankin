@@ -1,29 +1,37 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { achievementListQuery } from '@entities/achievement';
+import { conferenceListQuery } from '@entities/conference';
 import { editablePageQuery } from '@entities/editable-page';
 import { newsListQuery } from '@entities/news';
+import { examSummaryQuery, scheduleSummaryQuery } from '@entities/schedule';
+import { teachersListQuery } from '@entities/teacher';
 import { newsItemRoute } from '@shared/config/routes';
-import type { EditablePage, News, NewsPage } from '@shared/types';
+import type { EditablePage, Page } from '@shared/types';
 
 /**
- * Сколько записей показывать в каждой секции.
+ * Сколько записей брать в каждую выдачу.
  *
- * Пять и четыре — как в оригинале, где `home.service.ts` просил ровно эти
- * `limit`. Разные числа не оговорка: секции стоят одна под другой, и равная
- * длина превратила бы их в один список, разделённый заголовком.
+ * Пять новостей и четыре объявления — как в оригинале, где `home.service.ts`
+ * просил ровно эти `limit`. Остальные списки — витрина: хватает горсти,
+ * полный перечень лежит на странице раздела.
  */
 const HOME_NEWS_SIZE = 5;
 const HOME_ANNOUNCEMENTS_SIZE = 4;
+const HOME_EVENTS_SIZE = 6;
+const HOME_TEACHERS_SIZE = 8;
 
-/** Разобранное состояние одной секции — то, что нужно разметке, и ничего больше. */
-export interface HomeFeedState {
-  items: readonly News[];
-  /** Первая загрузка: показывать скелет. */
+/** Разобранное состояние одной выдачи — то, что нужно разметке, и ничего больше. */
+export interface HomeListState<T> {
+  items: readonly T[];
+  /** Сколько записей всего в разделе, а не на витрине. */
+  total: number;
+  /** Первая загрузка: показывать заглушку. */
   isLoading: boolean;
   /**
    * Запрос приостановлен, и показать пока нечего: нет сети либо вкладка
    * ушла в фон. Ветка отдельная по той же причине, что и в ленте: при паузе
-   * не выставлены ни `isLoading`, ни `isError`, и без неё главная показывала бы
+   * не выставлены ни `isLoading`, ни `isError`, и без неё секция показывала бы
    * заголовок над пустотой. Подробный разбор — в
    * `widgets/NewsFeed/model/useNewsList.ts`.
    */
@@ -36,60 +44,74 @@ export interface HomeFeedState {
 }
 
 /**
- * Состояние главной: два редактируемых блока и две секции записей.
+ * Состояние главной: два редактируемых блока, контакты и семь выдач.
  *
- * Четыре запроса идут параллельно и намеренно не связаны: лента — то, ради
- * чего на главную заходят, и заставлять её ждать блок, которого может
- * не быть вовсе, незачем. Запросы мелкие, а `staleTime` в пять минут гасит
- * повторные заходы.
+ * Запросы идут параллельно и намеренно не связаны: заставлять ленту ждать
+ * блок, которого может не быть вовсе, незачем. Запросы мелкие, а `staleTime`
+ * в пять минут гасит повторные заходы.
  *
- * Секции две, а не одна смешанная, — как в оригинале. Второй `useQuery`
- * прямо здесь, а не общий хук «лента по типу»: на главной нет ни пагинации,
- * ни номера страницы в адресе, и общего с `useNewsList` у неё ровно один
- * запрос — абстракция на два места здесь дороже дубля.
+ * Лента новостей и лента объявлений остаются двумя запросами, а не одним
+ * смешанным: фильтра по типу у общего запроса нет, а склейка двух выдач
+ * на клиенте дешевле второй ручки (`lib/timeline.ts`).
  *
- * Приятный побочный эффект, за который не заплачено ни строкой: переход
- * с главной в статью **не делает запроса**. `findCachedNews` перебирает все
- * списки под ключом `newsKeys.lists()`, а списки главной — два из них.
+ * Приятный побочный эффект: переход с главной в статью **не делает запроса**.
+ * `findCachedNews` перебирает все списки под ключом `newsKeys.lists()`,
+ * а списки главной — два из них.
  */
 export function useHomeContent() {
   const before = useQuery(editablePageQuery('home-before'));
   const after = useQuery(editablePageQuery('home-after'));
+  const contacts = useQuery(editablePageQuery('contacts'));
 
-  // Только `size` и `postType`: `page` по умолчанию нулевая, а лишний
-  // `?page=0` в запросе ничего не уточняет. Сортировка тоже умолчанием —
-  // новые сверху.
   const news = useQuery(newsListQuery({ size: HOME_NEWS_SIZE, postType: 'news' }));
   const announcements = useQuery(
     newsListQuery({ size: HOME_ANNOUNCEMENTS_SIZE, postType: 'announcements' }),
   );
+  const conferences = useQuery(conferenceListQuery({ size: HOME_EVENTS_SIZE }));
+  const achievements = useQuery(achievementListQuery({ size: HOME_EVENTS_SIZE }));
+  const teachers = useQuery(teachersListQuery({ size: HOME_TEACHERS_SIZE }));
+  const schedules = useQuery(scheduleSummaryQuery());
+  const exams = useQuery(examSummaryQuery());
 
   return {
     before: blockText(before.data),
     after: blockText(after.data),
+    contacts: blockText(contacts.data),
 
-    news: feedState(news),
-    announcements: feedState(announcements),
+    news: pageState(news),
+    announcements: pageState(announcements),
+    conferences: pageState(conferences),
+    achievements: pageState(achievements),
+    teachers: pageState(teachers),
+    schedules: listState(schedules),
+    exams: listState(exams),
 
     hrefForItem: newsItemRoute,
   };
 }
 
-/**
- * Разбор одного запроса секции. Общий на обе: состояния у них одинаковые
- * до последнего поля, и вторая копия этих семи строк разошлась бы с первой
- * на первой же правке.
- */
-function feedState(query: UseQueryResult<NewsPage>): HomeFeedState {
+function baseState<T>(query: UseQueryResult<unknown>, items: readonly T[], total: number) {
   return {
-    items: query.data?.content ?? [],
+    items,
+    total,
     isLoading: query.isLoading,
     isOffline: query.isPaused && query.data === undefined,
     isError: query.isError,
     errorMessage: query.error?.message ?? null,
-    isEmpty: query.isSuccess && query.data !== undefined && query.data.totalElements === 0,
+    isEmpty: query.isSuccess && total === 0,
     refetch: () => void query.refetch(),
-  };
+  } satisfies HomeListState<T>;
+}
+
+/** Разбор запроса страницы: записи и общее число берутся из объекта-страницы. */
+function pageState<T>(query: UseQueryResult<Page<T>>): HomeListState<T> {
+  return baseState(query, query.data?.content ?? [], query.data?.totalElements ?? 0);
+}
+
+/** Разбор запроса без страниц: общее число — длина массива. */
+function listState<T>(query: UseQueryResult<T[]>): HomeListState<T> {
+  const items = query.data ?? [];
+  return baseState(query, items, items.length);
 }
 
 /**
@@ -99,27 +121,22 @@ function feedState(query: UseQueryResult<NewsPage>): HomeFeedState {
  *
  * Первый — блок пуст (`text: ""`). Это легальное значение по контракту
  * и означает «модератор ещё не заполнил», а не сбой. На чистой базе так
- * и есть у обоих блоков: ченджсет `008-seed-editable-pages` заводит все
- * тринадцать разделов с пустым текстом, и никто их с тех пор не трогал —
- * в старом портале эти два слага были объявлены в `DEFAULT_EDITABLE_PAGES`
- * и не использовались нигде.
+ * и есть у всех разделов: ченджсет `008-seed-editable-pages` заводит все
+ * тринадцать с пустым текстом.
  *
  * Второй — блок ещё едет. Скелета под него нет намеренно: высота будущего
  * Markdown неизвестна, и любая заглушка угадывала бы её мимо, добавляя
  * второй скачок вёрстки к первому.
  *
  * Третий, и единственный спорный, — **запрос упал**. Ошибка проглатывается,
- * и это тоже решение, а не забытая ветка. Блок — необязательное обрамление
- * ленты: посетитель, ни разу его не видевший, из надписи «не удалось
- * загрузить блок» ничего не извлечёт и ничего не сможет сделать. А если
- * лежит бэкенд целиком, он узнает об этом от секций, у которых состояния
- * сбоя показаны все. Цена размена — молчаливо пропавший блок при `500`
- * на одной ручке из четырёх; она признана меньшей, чем тревожная плашка
- * на главной вместо текста, которого там и так может не быть.
+ * и это тоже решение, а не забытая ветка. Блок — необязательное обрамление:
+ * посетитель, ни разу его не видевший, из надписи «не удалось загрузить
+ * блок» ничего не извлечёт. А если лежит бэкенд целиком, он узнает об этом
+ * от секций, у которых состояния сбоя показаны все.
  */
 function blockText(page: EditablePage | undefined): string | null {
   // trim: строка из одних пробелов и переводов строки — то же «не заполнено»,
-  // но рисует пустую белую карточку с отступами.
+  // но рисует пустую карточку с отступами.
   const text = page?.text.trim();
   return text ? text : null;
 }

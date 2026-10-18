@@ -47,7 +47,7 @@ export default function HistoryPage() {
   const percent = useScrollProgress();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <ScrollProgress percent={percent} />
 
       <HistoryHero />

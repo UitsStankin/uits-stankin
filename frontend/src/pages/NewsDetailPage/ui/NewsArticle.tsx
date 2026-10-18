@@ -19,7 +19,7 @@ export function NewsArticle({ news }: NewsArticleProps) {
   const author = authorLabel(news.authorName);
 
   return (
-    <article className="rounded bg-white p-6 shadow-sm md:p-8">
+    <article className="rounded-lg bg-surface p-6 shadow-sm md:p-10">
       <header className="flex flex-col gap-3 border-b border-default pb-5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
           <span className="rounded-pill bg-secondary px-2.5 py-0.5 font-bold text-text-heading">

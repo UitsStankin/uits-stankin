@@ -28,7 +28,7 @@ interface ContributorGridProps {
  */
 export function ContributorGrid({ contributors }: ContributorGridProps) {
   return (
-    <ul className="grid grid-cols-1 gap-gutter-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {contributors.map((contributor) => (
         <li key={contributor.name}>
           <ContributorCard contributor={contributor} />

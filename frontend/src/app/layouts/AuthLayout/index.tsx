@@ -1,58 +1,39 @@
 import { Outlet } from 'react-router';
 import { cn } from '@/shared/lib/cn';
-import type { AuthLayoutProps, AuthLayoutInnerProps } from './AuthLayout.types';
+import { BRAND_COLORS } from '@shared/config/brandColors';
+import { useDocumentTheme } from '@shared/lib/useDocumentTheme';
+import { BrandPattern } from '@shared/ui/brand/BrandPattern';
+import { Logo } from '@shared/ui/Logo';
+import type { AuthLayoutProps } from './AuthLayout.types';
 
-export default function AuthLayout({ 
-  className, 
-  variant = 'centered' 
-}: AuthLayoutProps) {
-  if (variant === 'split') {
-    return <AuthLayoutSplit className={className} />;
-  }
-  
-  return <AuthLayoutCentered className={className} />;
-}
+const AUTH_PATTERN_SEED = 2024;
 
-function AuthLayoutCentered({ className }: AuthLayoutInnerProps) {
+/**
+ * Каркас формы входа: карточка по центру на светлом поле с узором бренда.
+ *
+ * Тема и токены те же, что у остального портала, — вход не должен выглядеть
+ * чужим сайтом. Шапки и подвала нет намеренно: у посетителя одна задача.
+ */
+export default function AuthLayout({ className }: AuthLayoutProps) {
+  useDocumentTheme(true);
+
   return (
-    <div className={cn(
-      'min-h-screen w-full',
-      'flex items-center justify-center',
-      'bg-gradient-to-br from-blue via-indigo to-primary',
-      'p-gutter-sm',
-      className
-    )}>
-      <div className={cn(
-        'w-full max-w-md',
-        'bg-white rounded-lg shadow',
-        'p-6 md:p-8',
-        'animate-fade-in-up'
-      )}>
-        <Outlet />
-      </div>
-    </div>
-  );
-}
+    <div
+      className={cn(
+        'u-site u-themed relative flex min-h-screen w-full items-center justify-center overflow-hidden p-gutter-sm',
+        className
+      )}
+    >
+      <BrandPattern
+        className="pointer-events-none absolute -right-48 -top-48 h-[52rem] w-[52rem] opacity-40"
+        seed={AUTH_PATTERN_SEED}
+        colors={BRAND_COLORS}
+      />
 
-function AuthLayoutSplit({ className }: AuthLayoutInnerProps) {
-  return (
-    <div className={cn(
-      'min-h-screen w-full',
-      'flex flex-col md:flex-row',
-      'bg-white',
-      className
-    )}>
-      {/* Левая часть: брендинг/иллюстрация */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-blue to-indigo items-center justify-center p-8">
-        <div className="text-white text-center">
-          <h1 className="text-3xl font-bold mb-4">Welcome</h1>
-          <p className="text-white/80">Your platform for success</p>
-        </div>
-      </div>
-      
-      {/* Правая часть: форма */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-8">
-        <div className="w-full max-w-sm">
+      <div className="relative flex w-full max-w-md flex-col gap-8">
+        <Logo withDescriptor />
+
+        <div className="animate-fade-in-up rounded-lg bg-surface p-6 shadow-md md:p-10">
           <Outlet />
         </div>
       </div>

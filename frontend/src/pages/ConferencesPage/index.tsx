@@ -36,8 +36,8 @@ export default function ConferencesPage() {
   } = useConferenceList();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Объявления о конференциях</h1>
+    <div className="flex w-full flex-col gap-8">
+      <h1 className="u-page-title">Объявления о конференциях</h1>
 
       {isLoading && <ConferenceListSkeleton />}
 
@@ -61,7 +61,7 @@ export default function ConferencesPage() {
       {isEmpty && (
         <StatusBlock
           title="Объявлений о конференциях пока нет"
-          description="Как только кафедра объявит о конференции, это будет здесь."
+          description="Анонсы конференций появятся здесь."
         />
       )}
 

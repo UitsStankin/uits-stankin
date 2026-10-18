@@ -29,8 +29,8 @@ import { DepartmentChat } from './ui/DepartmentChat';
  */
 export default function ContactsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Контакты</h1>
+    <div className="flex w-full flex-col gap-8">
+      <h1 className="u-page-title">Контакты</h1>
 
       {/* items-start обязателен: без него колонка растягивается по высоте
           карты, и карточка текста тянется пустым белым полем до её низа. */}

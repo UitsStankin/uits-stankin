@@ -7,7 +7,7 @@
  * **не реэкспортируются намеренно** — импорт оттуда должен оставаться
  * заметным, поэтому пишется полным путём:
  *
- *   import type { Schedule } from '@shared/types/planned.types';
+ *   import type { TelegramUser } from '@shared/types/planned.types';
  */
 
 // Транспорт
@@ -32,6 +32,18 @@ export type { Conference, ConferenceRequest, ConferencePage } from './conference
 
 // Достижения кафедры
 export type { Achievement, AchievementRequest, AchievementPage } from './achievement.types';
+
+// Расписание пар и экзаменов
+export type {
+  ClassTime,
+  WeekDay,
+  ScheduleLessonDate,
+  ScheduleLesson,
+  TeacherSchedule,
+  Exam,
+  ExamConsultation,
+  TeacherExams,
+} from './schedule.types';
 
 // Редактируемые разделы
 export type { EditablePage, EditablePageSlug } from './pages.types';

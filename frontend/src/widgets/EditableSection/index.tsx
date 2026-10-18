@@ -78,12 +78,12 @@ export default function EditableSection({ slug }: EditableSectionProps) {
       {isEmpty && (
         <StatusBlock
           title="Раздел пока не заполнен"
-          description="Содержимое появится здесь, как только его добавят."
+          description="Текст появится позже."
         />
       )}
 
       {text !== null && (
-        <section className="rounded bg-white p-6 shadow-sm md:p-8">
+        <section className="rounded-lg bg-surface p-6 shadow-sm md:p-10">
           <Markdown text={text} />
         </section>
       )}

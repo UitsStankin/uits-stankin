@@ -39,8 +39,8 @@ export default function AchievementsPage() {
   } = useAchievementList();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Достижения кафедры</h1>
+    <div className="flex w-full flex-col gap-8">
+      <h1 className="u-page-title">Достижения кафедры</h1>
 
       {isLoading && <AchievementListSkeleton />}
 
@@ -64,7 +64,7 @@ export default function AchievementsPage() {
       {isEmpty && (
         <StatusBlock
           title="Достижений пока нет"
-          description="Как только кафедре будет чем поделиться, это будет здесь."
+          description="Достижения кафедры появятся здесь."
         />
       )}
 

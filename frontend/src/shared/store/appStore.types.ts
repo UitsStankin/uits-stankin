@@ -1,11 +1,11 @@
 export interface AppState {
-  /** Открыта ли выдвижная панель мобильного меню. */
-  isMobileNavOpen: boolean;
+  /** Открыто ли меню разделов. */
+  isMenuOpen: boolean;
 }
 
 export interface AppActions {
-  openMobileNav: () => void;
-  closeMobileNav: () => void;
+  openMenu: () => void;
+  closeMenu: () => void;
 }
 
 export type AppStore = AppState & AppActions;

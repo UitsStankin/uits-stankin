@@ -54,8 +54,8 @@ export default function PostgraduatePage() {
   const { text, setText, clear } = usePostgraduateSearch();
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Аспирантура</h1>
+    <div className="flex w-full flex-col gap-8">
+      <h1 className="u-page-title">Аспирантура</h1>
 
       <EditableSection slug="scientific-activity-postgraduate" />
 
@@ -112,7 +112,7 @@ export default function PostgraduatePage() {
         {isNotFound && (
           <StatusBlock
             title="Ничего не найдено"
-            description={`По запросу «${search}» аспирантов нет. Проверьте написание или поищите по другому полю — фамилии, теме, специальности, году, руководителю.`}
+            description={`По запросу «${search}» аспирантов нет. Проверьте написание. Поиск работает по фамилии, теме, специальности, году и руководителю.`}
             action={<ActionLink to={hrefForAll}>Показать всех</ActionLink>}
           />
         )}

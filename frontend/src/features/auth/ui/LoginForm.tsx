@@ -22,7 +22,7 @@ interface LoginFormProps {
 }
 
 const inputClass = cn(
-  'w-full rounded border border-gray-300 bg-white px-3 py-2',
+  'w-full rounded border border-field bg-surface px-3 py-2',
   'text-base text-text-default placeholder:text-text-muted',
   'transition-colors focus:border-primary focus:ring-0',
   'aria-invalid:border-danger'
@@ -47,7 +47,7 @@ export function LoginForm({
     // во всех браузерах, в отличие от встроенных подсказок.
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       <div>
-        <h1 className="text-h4 text-text-heading">Вход для персонала</h1>
+        <h1 className="u-page-title">Вход для персонала</h1>
         <p className="mt-1 text-sm text-text-muted">
           Учётные записи заводит администратор кафедры.
         </p>
@@ -119,8 +119,8 @@ export function LoginForm({
         type="submit"
         disabled={isPending || isBlocked}
         className={cn(
-          'flex items-center justify-center gap-2 rounded bg-primary px-4 py-2.5',
-          'text-base font-bold text-white transition',
+          'flex items-center justify-center gap-2 rounded-pill bg-primary px-4 py-2.5',
+          'text-base font-bold text-on-primary transition',
           'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60'
         )}
       >

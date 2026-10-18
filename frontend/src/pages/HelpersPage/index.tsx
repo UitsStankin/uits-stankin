@@ -35,8 +35,8 @@ export default function HelpersPage() {
   } = useHelperList();
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Учебно-вспомогательный персонал</h1>
+    <div className="flex w-full flex-col gap-8">
+      <h1 className="u-page-title">Учебно-вспомогательный персонал</h1>
 
       {isLoading && <HelperGridSkeleton />}
 

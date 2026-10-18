@@ -26,7 +26,7 @@ export function HelperGrid({ helpers, isSwitching = false }: HelperGridProps) {
   return (
     <ul
       className={cn(
-        'grid grid-cols-1 gap-gutter-sm transition-opacity sm:grid-cols-2 lg:grid-cols-3',
+        'grid grid-cols-1 gap-6 transition-opacity sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
         isSwitching && 'opacity-50',
       )}
       aria-busy={isSwitching}

@@ -73,7 +73,7 @@ export default function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'relative z-modal flex max-h-full flex-col overflow-y-auto bg-white shadow-lg',
+          'relative z-modal flex max-h-full flex-col overflow-y-auto bg-surface shadow-lg',
           placement === 'side'
             ? 'ml-auto h-full w-full max-w-xl animate-slide-in-right'
             : 'm-auto w-full max-w-md rounded animate-fade-in',

@@ -44,7 +44,7 @@ export default function PersonalPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Личный кабинет</h1>
+      <h1 className="u-page-title">Личный кабинет</h1>
 
       <ProfileSection profile={profile} editing={profileEditing} />
 
@@ -121,7 +121,7 @@ function ProfileEditor({
   const form = useProfileForm(profile, onSaved);
 
   return (
-    <section className="rounded bg-white p-6 shadow-sm">
+    <section className="rounded bg-surface p-6 shadow-sm">
       <header className="border-b border-default pb-4">
         <h2 className="text-h5 text-text-heading">Информация об аккаунте</h2>
         <p className="mt-1 text-sm text-text-muted">
@@ -160,7 +160,7 @@ function TeacherCardSection({
 }) {
   if (section.isLoading) {
     return (
-      <div className="flex justify-center rounded bg-white p-6 shadow-sm">
+      <div className="flex justify-center rounded bg-surface p-6 shadow-sm">
         <Loader />
       </div>
     );
@@ -252,7 +252,7 @@ function TeacherCardEditor({
   const form = useMyTeacherCardForm(card, onSaved);
 
   return (
-    <section className="rounded bg-white p-6 shadow-sm">
+    <section className="rounded bg-surface p-6 shadow-sm">
       <header className="border-b border-default pb-4">
         <h2 className="text-h5 text-text-heading">Информация о преподавателе</h2>
         <p className="mt-1 text-sm text-text-muted">

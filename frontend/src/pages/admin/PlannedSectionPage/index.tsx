@@ -15,7 +15,7 @@ import StatusBlock from '@shared/ui/StatusBlock';
 export default function PlannedSectionPage({ section }: { section: AdminSection }) {
   return (
     <div className="flex flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">{section.title}</h1>
+      <h1 className="u-page-title">{section.title}</h1>
 
       <StatusBlock
         title="Раздел ещё не сделан"

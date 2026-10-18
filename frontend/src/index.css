@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@fontsource-variable/golos-text/index.css";
+@import "./shared/styles/brand.css";
 
 /* Tailwind 4 не подхватывает tailwind.config.ts сам — только по этой директиве.
    Без неё тема (цвета, h-header, p-gutter, z-sticky) и плагины

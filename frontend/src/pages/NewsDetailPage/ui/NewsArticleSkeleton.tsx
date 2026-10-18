@@ -5,16 +5,16 @@
  */
 export function NewsArticleSkeleton() {
   return (
-    <div role="status" className="animate-pulse rounded bg-white p-6 shadow-sm md:p-8">
+    <div role="status" className="animate-pulse rounded bg-surface p-6 shadow-sm md:p-8">
       <span className="sr-only">Загрузка новости</span>
 
       <div aria-hidden className="flex flex-col gap-4">
-        <div className="h-3 w-48 rounded bg-gray-200" />
-        <div className="h-7 w-4/5 rounded bg-gray-200" />
-        <div className="mt-4 h-64 w-full rounded bg-gray-200" />
-        <div className="h-3 w-full rounded bg-gray-200" />
-        <div className="h-3 w-full rounded bg-gray-200" />
-        <div className="h-3 w-2/3 rounded bg-gray-200" />
+        <div className="h-3 w-48 rounded bg-skeleton" />
+        <div className="h-7 w-4/5 rounded bg-skeleton" />
+        <div className="mt-4 h-64 w-full rounded bg-skeleton" />
+        <div className="h-3 w-full rounded bg-skeleton" />
+        <div className="h-3 w-full rounded bg-skeleton" />
+        <div className="h-3 w-2/3 rounded bg-skeleton" />
       </div>
     </div>
   );

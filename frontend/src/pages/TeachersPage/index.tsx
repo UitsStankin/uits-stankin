@@ -38,8 +38,8 @@ export default function TeachersPage() {
   } = useTeacherList();
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">Профессорско-преподавательский состав</h1>
+    <div className="flex w-full flex-col gap-8">
+      <h1 className="u-page-title">Профессорско-преподавательский состав</h1>
 
       {isLoading && <TeacherGridSkeleton />}
 

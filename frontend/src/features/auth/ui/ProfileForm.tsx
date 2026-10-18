@@ -106,8 +106,8 @@ export function ProfileForm({
           type="submit"
           disabled={isPending}
           className={cn(
-            'flex items-center justify-center gap-2 rounded bg-primary px-4 py-2.5',
-            'text-base font-bold text-white transition',
+            'flex items-center justify-center gap-2 rounded-pill bg-primary px-4 py-2.5',
+            'text-base font-bold text-on-primary transition',
             'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
           )}
         >

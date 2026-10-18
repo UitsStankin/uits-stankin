@@ -1,41 +1,57 @@
-import { Outlet, ScrollRestoration } from 'react-router';
+import { useEffect } from 'react';
+import { Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { cn } from '@/shared/lib/cn';
+import { ADMIN_ROUTE, HOME_ROUTE } from '@shared/config/routes';
+import { startSmoothScroll } from '@shared/lib/smoothScroll';
+import { useDocumentTheme } from '@shared/lib/useDocumentTheme';
 import Header from '@widgets/Header';
-import Navbar from '@widgets/Navbar';
 import Footer from '@widgets/Footer';
 import type { AppLayoutProps } from './AppLayout.types';
 
 /**
- * Главный лейаут приложения — горизонтальный, как в действующем портале.
+ * Главный лейаут приложения: шапка с листом меню, содержимое, подвал.
  *
- * Раскладка повторяет horizontal-layout из Angular:
- *   header-nav      логотип слева, вход справа
- *   header-navbar   горизонтальное меню          <- ниже 992px скрыто
- *   content
- *   footer
+ * Тема (светлая или тёмная), токены и контейнер нового дизайна действуют
+ * на всём портале, кроме админки: её экраны собраны под светлую палитру
+ * и своё поле отступов, поэтому там тема всегда светлая, переключателя
+ * в шапке нет, а цвета и скругления остаются прежними.
  *
- * Сайдбар убран. Он достался от заготовки шаблона Espire, а портал работает
- * на `layoutType: 'horizontal'` — вертикальное меню там не используется.
- * Вместе с ним ушли LAYOUT_WIDTHS, CONTENT_MARGINS и компактный режим.
+ * Плавная прокрутка и шапка поверх первого экрана — только на главной.
  */
 export default function AppLayout({ className }: AppLayoutProps) {
+  const { pathname } = useLocation();
+  const isHome = pathname === HOME_ROUTE;
+  const isAdmin = pathname === ADMIN_ROUTE || pathname.startsWith(`${ADMIN_ROUTE}/`);
+
+  useDocumentTheme(!isAdmin);
+
+  useEffect(() => (isHome ? startSmoothScroll() : undefined), [isHome]);
+
   return (
     <div
       className={cn(
-        'flex min-h-screen flex-col',
-        'bg-background-default',
-        'text-text-default',
-        'font-sans',
+        'u-site flex min-h-screen flex-col',
+        isAdmin ? 'bg-background-default text-text-default' : 'u-themed',
+        isHome && 'u-site--home',
         className
       )}
     >
-      <Header className="h-header border-b border-default" />
+      <a className="u-skip" href="#main">
+        К содержимому
+      </a>
 
-      <Navbar className="border-b border-default" />
+      <Header overlay={isHome} showThemeToggle={!isAdmin} />
 
       {/* flex-1 прижимает подвал к низу на коротких страницах — иначе он
           висел бы посреди экрана. */}
-      <main className="flex-1 p-gutter-sm md:p-gutter lg:p-[1.875rem]">
+      <main
+        id="main"
+        className={cn(
+          'flex-1',
+          isAdmin && 'p-gutter-sm md:p-gutter lg:p-[1.875rem]',
+          !isAdmin && !isHome && 'u-wrap u-page'
+        )}
+      >
         {/* Аналог <router-outlet> */}
         <Outlet />
       </main>

@@ -34,7 +34,7 @@ export function TeacherCard({ teacher, href, className }: TeacherCardProps) {
     // и должность, и степень — диктор читал бы абзац вместо имени.
     <article
       className={cn(
-        'relative flex h-full flex-col items-center gap-3 rounded bg-white p-5 text-center',
+        'u-lift relative flex h-full flex-col items-center gap-3 rounded-lg bg-surface p-6 text-center',
         'shadow-sm transition-shadow hover:shadow focus-within:shadow',
         className,
       )}

@@ -73,7 +73,7 @@ export function ImagePicker({
         {isUploading && (
           <span
             className={cn(
-              'absolute inset-0 flex items-center justify-center bg-white/70',
+              'absolute inset-0 flex items-center justify-center bg-surface/70',
               variant === 'avatar' ? 'rounded-full' : 'rounded',
             )}
           >
@@ -155,7 +155,7 @@ function Preview({ variant, url }: { variant: 'avatar' | 'cover'; url: string | 
     return (
       <div
         aria-hidden
-        className="flex aspect-video w-56 items-center justify-center rounded border border-dashed border-gray-300 bg-light"
+        className="flex aspect-video w-56 items-center justify-center rounded border border-dashed border-field bg-light"
       >
         <ImageIcon size={32} className="text-text-muted" />
       </div>

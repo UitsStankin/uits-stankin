@@ -15,7 +15,7 @@ export function TeacherGridSkeleton() {
   return (
     <div
       role="status"
-      className="grid animate-pulse grid-cols-1 gap-gutter-sm sm:grid-cols-2 lg:grid-cols-3"
+      className="grid animate-pulse grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       {/* Серые прямоугольники диктору ничего не говорят — для него
           загрузка проговаривается словами. */}

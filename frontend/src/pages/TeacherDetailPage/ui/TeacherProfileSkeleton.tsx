@@ -13,22 +13,22 @@ export function TeacherProfileSkeleton() {
 
       <div
         aria-hidden
-        className="flex animate-pulse flex-col items-center gap-6 rounded bg-white p-6 shadow-sm sm:flex-row sm:items-start sm:p-8"
+        className="flex animate-pulse flex-col items-center gap-6 rounded bg-surface p-6 shadow-sm sm:flex-row sm:items-start sm:p-8"
       >
-        <div className="h-40 w-40 shrink-0 rounded-full bg-gray-200" />
+        <div className="h-40 w-40 shrink-0 rounded-full bg-skeleton" />
         <div className="flex w-full flex-col gap-3">
-          <div className="h-7 w-3/5 rounded bg-gray-200" />
-          <div className="h-4 w-2/5 rounded bg-gray-200" />
-          <div className="mt-3 h-3 w-1/3 rounded bg-gray-200" />
-          <div className="h-3 w-1/4 rounded bg-gray-200" />
+          <div className="h-7 w-3/5 rounded bg-skeleton" />
+          <div className="h-4 w-2/5 rounded bg-skeleton" />
+          <div className="mt-3 h-3 w-1/3 rounded bg-skeleton" />
+          <div className="h-3 w-1/4 rounded bg-skeleton" />
         </div>
       </div>
 
-      <div aria-hidden className="animate-pulse rounded bg-white p-6 shadow-sm md:p-8">
-        <div className="h-5 w-40 rounded bg-gray-200" />
+      <div aria-hidden className="animate-pulse rounded bg-surface p-6 shadow-sm md:p-8">
+        <div className="h-5 w-40 rounded bg-skeleton" />
         <div className="mt-4 flex flex-col gap-3">
-          <div className="h-3 w-full rounded bg-gray-200" />
-          <div className="h-3 w-4/5 rounded bg-gray-200" />
+          <div className="h-3 w-full rounded bg-skeleton" />
+          <div className="h-3 w-4/5 rounded bg-skeleton" />
         </div>
       </div>
     </div>

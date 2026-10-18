@@ -85,7 +85,7 @@ export default function DataTable<TData extends RowData>({
   if (isLoading) return <DataTableSkeleton columnCount={columns.length} label={`Загрузка: ${label}`} />;
 
   return (
-    <div className="rounded bg-white p-4 shadow-sm md:p-6">
+    <div className="rounded bg-surface p-4 shadow-sm md:p-6">
       {/*
         Прокрутка внутри карточки, а не сжатие колонок, — как в таблице
         аспирантов: колонки на телефоне либо едут вбок внутри себя, либо

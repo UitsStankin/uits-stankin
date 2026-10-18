@@ -29,7 +29,7 @@ export function HistoryTimeline({ events }: HistoryTimelineProps) {
           в оригинале: чем ниже, тем ближе к сегодняшнему дню. */}
       <span
         aria-hidden
-        className="absolute bottom-0 left-2 top-0 w-1 rounded-pill bg-gradient-to-b from-gray-400 via-primary to-gray-900"
+        className="absolute bottom-0 left-2 top-0 w-1 rounded-pill bg-gradient-to-b from-skeleton via-primary to-primary"
       />
 
       <ol className="flex flex-col gap-gutter">

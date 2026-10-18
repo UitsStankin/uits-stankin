@@ -32,8 +32,8 @@ interface EditablePagePageProps {
  */
 export default function EditablePagePage({ slug, heading }: EditablePagePageProps) {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
-      <h1 className="text-h4 text-text-heading">{heading}</h1>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+      <h1 className="u-page-title">{heading}</h1>
 
       <EditableSection slug={slug} />
     </div>

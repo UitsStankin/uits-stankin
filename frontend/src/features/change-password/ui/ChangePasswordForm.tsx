@@ -37,7 +37,7 @@ export function ChangePasswordForm({
   onToggleVisibility,
 }: ChangePasswordFormProps) {
   return (
-    <section className="rounded bg-white p-6 shadow-sm">
+    <section className="rounded bg-surface p-6 shadow-sm">
       <header className="border-b border-default pb-4">
         <h2 className="text-h5 text-text-heading">Смена пароля</h2>
         <p className="mt-1 text-sm text-text-muted">
@@ -103,8 +103,8 @@ export function ChangePasswordForm({
           type="submit"
           disabled={isPending}
           className={cn(
-            'flex items-center justify-center gap-2 self-start rounded bg-primary px-4 py-2.5',
-            'text-base font-bold text-white transition',
+            'flex items-center justify-center gap-2 self-start rounded-pill bg-primary px-4 py-2.5',
+            'text-base font-bold text-on-primary transition',
             'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
           )}
         >

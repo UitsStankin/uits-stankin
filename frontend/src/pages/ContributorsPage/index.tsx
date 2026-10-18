@@ -30,9 +30,9 @@ import { ContributorGrid } from './ui/ContributorGrid';
  */
 export default function ContributorsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-gutter">
+    <div className="flex w-full flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <h1 className="text-h4 text-text-heading">Благодарности</h1>
+        <h1 className="u-page-title">Благодарности</h1>
 
         <p className="text-base text-text-muted">
           Выражаем огромную благодарность всем, кто принимал участие в создании портала кафедры

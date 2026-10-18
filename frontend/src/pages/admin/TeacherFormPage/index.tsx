@@ -40,7 +40,7 @@ export default function TeacherFormPage() {
         <ChevronLeft size={16} aria-hidden />К списку преподавателей
       </Link>
 
-      <h1 className="text-h4 text-text-heading">
+      <h1 className="u-page-title">
         {isNew ? 'Новая карточка преподавателя' : 'Правка карточки преподавателя'}
       </h1>
 

@@ -21,7 +21,7 @@ interface PasswordFieldProps {
 }
 
 const inputClass = cn(
-  'w-full rounded border border-gray-300 bg-white px-3 py-2 pr-10',
+  'w-full rounded border border-field bg-surface px-3 py-2 pr-10',
   'text-base text-text-default placeholder:text-text-muted',
   'transition-colors focus:border-primary focus:ring-0',
   'aria-invalid:border-danger',

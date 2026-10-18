@@ -23,7 +23,7 @@ export function TeacherGrid({ teachers, hrefForTeacher, isSwitching = false }: T
   return (
     <ul
       className={cn(
-        'grid grid-cols-1 gap-gutter-sm transition-opacity sm:grid-cols-2 lg:grid-cols-3',
+        'grid grid-cols-1 gap-6 transition-opacity sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
         // Клики блокируются вместе с притушиванием: без этого можно успеть
         // открыть карточку, которая уже уехала с экрана.
         isSwitching && 'pointer-events-none opacity-50',

@@ -67,7 +67,7 @@ export function PostgraduateSearch({
           placeholder="Фамилия, тема, специальность, год, руководитель"
           className={cn(
             // pr-10 держит место под свою кнопку очистки, pl-9 — под лупу.
-            'w-full rounded border border-gray-300 bg-white py-2 pr-10 pl-9',
+            'w-full rounded border border-field bg-surface py-2 pr-10 pl-9',
             'text-base text-text-default transition-colors placeholder:text-text-muted',
             'focus:border-primary focus:ring-0',
             // Родные украшения поля поиска в WebKit: крестик очистки

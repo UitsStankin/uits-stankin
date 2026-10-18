@@ -51,7 +51,7 @@ interface ContactsMapProps {
  */
 export function ContactsMap({ className }: ContactsMapProps) {
   return (
-    <div className={cn('overflow-hidden rounded bg-white shadow-sm', className)}>
+    <div className={cn('overflow-hidden rounded-lg bg-surface shadow-sm', className)}>
       <iframe
         src={departmentMapSrc()}
         title="Карта: расположение кафедры"

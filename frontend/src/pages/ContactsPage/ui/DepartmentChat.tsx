@@ -27,7 +27,7 @@ import { TELEGRAM_CHAT_URL } from '@shared/config/contacts';
  */
 export function DepartmentChat() {
   return (
-    <section className="rounded bg-white p-6 shadow-sm md:p-8">
+    <section className="rounded-lg bg-surface p-6 shadow-sm md:p-10">
       <h2 className="mb-3 text-h6 text-text-heading">Связаться с кафедрой</h2>
 
       <a

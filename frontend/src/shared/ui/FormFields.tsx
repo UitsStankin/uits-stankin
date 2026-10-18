@@ -22,7 +22,7 @@ import { cn, errorId, hintId, labelId } from '@shared/lib';
  */
 
 const inputClass = cn(
-  'w-full rounded border border-gray-300 bg-white px-3 py-2',
+  'w-full rounded border border-field bg-surface px-3 py-2',
   'text-base text-text-default placeholder:text-text-muted',
   'transition-colors focus:border-primary focus:ring-0',
   'aria-invalid:border-danger',
@@ -180,7 +180,7 @@ export function CheckboxField({
         <input
           id={id}
           type="checkbox"
-          className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+          className="size-4 rounded border-field text-primary focus:ring-primary"
           aria-invalid={error !== undefined}
           aria-describedby={describedBy === '' ? undefined : describedBy}
           {...registration}

@@ -44,7 +44,7 @@ export function ConferenceArticle({ conference }: ConferenceArticleProps) {
     conference.contactPhone !== null;
 
   return (
-    <article className="rounded bg-white p-6 shadow-sm md:p-8">
+    <article className="rounded-lg bg-surface p-6 shadow-sm md:p-10">
       <header className="flex flex-col gap-3 border-b border-default pb-5">
         {posted && (
           <p className="text-sm text-text-muted">

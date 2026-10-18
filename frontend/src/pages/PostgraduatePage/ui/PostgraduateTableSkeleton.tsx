@@ -15,7 +15,7 @@ export function PostgraduateTableSkeleton() {
   return (
     <div
       role="status"
-      className="animate-pulse rounded bg-white p-4 shadow-sm md:p-6"
+      className="animate-pulse rounded bg-surface p-4 shadow-sm md:p-6"
     >
       {/* Серые прямоугольники диктору ничего не говорят — для него
           загрузка проговаривается словами. */}
@@ -37,12 +37,12 @@ export function PostgraduateTableSkeleton() {
 function SkeletonRow() {
   return (
     <div className="flex items-center gap-3">
-      <div className="h-3 w-6 shrink-0 rounded bg-gray-200" />
-      <div className="h-3 w-32 shrink-0 rounded bg-gray-200 sm:w-40" />
-      <div className="h-3 flex-1 rounded bg-gray-200" />
-      <div className="hidden h-3 w-16 shrink-0 rounded bg-gray-200 md:block" />
-      <div className="hidden h-3 w-10 shrink-0 rounded bg-gray-200 md:block" />
-      <div className="hidden h-3 w-32 shrink-0 rounded bg-gray-200 lg:block" />
+      <div className="h-3 w-6 shrink-0 rounded bg-skeleton" />
+      <div className="h-3 w-32 shrink-0 rounded bg-skeleton sm:w-40" />
+      <div className="h-3 flex-1 rounded bg-skeleton" />
+      <div className="hidden h-3 w-16 shrink-0 rounded bg-skeleton md:block" />
+      <div className="hidden h-3 w-10 shrink-0 rounded bg-skeleton md:block" />
+      <div className="hidden h-3 w-32 shrink-0 rounded bg-skeleton lg:block" />
     </div>
   );
 }

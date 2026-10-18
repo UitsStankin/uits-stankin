@@ -46,7 +46,7 @@ export function PostgraduateTable({
   isSwitching = false,
 }: PostgraduateTableProps) {
   return (
-    <div className="rounded bg-white p-4 shadow-sm md:p-6">
+    <div className="rounded bg-surface p-4 shadow-sm md:p-6">
       {/*
         Прокрутка внутри карточки, а не сжатие колонок, — то же решение,
         что у таблиц в тексте разделов (`shared/ui/Markdown`): шесть колонок

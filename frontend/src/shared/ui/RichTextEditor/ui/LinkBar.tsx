@@ -75,7 +75,7 @@ export function LinkBar({
           aria-invalid={error !== null}
           aria-describedby={error ? errorId : undefined}
           className={cn(
-            'min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1',
+            'min-w-0 flex-1 rounded border border-field bg-surface px-2 py-1',
             'text-base text-text-default placeholder:text-text-muted',
             'focus:border-primary focus:ring-0 aria-invalid:border-danger',
           )}

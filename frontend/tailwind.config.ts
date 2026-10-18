@@ -34,29 +34,34 @@ export default {
         teal: '#2ED477',
         cyan: '#5dcebc',
         // Theme colors (Bootstrap-style)
-        primary: '#11a1fd',    // $blue
-        secondary: '#e4eef5',  // $secondary
+        primary: 'var(--c-primary)',    // $blue
+        secondary: 'var(--c-secondary)',  // $secondary
+        surface: 'var(--c-surface)',
+        skeleton: 'var(--c-skeleton)',
+        field: 'var(--c-field)',
+        'on-primary': 'var(--c-on-primary)',
         success: '#00c569',    // $green
         info: '#5a75f9',       // $indigo
         warning: '#ff9842',    // $orange
         danger: '#f46363',     // $red
-        light: '#f3f7f9',      // $gray-100
+        light: 'var(--c-light)',      // $gray-100
         dark: '#343a40',       // $gray-800
         // Фон и текст
         background: {
-          default: '#f3f7f9',  // $body-bg
+          default: 'var(--c-bg)',  // $body-bg
         },
         text: {
-          default: '#486f88',  // $body-color
-          heading: '#00174c',  // $headings-color
-          muted: '#7d9eb5',    // $text-muted
+          default: 'var(--c-text)',  // $body-color
+          heading: 'var(--c-heading)',  // $headings-color
+          muted: 'var(--c-muted)',    // $text-muted
         },
       },
 
       // === ШРИФТЫ ===
       fontFamily: {
         sans: [
-          'Inter',
+          '"ALS Sirius"',
+          '"Golos Text Variable"',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
@@ -68,16 +73,16 @@ export default {
       },
       fontSize: {
         // $font-size-base: 0.875rem (14px)
-        sm: ['0.765rem', { lineHeight: '1.25' }],  // $font-size-sm
-        base: ['0.875rem', { lineHeight: '1.5' }],  // $font-size-base
-        lg: ['1.094rem', { lineHeight: '2' }],      // $font-size-lg
+        sm: ['var(--fs-sm)', { lineHeight: '1.25' }],  // $font-size-sm
+        base: ['var(--fs-base)', { lineHeight: '1.5' }],  // $font-size-base
+        lg: ['var(--fs-lg)', { lineHeight: '2' }],      // $font-size-lg
         // Headings ($font-size-base * multiplier)
-        h1: ['2.188rem', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 2.5
-        h2: ['1.75rem', { lineHeight: '1.2', fontWeight: '600' }],  // 0.875 * 2
-        h3: ['1.531rem', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 1.75
-        h4: ['1.313rem', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 1.5
-        h5: ['1.05rem', { lineHeight: '1.2', fontWeight: '600' }],  // 0.875 * 1.2
-        h6: ['0.875rem', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 1
+        h1: ['var(--fs-h1)', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 2.5
+        h2: ['var(--fs-h2)', { lineHeight: '1.2', fontWeight: '600' }],  // 0.875 * 2
+        h3: ['var(--fs-h3)', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 1.75
+        h4: ['var(--fs-h4)', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 1.5
+        h5: ['var(--fs-h5)', { lineHeight: '1.2', fontWeight: '600' }],  // 0.875 * 1.2
+        h6: ['var(--fs-h6)', { lineHeight: '1.2', fontWeight: '600' }], // 0.875 * 1
       },
       fontWeight: {
         light: '300',
@@ -112,8 +117,8 @@ export default {
 
       // === ГРАНИЦЫ ===
       borderRadius: {
-        DEFAULT: '0.375rem',  // 6px - $border-radius
-        lg: '0.5rem',         // 8px - $border-radius-lg
+        DEFAULT: 'var(--r-md)',  // 6px - $border-radius
+        lg: 'var(--r-lg)',         // 8px - $border-radius-lg
         sm: '0.2rem',         // 3px - $border-radius-sm
         pill: '50rem',        // $rounded-pill
       },
@@ -122,13 +127,13 @@ export default {
         2: '2px', // Для инпутов/кнопок ($input-btn-border-width)
       },
       borderColor: {
-        DEFAULT: '#edf4f9', // $border-color
+        DEFAULT: 'var(--c-line)', // $border-color
       },
 
       // === ТЕНИ ===
       boxShadow: {
-        DEFAULT: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',      // $box-shadow
-        sm: '0 0.125rem 0.25rem rgba(0, 0, 0, 0.075)',     // $box-shadow-sm
+        DEFAULT: 'var(--sh-md)',      // $box-shadow
+        sm: 'var(--sh-sm)',     // $box-shadow-sm
         lg: '0 1rem 3rem rgba(0, 0, 0, 0.175)',            // $box-shadow-lg
         inner: 'inset 0 1px 2px rgba(0, 0, 0, 0.075)',     // $box-shadow-inset
       },

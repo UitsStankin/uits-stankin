@@ -1,47 +1,71 @@
+import { Link } from 'react-router';
+import { ArrowUpRight, Send } from 'lucide-react';
+
 import { TELEGRAM_CHAT_URL } from '@shared/config/contacts';
 import { cn } from '@shared/lib/cn';
+import { Logo } from '@shared/ui/Logo';
+
+import { FOOTER_BOTTOM_LINKS, FOOTER_COLUMNS } from './lib/footerLinks';
 
 interface FooterProps {
   className?: string;
 }
 
+const UNIVERSITY_URL = 'https://stankin.ru';
+
 /**
- * Подвал — перенос footer из оригинала.
- *
- * Здесь нет ни model/, ни ui/: разделять нечего, у подвала нет ни состояния,
- * ни логики, а собирать — нечего собирать. Применять структуру механически
- * было бы церемонией ради церемонии.
- *
- * Размеры из SCSS оригинала: высота $footer-height 4.0625rem, отступы
- * $layout-content-gutter, граница сверху $border-color, шрифт 90%,
- * иконка телеграма 35x35.
+ * Подвал: знак кафедры с коротким описанием и чатом, три колонки ссылок
+ * по разделам и нижняя строка с годом. Год считается от текущей даты —
+ * устаревший год в подвале выглядит как заброшенный сайт.
  */
 export default function Footer({ className }: FooterProps) {
   return (
-    <footer className={cn('px-gutter text-[90%]', className)}>
-      {/* min-h, а не h: на узком экране строка переносится в две, и жёсткая
-          высота обрезала бы её. */}
-      <div className="flex min-h-footer items-center justify-between gap-3 border-t border-default py-2">
-        <p className="text-text-default">
-          Кафедра управления и информатики в технических системах.{' '}
-          {/* В оригинале год зашит числом 2025. Считаем от текущей даты:
-              устаревший год в подвале выглядит как заброшенный сайт. */}
-          {new Date().getFullYear()}
-        </p>
+    <footer className={cn('u-foot', className)}>
+      <div className="u-wrap u-foot-grid">
+        <div className="u-foot-brand">
+          <Logo />
+          <p className="u-foot-about">
+            Кафедра управления и информатики в технических системах МГТУ «СТАНКИН»
+          </p>
+          <div className="u-foot-actions">
+            <a className="u-btn-ghost" href={TELEGRAM_CHAT_URL} target="_blank" rel="noreferrer">
+              <Send size={16} aria-hidden />
+              Чат кафедры
+            </a>
+            <a className="u-btn-ghost" href={UNIVERSITY_URL} target="_blank" rel="noreferrer">
+              Сайт университета
+              <ArrowUpRight size={16} aria-hidden />
+            </a>
+          </div>
+        </div>
 
-        <a
-          href={TELEGRAM_CHAT_URL}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Телеграм-чат кафедры"
-          // shrink-0 обязателен: без него flex сплющивал иконку по ширине,
-          // когда длинная строка слева переносилась в две.
-          className="shrink-0 transition-opacity hover:opacity-80"
-        >
-          {/* Логотип бренда, а не абстрактная иконка: в lucide телеграма нет,
-              а подменять его самолётиком Send — терять узнаваемость. */}
-          <img src="/img/telegram.png" alt="" className="h-8.75 w-8.75" aria-hidden />
-        </a>
+        {FOOTER_COLUMNS.map((column) => (
+          <nav key={column.title} className="u-foot-col" aria-label={column.title}>
+            <h2>{column.title}</h2>
+            <ul>
+              {column.links.map((link) => (
+                <li key={link.to}>
+                  <Link className="u-foot-link" to={link.to}>
+                    {link.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+
+      <div className="u-wrap u-foot-bottom">
+        <span className="u-copy">© МГТУ «СТАНКИН», {new Date().getFullYear()}</span>
+        <ul>
+          {FOOTER_BOTTOM_LINKS.map((link) => (
+            <li key={link.to}>
+              <Link className="u-foot-link" to={link.to}>
+                {link.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
     </footer>
   );

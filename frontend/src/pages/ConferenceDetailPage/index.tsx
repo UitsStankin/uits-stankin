@@ -24,10 +24,10 @@ export default function ConferenceDetailPage() {
     useConferenceItem();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter-sm">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <Link
         to={CONFERENCES_ROUTE}
-        className="inline-flex w-fit items-center gap-1 text-base text-text-muted transition-colors hover:text-primary"
+        className="u-btn-ghost w-fit"
       >
         <ChevronLeft size={16} aria-hidden />
         Ко всем конференциям

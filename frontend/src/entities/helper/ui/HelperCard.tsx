@@ -23,7 +23,7 @@ export function HelperCard({ helper, className }: HelperCardProps) {
   return (
     <article
       className={cn(
-        'flex h-full flex-col items-center gap-3 rounded bg-white p-5 text-center shadow-sm',
+        'flex h-full flex-col items-center gap-3 rounded-lg bg-surface p-6 text-center shadow-sm',
         className,
       )}
     >

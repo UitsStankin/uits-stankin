@@ -66,7 +66,7 @@ export function EditorToolbar({
             tabIndex={index === activeIndex ? 0 : -1}
             className={cn(
               'rounded p-1.5 text-text-default transition-colors',
-              'hover:bg-gray-200 hover:text-text-heading',
+              'hover:bg-skeleton hover:text-text-heading',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent',
               // Нажатое состояние — не только рамкой: цвет фона читается

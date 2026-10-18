@@ -3,27 +3,39 @@ import { cn } from '@shared/lib/cn';
 
 interface LogoProps {
   className?: string;
+  withDescriptor?: boolean;
 }
 
-/**
- * Логотип в шапке — текстовое «УИТС», как на действующем сайте.
- *
- * Эмблема кафедры (public/img/UITS.png) сюда не годится:
- * 3177x2160, а высота шапки 70px — подпись «Управление и информатика
- * в технических системах» в две строки капслоком там нечитаема.
- * На портале по той же причине стоит текст. Эмблема пойдёт в favicon.
- */
-export function Logo({ className }: LogoProps) {
+export function Logo({ className, withDescriptor = false }: LogoProps) {
   return (
     <Link
       to="/"
-      aria-label="УИТС — на главную"
-      className={cn(
-        'text-2xl font-bold tracking-tight text-primary transition-colors hover:text-indigo',
-        className
-      )}
+      aria-label="Кафедра УИТС, МГТУ «СТАНКИН» — на главную"
+      className={cn('u-logo', className)}
     >
-      УИТС
+      <img
+        className="u-logo-img u-logo-on-dark"
+        src="/img/brand/stankin-logo-white.svg"
+        alt=""
+        width={120}
+        height={36}
+      />
+      <img
+        className="u-logo-img u-logo-on-light"
+        src="/img/brand/stankin-logo-color.svg"
+        alt=""
+        width={120}
+        height={36}
+      />
+      {withDescriptor && (
+        <span className="u-logo-desc" aria-hidden>
+          <span className="u-desc-long">
+            Кафедра управления и информатики
+            <br />в технических системах
+          </span>
+          <span className="u-desc-short">Кафедра УИТС</span>
+        </span>
+      )}
     </Link>
   );
 }

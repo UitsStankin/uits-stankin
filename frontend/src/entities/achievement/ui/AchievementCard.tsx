@@ -51,8 +51,8 @@ export function AchievementCard({
     // и дату, и описание.
     <article
       className={cn(
-        'relative flex flex-col overflow-hidden rounded bg-white shadow-sm transition-shadow',
-        'hover:shadow focus-within:shadow sm:flex-row',
+        'u-lift relative flex h-full flex-col overflow-hidden rounded-lg bg-surface shadow-sm',
+        'hover:shadow focus-within:shadow',
         className,
       )}
     >
@@ -66,10 +66,10 @@ export function AchievementCard({
         // Двадцать карточек — двадцать картинок; без lazy они уезжают
         // в сеть все разом и забивают канал ещё до первого экрана.
         loading="lazy"
-        className="h-48 w-full shrink-0 object-cover sm:h-auto sm:w-56"
+        className="aspect-[16/10] w-full shrink-0 object-cover"
       />
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-6">
         {(date !== null || teacher !== null) && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
             {/* dateTime — машиночитаемая форма: пользователь видит

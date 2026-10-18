@@ -21,7 +21,7 @@ export function NewsList({ items, hrefForItem, isSwitching = false }: NewsListPr
   return (
     <ul
       className={cn(
-        'flex flex-col gap-gutter-sm transition-opacity',
+        'grid grid-cols-1 gap-6 transition-opacity sm:grid-cols-2 xl:grid-cols-3',
         // Клики блокируются вместе с притушиванием: без этого можно успеть
         // открыть карточку, которая уже уехала с экрана.
         isSwitching && 'pointer-events-none opacity-50',

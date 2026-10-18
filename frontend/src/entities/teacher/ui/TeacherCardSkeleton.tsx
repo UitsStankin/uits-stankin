@@ -13,11 +13,11 @@ export function TeacherCardSkeleton() {
   return (
     <div
       aria-hidden
-      className="flex h-full flex-col items-center gap-3 rounded bg-white p-5 shadow-sm"
+      className="flex h-full flex-col items-center gap-3 rounded bg-surface p-5 shadow-sm"
     >
-      <div className="h-28 w-28 shrink-0 rounded-full bg-gray-200" />
-      <div className="h-5 w-3/4 rounded bg-gray-200" />
-      <div className="h-3 w-5/6 rounded bg-gray-200" />
+      <div className="h-28 w-28 shrink-0 rounded-full bg-skeleton" />
+      <div className="h-5 w-3/4 rounded bg-skeleton" />
+      <div className="h-3 w-5/6 rounded bg-skeleton" />
     </div>
   );
 }

@@ -1,28 +1,28 @@
-/**
- * Шапка страницы — заголовок и подзаголовок на градиенте.
- *
- * Градиент перенесён (в оригинале `#0ea5e9 → #3b82f6 → #1e40af`), но своими
- * цветами: `primary → info → gray-900` из темы портала — те же три ступени
- * от голубого к тёмно-синему, только уже существующие в проекте.
- *
- * Не перенесено оформление, которое ничего не сообщает: три полупрозрачных
- * кружка, плавающих по кругу шесть секунд, и сетка фоновым SVG под ними.
- * Появление заголовка снизу вверх осталось — но токеном `animate-fade-in-up`
- * из темы, а не собственными `@keyframes`: анимация с тем же смыслом
- * в проекте уже есть.
- */
+import { BRAND_COLORS } from '@shared/config/brandColors';
+import { BrandPattern } from '@shared/ui/brand/BrandPattern';
+
+const HISTORY_PATTERN_SEED = 1988;
+
 export function HistoryHero() {
   return (
-    <section className="animate-fade-in-up rounded bg-gradient-to-br from-primary via-info to-gray-900 px-6 py-12 text-center text-white shadow-sm md:px-10 md:py-16">
-      <h1 className="text-h2 md:text-h1">История кафедры</h1>
+    <section className="relative animate-fade-in-up overflow-hidden rounded-lg bg-surface px-6 py-12 shadow-sm md:px-12 md:py-16">
+      <BrandPattern
+        className="pointer-events-none absolute -right-32 top-1/2 h-[34rem] w-[34rem] -translate-y-1/2 opacity-40"
+        seed={HISTORY_PATTERN_SEED}
+        colors={BRAND_COLORS}
+      />
 
-      {/* Две строки: перенос — часть подписи, а не длина строки. Верхняя
-          называет кафедру, нижняя — путь, который ниже разложен по годам. */}
-      <p className="mx-auto mt-4 max-w-2xl text-lg font-light leading-normal">
-        Кафедра управления и информатики в технических системах
-        <br />
-        От биотехнической кибернетики к интеллектуальному анализу данных
-      </p>
+      <div className="relative max-w-2xl">
+        <h1 className="u-page-title">История кафедры</h1>
+
+        {/* Две строки: перенос — часть подписи, а не длина строки. Верхняя
+            называет кафедру, нижняя — путь, который ниже разложен по годам. */}
+        <p className="mt-4 text-lg leading-normal">
+          Кафедра управления и информатики в технических системах
+          <br />
+          От биотехнической кибернетики к интеллектуальному анализу данных
+        </p>
+      </div>
     </section>
   );
 }

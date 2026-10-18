@@ -29,12 +29,12 @@ export const FEED_COPY: Record<PostType, FeedCopy> = {
     loading: 'Загрузка новостей',
     errorTitle: 'Не удалось загрузить новости',
     emptyTitle: 'Новостей пока нет',
-    emptyDescription: 'Как только на кафедре что-то появится, это будет здесь.',
+    emptyDescription: 'Новости кафедры появятся здесь.',
   },
   announcements: {
     loading: 'Загрузка объявлений',
     errorTitle: 'Не удалось загрузить объявления',
     emptyTitle: 'Объявлений пока нет',
-    emptyDescription: 'Как только на кафедре что-то объявят, это будет здесь.',
+    emptyDescription: 'Объявления кафедры появятся здесь.',
   },
 };

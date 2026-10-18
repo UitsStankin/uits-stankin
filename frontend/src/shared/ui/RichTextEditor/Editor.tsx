@@ -99,11 +99,11 @@ export default function Editor({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded border bg-white transition-colors',
+        'overflow-hidden rounded border bg-surface transition-colors',
         // Рамка ведёт себя как у обычного поля: подсвечивается, когда
         // курсор внутри, краснеет при ошибке. Фокус живёт на области
         // ввода, поэтому `focus-within`, а не `focus`.
-        error === undefined ? 'border-gray-300 focus-within:border-primary' : 'border-danger',
+        error === undefined ? 'border-field focus-within:border-primary' : 'border-danger',
       )}
     >
       <EditorToolbar

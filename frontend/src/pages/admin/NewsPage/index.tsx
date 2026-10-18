@@ -68,7 +68,7 @@ export default function AdminNewsPage() {
   return (
     <div className="flex flex-col gap-gutter">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h4 text-text-heading">Новости и объявления</h1>
+        <h1 className="u-page-title">Новости и объявления</h1>
 
         <button
           type="button"

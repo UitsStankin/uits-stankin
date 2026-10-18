@@ -28,7 +28,7 @@ export default function RouteError() {
   console.error('Ошибка рендера страницы:', error);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <StatusBlock
         tone="danger"
         title="Страница не открылась"
@@ -40,7 +40,7 @@ export default function RouteError() {
         action={
           <Link
             to={HOME_ROUTE}
-            className="rounded bg-primary px-4 py-2 text-base font-bold text-white transition-colors hover:bg-primary/90"
+            className="rounded-pill bg-primary px-5 py-2 text-base font-bold text-on-primary transition-colors hover:bg-primary/90"
           >
             На главную
           </Link>

@@ -9,15 +9,15 @@
  */
 export function EditableSectionSkeleton() {
   return (
-    <div role="status" className="animate-pulse rounded bg-white p-6 shadow-sm md:p-8">
+    <div role="status" className="animate-pulse rounded bg-surface p-6 shadow-sm md:p-8">
       {/* Серые прямоугольники диктору ничего не говорят — для него
           загрузка проговаривается словами. */}
       <span className="sr-only">Загрузка раздела</span>
 
       <div aria-hidden className="flex flex-col gap-4">
-        <div className="h-3 w-full rounded bg-gray-200" />
-        <div className="h-3 w-full rounded bg-gray-200" />
-        <div className="h-3 w-2/3 rounded bg-gray-200" />
+        <div className="h-3 w-full rounded bg-skeleton" />
+        <div className="h-3 w-full rounded bg-skeleton" />
+        <div className="h-3 w-2/3 rounded bg-skeleton" />
       </div>
     </div>
   );

@@ -36,8 +36,8 @@ export function ConferenceCard({ conference, href, className }: ConferenceCardPr
     // и анонс.
     <article
       className={cn(
-        'relative flex flex-col overflow-hidden rounded bg-white shadow-sm transition-shadow',
-        'hover:shadow focus-within:shadow sm:flex-row',
+        'u-lift relative flex h-full flex-col overflow-hidden rounded-lg bg-surface shadow-sm',
+        'hover:shadow focus-within:shadow',
         className,
       )}
     >
@@ -48,11 +48,11 @@ export function ConferenceCard({ conference, href, className }: ConferenceCardPr
           // могла бы сообщить, стоит рядом заголовком.
           alt={conference.previewImageDescription ?? ''}
           loading="lazy"
-          className="h-48 w-full shrink-0 object-cover sm:h-auto sm:w-56"
+          className="aspect-[16/10] w-full shrink-0 object-cover"
         />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-6">
         {posted && (
           <p className="text-sm text-text-muted">
             {/* dateTime — машиночитаемая форма: пользователь видит «27 августа

@@ -9,7 +9,7 @@ interface HistoryEventCardProps {
 /**
  * Одно событие ленты. Чистая: всё приходит пропсом, состояния нет.
  *
- * Карточка та же, что у блоков главной и статьи новости (`bg-white`,
+ * Карточка та же, что у блоков главной и статьи новости (`bg-surface`,
  * `rounded`, `shadow-sm`, те же отступы). В оригинале у неё были ещё
  * подъём на восемь пикселей при наведении и тень в 60 пикселей — эффект
  * для кликабельного элемента, а карточка никуда не ведёт: нажать на неё
@@ -22,7 +22,7 @@ export function HistoryEventCard({ event }: HistoryEventCardProps) {
   const { period, title, icon: Icon, text, photo, highlights } = event;
 
   return (
-    <article className="rounded border-l-4 border-primary bg-white p-5 shadow-sm md:p-8">
+    <article className="rounded-lg bg-surface p-6 shadow-sm md:p-10">
       <header className="flex items-start gap-4">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-secondary text-primary">
           <Icon size={20} aria-hidden />
@@ -34,7 +34,7 @@ export function HistoryEventCard({ event }: HistoryEventCardProps) {
               с подобранными пикселями (`left: 225px`, `top: -80px`),
               и на планшете плашка наезжала на карточку. Внутри заголовка
               он не разъезжается вовсе. */}
-          <p className="rounded-pill bg-primary px-3 py-0.5 text-sm font-bolder text-white">
+          <p className="rounded-pill bg-primary px-3 py-0.5 text-sm font-bolder text-on-primary">
             {period}
           </p>
           <h2 className="text-h5 text-text-heading md:text-h4">{title}</h2>

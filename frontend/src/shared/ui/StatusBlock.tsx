@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Inbox, TriangleAlert, type LucideIcon } from 'lucide-react';
 
 import { cn } from '@shared/lib';
 
@@ -13,6 +14,8 @@ interface StatusBlockProps {
    * У пустого списка ничего не сломалось, тревожить незачем.
    */
   tone?: 'neutral' | 'danger';
+  /** Значок над заголовком. По умолчанию — «пусто» либо «сбой», по тону. */
+  icon?: LucideIcon;
   className?: string;
 }
 
@@ -24,23 +27,35 @@ interface StatusBlockProps {
  * модуль, и те же три состояния предстоит показать восьми списочным
  * страницам блока 2. Каждая из них, написанная отдельно, разошлась бы
  * и по вёрстке, и по формулировкам.
+ *
+ * Значок и крупный заголовок — оформление нового дизайна: они видны только
+ * в `.u-themed`, то есть везде, кроме админки. Там блок остаётся таким, каким
+ * был, — карточкой с одним заголовком.
  */
 export default function StatusBlock({
   title,
   description,
   action,
   tone = 'neutral',
+  icon,
   className,
 }: StatusBlockProps) {
+  const Icon = icon ?? (tone === 'danger' ? TriangleAlert : Inbox);
+
   return (
     <div
       role={tone === 'danger' ? 'alert' : undefined}
       className={cn(
-        'flex flex-col items-center gap-3 rounded bg-white px-6 py-12 text-center shadow-sm',
+        'u-empty flex flex-col items-center gap-3 rounded bg-surface px-6 py-12 text-center shadow-sm',
+        tone === 'danger' && 'u-empty--danger',
         className,
       )}
     >
-      <p className={cn('text-h5', tone === 'danger' ? 'text-danger' : 'text-text-heading')}>
+      <span className="u-empty-icon" aria-hidden>
+        <Icon size={26} />
+      </span>
+
+      <p className={cn('u-empty-title text-h5', tone === 'danger' ? 'text-danger' : 'text-text-heading')}>
         {title}
       </p>
 

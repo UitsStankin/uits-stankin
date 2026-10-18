@@ -4,6 +4,7 @@ import { editablePageHandlers } from './editablePages';
 import { helperHandlers } from './helpers';
 import { newsHandlers } from './news';
 import { publicPostgraduateHandlers } from './postgraduates';
+import { scheduleHandlers } from './schedule';
 import { subjectHandlers } from './subjects';
 import { myTeacherCardHandlers, teacherHandlers } from './teachers';
 import { userDirectoryHandlers } from './users';
@@ -42,5 +43,6 @@ export const handlers = [
   ...helperHandlers(),
   ...userDirectoryHandlers(),
   ...publicPostgraduateHandlers(),
+  ...scheduleHandlers(),
   ...subjectHandlers(),
 ];

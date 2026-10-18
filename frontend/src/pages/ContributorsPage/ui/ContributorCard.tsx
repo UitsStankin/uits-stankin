@@ -30,7 +30,7 @@ export function ContributorCard({ contributor }: ContributorCardProps) {
   const { name, role, photo } = contributor;
 
   return (
-    <article className="flex h-full flex-col items-center gap-3 rounded bg-white p-5 text-center shadow-sm">
+    <article className="flex h-full flex-col items-center gap-3 rounded-lg bg-surface p-6 text-center shadow-sm">
       <img
         src={photo?.src ?? DEFAULT_AVATAR_URL}
         // Снимок декоративный: имя стоит подписью прямо под ним, и «фото

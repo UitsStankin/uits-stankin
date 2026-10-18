@@ -21,7 +21,7 @@ interface DataTableSkeletonProps {
  */
 export function DataTableSkeleton({ columnCount, label }: DataTableSkeletonProps) {
   return (
-    <div role="status" className="animate-pulse rounded bg-white p-4 shadow-sm md:p-6">
+    <div role="status" className="animate-pulse rounded bg-surface p-4 shadow-sm md:p-6">
       {/* Серые прямоугольники диктору ничего не говорят — для него
           загрузка проговаривается словами. */}
       <span className="sr-only">{label}</span>
@@ -50,10 +50,10 @@ function SkeletonRow({ columnCount }: { columnCount: number }) {
           // с тем, что появится на их месте.
           className={
             column === 0
-              ? 'h-3 w-40 shrink-0 rounded bg-gray-200'
+              ? 'h-3 w-40 shrink-0 rounded bg-skeleton'
               : column === columnCount - 1
-                ? 'h-3 w-20 shrink-0 rounded bg-gray-200'
-                : 'h-3 flex-1 rounded bg-gray-200'
+                ? 'h-3 w-20 shrink-0 rounded bg-skeleton'
+                : 'h-3 flex-1 rounded bg-skeleton'
           }
         />
       ))}
