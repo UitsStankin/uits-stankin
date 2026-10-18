@@ -35,56 +35,58 @@ export function NewsTimeline({ news, announcements, hrefForItem }: NewsTimelineP
       : [[filter, filter === 'news' ? news : announcements]];
 
   return (
-    <section id="news" className="u-wrap u-news-block u-news-split" aria-labelledby="h-news">
-      <div className="u-news-head">
-        <h2 id="h-news" className="u-section-title">
-          Новости
-        </h2>
-        <MorphTabs
-          items={FILTER_ITEMS}
-          value={filter}
-          onChange={setFilter}
-          label="Фильтр новостей"
-          mode="filter"
-        />
-      </div>
-
-      <div className="u-news-body">
-        {feeds.map(([type, feed]) => (
-          <SectionStatus
-            key={type}
-            state={{ ...feed, isEmpty: feed.isEmpty && items.length === 0 }}
-            loading={HOME_FEED_COPY[type].loading}
-            errorTitle={HOME_FEED_COPY[type].errorTitle}
-            emptyTitle={HOME_FEED_COPY[type].emptyTitle}
-            emptyDescription={HOME_FEED_COPY[type].emptyDescription}
+    <section id="news" className="u-news-sec" aria-labelledby="h-news">
+      <div className="u-wrap u-news-block u-news-split">
+        <div className="u-news-head">
+          <h2 id="h-news" className="u-section-title">
+            Новости
+          </h2>
+          <MorphTabs
+            items={FILTER_ITEMS}
+            value={filter}
+            onChange={setFilter}
+            label="Фильтр новостей"
+            mode="filter"
           />
-        ))}
-
-        {items.length > 0 && (
-          <ol className="u-timeline">
-            {items.map((item) => (
-              <TimelineItem key={item.id} item={item} href={hrefForItem(item.id)} />
-            ))}
-          </ol>
-        )}
-
-        {items.length > 0 && (
-          <div className="u-timeline-more">
-            {news.items.length > 0 && (
-              <Link className="u-btn-ghost u-nw" to={HOME_FEED_COPY.news.allHref}>
-                {HOME_FEED_COPY.news.allLabel}
-              </Link>
-            )}
-            {announcements.items.length > 0 && (
-              <Link className="u-btn-ghost u-nw" to={HOME_FEED_COPY.announcements.allHref}>
-                {HOME_FEED_COPY.announcements.allLabel}
-              </Link>
-            )}
-          </div>
-        )}
         </div>
-      </section>
+
+        <div className="u-news-body">
+          {feeds.map(([type, feed]) => (
+            <SectionStatus
+              key={type}
+              state={{ ...feed, isEmpty: feed.isEmpty && items.length === 0 }}
+              loading={HOME_FEED_COPY[type].loading}
+              errorTitle={HOME_FEED_COPY[type].errorTitle}
+              emptyTitle={HOME_FEED_COPY[type].emptyTitle}
+              emptyDescription={HOME_FEED_COPY[type].emptyDescription}
+            />
+          ))}
+
+          {items.length > 0 && (
+            <ol className="u-timeline">
+              {items.map((item) => (
+                <TimelineItem key={item.id} item={item} href={hrefForItem(item.id)} />
+              ))}
+            </ol>
+          )}
+
+          {items.length > 0 && (
+            <div className="u-timeline-more">
+              {news.items.length > 0 && (
+                <Link className="u-btn-ghost u-nw" to={HOME_FEED_COPY.news.allHref}>
+                  {HOME_FEED_COPY.news.allLabel}
+                </Link>
+              )}
+              {announcements.items.length > 0 && (
+                <Link className="u-btn-ghost u-nw" to={HOME_FEED_COPY.announcements.allHref}>
+                  {HOME_FEED_COPY.announcements.allLabel}
+                </Link>
+              )}
+            </div>
+          )}
+          </div>
+      </div>
+    </section>
     );
   }
 

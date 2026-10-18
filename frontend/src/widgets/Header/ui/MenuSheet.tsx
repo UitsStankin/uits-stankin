@@ -13,6 +13,8 @@ interface MenuSheetProps {
   pathname: string;
   isClosing?: boolean;
   onClose: () => void;
+  /** Переход по ссылке листа: меню закрывает вызывающий, когда страница готова. */
+  onNavigate?: (path: string) => void;
   footer?: ReactNode;
 }
 
@@ -38,7 +40,14 @@ function initialGroupKey(groups: readonly MenuGroup[], pathname: string): string
  * простым списком с тонкими линиями. Показывается один раздел за раз, а не все
  * сразу: так на экране не двадцать строк текста, а пять-девять.
  */
-export function MenuSheet({ groups, pathname, isClosing = false, onClose, footer }: MenuSheetProps) {
+export function MenuSheet({
+  groups,
+  pathname,
+  isClosing = false,
+  onClose,
+  onNavigate,
+  footer,
+}: MenuSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [activeKey, setActiveKey] = useState(() => initialGroupKey(groups, pathname));
@@ -147,7 +156,7 @@ export function MenuSheet({ groups, pathname, isClosing = false, onClose, footer
                     to={entry.path}
                     className="u-menu-item"
                     aria-current={isPathActive(entry.path, pathname) ? 'page' : undefined}
-                    onClick={onClose}
+                    onClick={() => (onNavigate ? onNavigate(entry.path) : onClose())}
                   >
                     <span>{entry.title}</span>
                     <ArrowUpRight size={18} aria-hidden />

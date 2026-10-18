@@ -11,11 +11,6 @@ interface BrandPatternProps {
 
 const VIEW_BOX = '-520 -520 1040 1040';
 
-/**
- * Вращение узора ставится на паузу, пока он вне экрана или вкладка скрыта.
- * Сам поворот — CSS-анимация `transform` одного слоя: её ведёт композитор,
- * главный поток не перерисовывает узор на каждом кадре.
- */
 function usePauseOffscreen(ref: RefObject<HTMLDivElement | null>, enabled: boolean): void {
   useEffect(() => {
     const node = ref.current;

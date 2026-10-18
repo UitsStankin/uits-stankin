@@ -1,9 +1,5 @@
 import { lazy } from 'react';
 
-/**
- * Экраны админки грузятся отдельными кусками: посетителю публичного сайта
- * они не нужны, и в первую загрузку не попадают.
- */
 export const AdminLayout = lazy(() => import('../layouts/AdminLayout'));
 export const AdminHomePage = lazy(() => import('@pages/admin/AdminHomePage'));
 export const PlannedSectionPage = lazy(() => import('@pages/admin/PlannedSectionPage'));

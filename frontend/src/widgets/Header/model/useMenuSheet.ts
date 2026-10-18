@@ -4,11 +4,6 @@ import { useAppStore } from '@shared/store';
 
 const CLOSE_MS = 200;
 
-/**
- * Состояние листа меню. Закрытие не мгновенное: лист сначала гаснет
- * (`isClosing`), и только потом исчезает из дерева. Страница под ним успевает
- * смениться, пока меню гаснет, и переход выглядит плавным, а не скачком.
- */
 export function useMenuSheet() {
   const isOpen = useAppStore((state) => state.isMenuOpen);
   const open = useAppStore((state) => state.openMenu);

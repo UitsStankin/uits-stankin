@@ -11,6 +11,7 @@ export interface ProgramLink {
 export interface Program {
   key: ProgramKey;
   tab: string;
+  kind: string;
   name: string;
   code: string | null;
   links: readonly ProgramLink[];
@@ -43,11 +44,12 @@ function levelLinks(level: 'bachelor' | 'master'): readonly ProgramLink[] {
 }
 
 export const PROGRAMS: readonly Program[] = [
-  { key: 'bac', tab: 'Бакалавриат', name: 'Бакалавриат', code: '09.03.03', links: levelLinks('bachelor') },
-  { key: 'mag', tab: 'Магистратура', name: 'Магистратура', code: '09.04.01', links: levelLinks('master') },
+  { key: 'bac', tab: 'Бакалавриат', kind: 'Направление подготовки', name: 'Бакалавриат', code: '09.03.03', links: levelLinks('bachelor') },
+  { key: 'mag', tab: 'Магистратура', kind: 'Направление подготовки', name: 'Магистратура', code: '09.04.01', links: levelLinks('master') },
   {
     key: 'phd',
     tab: 'Аспирантура',
+    kind: 'Научная подготовка',
     name: 'Аспирантура и наука',
     code: null,
     links: [

@@ -82,7 +82,8 @@ function buildCards({ conference, achievement, announcement }: PromoSliderProps)
  * Карусель «Главное сейчас»: бесконечная лента карточек, одна за другой по
  * кольцу, без номеров. Активная карточка стоит по центру, соседние видны
  * по краям и приглушены. Слева текст и кнопка, справа обложка; без обложки
- * дата крупно либо значок. Стрелки — по бокам ленты.
+ * дата крупно либо значок. Стрелки сидят на краях центральной карточки,
+ * на узком экране — парой под лентой.
  */
 export function PromoSlider(props: PromoSliderProps) {
   const cards = buildCards(props);
@@ -164,7 +165,7 @@ export function PromoSlider(props: PromoSliderProps) {
         </div>
 
         {isLoop && (
-          <>
+          <div className="u-promo-nav">
             <button
               type="button"
               className="u-round-btn u-promo-arrow u-promo-arrow--prev"
@@ -181,7 +182,7 @@ export function PromoSlider(props: PromoSliderProps) {
             >
               <ArrowRight size={20} aria-hidden />
             </button>
-          </>
+          </div>
         )}
       </div>
     </section>

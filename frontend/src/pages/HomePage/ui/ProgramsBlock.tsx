@@ -62,12 +62,15 @@ function ProgramPanel({ program }: { program: Program }) {
   return (
     <>
       <div className="u-program-hero">
-        {program.code && (
-          <p className={program.key === 'mag' ? 'u-program-code u-alt' : 'u-program-code'}>
-            {program.code}
-          </p>
-        )}
-        <h3 className="u-program-name">{program.name}</h3>
+        <p className="u-program-kind">{program.kind}</p>
+        <div className="u-program-main">
+          {program.code && (
+            <p className={program.key === 'mag' ? 'u-program-code u-alt' : 'u-program-code'}>
+              {program.code}
+            </p>
+          )}
+          <h3 className="u-program-name">{program.name}</h3>
+        </div>
       </div>
 
       <ul className={program.links.length > 3 ? 'u-program-links u-four' : 'u-program-links'}>

@@ -38,8 +38,6 @@ import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
 
-// Каждая страница, кроме главной, грузится отдельным куском при первом заходе:
-// посетителю главной не нужны ни админка, ни редактор, ни карта контактов.
 function lazyPage(load: () => Promise<{ default: ComponentType }>) {
   return async () => ({ Component: (await load()).default });
 }

@@ -18,6 +18,7 @@ import { buildProfileMenu } from './lib/profileMenu';
 import type { HeaderProps } from './Header.types';
 
 const SCROLLED_AFTER_PX = 24;
+const NAVIGATION_TIMEOUT_MS = 4000;
 
 const MENU_GROUPS = buildMenuGroups(NAVIGATION);
 
@@ -75,6 +76,26 @@ export default function Header({ className, overlay = false, showThemeToggle = f
     menuButtonRef.current?.focus();
   };
 
+  const pendingPath = useRef<string | null>(null);
+  const navigateFromMenu = (path: string) => {
+    if (path === pathname) {
+      closeMenu();
+      return;
+    }
+    pendingPath.current = path;
+    window.setTimeout(() => {
+      if (pendingPath.current !== path) return;
+      pendingPath.current = null;
+      closeMenu();
+    }, NAVIGATION_TIMEOUT_MS);
+  };
+
+  useEffect(() => {
+    if (pendingPath.current === null || pathname !== pendingPath.current) return;
+    pendingPath.current = null;
+    closeMenu();
+  }, [pathname]);
+
   const isGuest = !profile && !isLoading;
 
   return (
@@ -121,6 +142,7 @@ export default function Header({ className, overlay = false, showThemeToggle = f
           pathname={pathname}
           isClosing={menu.isClosing}
           onClose={closeMenu}
+          onNavigate={navigateFromMenu}
           footer={isGuest ? <LoginLink onClick={menu.close} /> : null}
         />
       )}

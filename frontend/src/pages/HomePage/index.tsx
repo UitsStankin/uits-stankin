@@ -19,9 +19,10 @@ import { StatsBento } from './ui/StatsBento';
  * Титульная страница портала. Сборка: состояние из модели, разметка
  * из чистых компонентов, страница только соединяет одно с другим.
  *
- * Порядок разделов — витрина кафедры: первый экран с поиском расписания,
- * «главное сейчас», цифры, расписание, уровни обучения, мероприятия,
- * новости, преподаватели, контакты. Оба редактируемых блока (`home-before`,
+ * Порядок разделов: первый экран с поиском расписания, «главное сейчас»,
+ * расписание, уровни обучения, новости, мероприятия, преподаватели, цифры,
+ * контакты. Сначала то, за чем приходят (расписание, обучение), потом что
+ * нового, в конце сама кафедра. Оба редактируемых блока (`home-before`,
  * `home-after`) остаются: первый — сразу под первым экраном, второй — перед
  * контактами.
  *
@@ -64,16 +65,6 @@ export default function HomePage() {
         announcement={latestAnnouncement}
       />
 
-      <StatsBento
-        schedules={content.schedules}
-        exams={content.exams}
-        teachers={content.teachers}
-        news={content.news}
-        announcements={content.announcements}
-        conferences={content.conferences}
-        achievements={content.achievements}
-      />
-
       <ScheduleBand
         schedules={content.schedules}
         exams={content.exams}
@@ -83,15 +74,25 @@ export default function HomePage() {
 
       <ProgramsBlock value={program} onChange={setProgram} />
 
-      <EventsSlider conferences={content.conferences} achievements={content.achievements} />
-
       <NewsTimeline
         news={content.news}
         announcements={content.announcements}
         hrefForItem={content.hrefForItem}
       />
 
+      <EventsSlider conferences={content.conferences} achievements={content.achievements} />
+
       <PeopleList teachers={content.teachers} />
+
+      <StatsBento
+        schedules={content.schedules}
+        exams={content.exams}
+        teachers={content.teachers}
+        news={content.news}
+        announcements={content.announcements}
+        conferences={content.conferences}
+        achievements={content.achievements}
+      />
 
       <HomeBlock text={content.after} />
 

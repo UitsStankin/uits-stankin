@@ -51,8 +51,7 @@ export default function AppLayout({ className }: AppLayoutProps) {
       <Header overlay={isHome} showThemeToggle={!isAdmin} />
 
       {/* flex-1 прижимает подвал к низу на коротких страницах — иначе он
-          висел бы посреди экрана. Ключ по адресу пересоздаёт блок при
-          переходе, и страница проявляется, а не вспыхивает. */}
+          висел бы посреди экрана. */}
       <main
         key={isAdmin ? 'admin' : pathname}
         id="main"
