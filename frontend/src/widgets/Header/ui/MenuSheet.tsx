@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ArrowUpRight, ChevronRight, X } from 'lucide-react';
+import { ArrowUpRight, X } from 'lucide-react';
 
 import { Logo } from '@shared/ui/Logo';
 
@@ -32,10 +32,9 @@ function initialGroupKey(groups: readonly MenuGroup[], pathname: string): string
 }
 
 /**
- * Лист меню: слева три раздела, справа — ссылки выбранного. Показывается один
- * раздел за раз, а не все сразу: так на экране не двадцать строк текста,
- * а пять-девять. Переключение разделов — без анимации сдвига: текст стоит
- * на месте, меняется только фон.
+ * Лист меню: слева три раздела крупным шрифтом, справа — ссылки выбранного
+ * простым списком с тонкими линиями. Показывается один раздел за раз, а не все
+ * сразу: так на экране не двадцать строк текста, а пять-девять.
  */
 export function MenuSheet({ groups, pathname, onClose, footer }: MenuSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -86,7 +85,6 @@ export function MenuSheet({ groups, pathname, onClose, footer }: MenuSheetProps)
       role="dialog"
       aria-modal="true"
       aria-label="Разделы сайта"
-      data-lenis-prevent
       onKeyDown={trapFocus}
     >
       <div className="u-wrap u-menu-head">
@@ -105,7 +103,6 @@ export function MenuSheet({ groups, pathname, onClose, footer }: MenuSheetProps)
       <div className="u-wrap u-menu-body">
         <div className="u-menu-tabs" role="tablist" aria-label="Разделы" onKeyDown={moveTab}>
           {groups.map((group, index) => {
-            const Icon = group.icon;
             const isActive = group.key === active.key;
 
             return (
@@ -122,11 +119,7 @@ export function MenuSheet({ groups, pathname, onClose, footer }: MenuSheetProps)
                 style={groupColor(index)}
                 onClick={() => setActiveKey(group.key)}
               >
-                <span className="u-menu-tab-icon" aria-hidden>
-                  <Icon size={20} />
-                </span>
-                <span className="u-menu-tab-title">{group.title}</span>
-                <ChevronRight className="u-menu-tab-arrow" size={18} aria-hidden />
+                {group.title}
               </button>
             );
           })}

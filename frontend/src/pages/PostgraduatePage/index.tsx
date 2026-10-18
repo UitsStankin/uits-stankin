@@ -102,7 +102,7 @@ export default function PostgraduatePage() {
         {isEmpty && (
           <StatusBlock
             title="Аспирантов пока нет"
-            description="Записи появятся здесь, как только их заведут."
+            description="Записи об аспирантах появятся здесь."
           />
         )}
 

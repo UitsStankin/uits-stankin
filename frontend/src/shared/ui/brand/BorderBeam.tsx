@@ -15,7 +15,8 @@ interface BorderBeamProps {
  * Обёртка, у которой по рамке бежит цветной луч (цвета бренда).
  *
  * Радиус скругления берётся от класса, который передан снаружи: луч повторяет
- * форму рамки, а не задаёт свою. Без поддержки `@property` и при выключенной
+ * форму рамки, а не задаёт свою. Луч вращает композитор (`rotate` слоя), а не
+ * перерисовка градиента, поэтому он почти не нагружает страницу. При выключенной
  * анимации (`prefers-reduced-motion`) луч стоит на месте.
  */
 export function BorderBeam({ children, className, duration = 6, width = 2 }: BorderBeamProps) {
@@ -26,6 +27,7 @@ export function BorderBeam({ children, className, duration = 6, width = 2 }: Bor
 
   return (
     <div className={cn('u-beam', className)} style={style}>
+      <span className="u-beam-ring" aria-hidden />
       {children}
     </div>
   );

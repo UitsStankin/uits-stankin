@@ -88,7 +88,7 @@ export function ImagePicker({
               не стилизуется, а подпись отдаёт ему клик и фокус бесплатно. */}
           <label
             className={cn(
-              'cursor-pointer self-start rounded border border-default px-3 py-1.5',
+              'u-pick cursor-pointer self-start rounded border border-default px-3 py-1.5',
               'text-sm font-bold text-text-heading transition hover:border-primary hover:text-primary',
             )}
           >
@@ -108,7 +108,7 @@ export function ImagePicker({
               onClick={onRemove}
               disabled={isUploading}
               className={cn(
-                'self-start rounded border border-default px-3 py-1.5 text-sm font-bold',
+                'u-pick u-pick--danger self-start rounded border border-default px-3 py-1.5 text-sm font-bold',
                 'text-text-muted transition hover:border-danger hover:text-danger',
                 'disabled:cursor-not-allowed disabled:opacity-60',
               )}

@@ -105,11 +105,7 @@ export function ProfileForm({
         <button
           type="submit"
           disabled={isPending}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded-pill bg-primary px-4 py-2.5',
-            'text-base font-bold text-on-primary transition',
-            'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
-          )}
+          className="u-btn"
         >
           {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
           {isPending ? 'Сохраняем…' : 'Сохранить'}
@@ -118,11 +114,7 @@ export function ProfileForm({
           type="button"
           onClick={onCancel}
           disabled={isPending}
-          className={cn(
-            'rounded border border-default px-4 py-2.5 text-base font-bold text-text-heading',
-            'transition hover:border-primary hover:text-primary',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-          )}
+          className="u-btn-ghost"
         >
           Отмена
         </button>

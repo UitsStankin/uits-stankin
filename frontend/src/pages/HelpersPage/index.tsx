@@ -60,7 +60,7 @@ export default function HelpersPage() {
       {isEmpty && (
         <StatusBlock
           title="Сотрудников пока нет"
-          description="Карточки появятся здесь, как только их заведут."
+          description="Карточки сотрудников появятся здесь."
         />
       )}
 

@@ -88,7 +88,7 @@ export default function Pagination({ page, totalPages, buildHref, className }: P
 }
 
 const slotClass =
-  'flex h-10 min-w-10 items-center justify-center rounded-pill px-3 text-base font-bold shadow-sm transition-colors';
+  'u-pg flex h-10 min-w-10 items-center justify-center rounded-pill px-3 text-base font-bold shadow-sm transition-colors';
 
 /**
  * Стрелка «туда-сюда». На краю списка это `span`, а не ссылка

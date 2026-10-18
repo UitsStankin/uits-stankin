@@ -1,9 +1,16 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 
-import { editablePageHandlers, newsHandlers, problemResponse } from '@shared/api/mocks';
+import {
+  editablePageHandlers,
+  makeNews,
+  newsHandlers,
+  pageResponse,
+  problemResponse,
+} from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
+import { newsItemRoute } from '@shared/config/routes';
 import { renderWithProviders } from '@/test/render';
 
 import HomePage from './index';
@@ -137,8 +144,12 @@ describe('HomePage', () => {
 
       renderWithProviders(<HomePage />);
 
-      expect(await screen.findByRole('heading', { name: 'Кафедра ИТ-6' })).toBeInTheDocument();
-      expect(screen.getByText('Текст под лентой')).toBeInTheDocument();
+      // Разборщик Markdown грузится отдельным куском, и под нагрузкой полного
+      // прогона секунды по умолчанию не хватает.
+      expect(
+        await screen.findByRole('heading', { name: 'Кафедра ИТ-6' }, { timeout: 5000 }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText('Текст под лентой', {}, { timeout: 5000 })).toBeInTheDocument();
     });
 
     it('единственный h1 страницы — заголовок первого экрана', async () => {
@@ -146,7 +157,7 @@ describe('HomePage', () => {
 
       renderWithProviders(<HomePage />);
 
-      await screen.findByText('Просто текст');
+      await screen.findByText('Просто текст', {}, { timeout: 5000 });
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
   });
@@ -158,6 +169,28 @@ describe('HomePage', () => {
       const numbers = await region(/^Кафедра в\s+цифрах$/);
       expect(await within(numbers).findByText('пары в расписании')).toBeInTheDocument();
       expect(within(numbers).getByText('2 преподавателя с загруженным расписанием')).toBeInTheDocument();
+    });
+
+    it('ставит рядом с цифрами свежую новость с обложкой ссылкой на неё', async () => {
+      server.use(
+        http.get('*/api/public/news', () =>
+          HttpResponse.json(
+            pageResponse([
+              makeNews({
+                id: 77,
+                title: 'Новость с фото',
+                previewImageUrl: '/media/cover.jpg',
+                previewImageDescription: 'Лаборатория',
+              }),
+            ]),
+          ),
+        ),
+      );
+      renderWithProviders(<HomePage />);
+
+      const numbers = await region(/^Кафедра в\s+цифрах$/);
+      const link = await within(numbers).findByRole('link', { name: /Новость с фото/ });
+      expect(link).toHaveAttribute('href', newsItemRoute(77));
     });
 
     it('находит пары по фамилии преподавателя', async () => {

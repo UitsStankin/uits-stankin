@@ -118,11 +118,7 @@ export function LoginForm({
       <button
         type="submit"
         disabled={isPending || isBlocked}
-        className={cn(
-          'flex items-center justify-center gap-2 rounded-pill bg-primary px-4 py-2.5',
-          'text-base font-bold text-on-primary transition',
-          'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60'
-        )}
+        className="u-btn"
       >
         {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
         {isPending ? 'Входим…' : 'Войти'}

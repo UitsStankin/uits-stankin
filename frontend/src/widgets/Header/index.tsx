@@ -4,7 +4,7 @@ import { useLocation } from 'react-router';
 import { NAVIGATION } from '@shared/config/navigation';
 import { cn } from '@shared/lib/cn';
 import { Logo } from '@shared/ui/Logo';
-import { useAuth, useLogout } from '@features/auth';
+import { useAuth, useLogout } from '@features/auth/session';
 import { LoginLink } from './ui/LoginLink';
 import { MenuButton } from './ui/MenuButton';
 import { MenuSheet } from './ui/MenuSheet';
@@ -17,7 +17,7 @@ import { buildMenuGroups } from './lib/menuGroups';
 import { buildProfileMenu } from './lib/profileMenu';
 import type { HeaderProps } from './Header.types';
 
-const FADE_DISTANCE_PX = 120;
+const SCROLLED_AFTER_PX = 24;
 
 const MENU_GROUPS = buildMenuGroups(NAVIGATION);
 
@@ -42,10 +42,13 @@ export default function Header({ className, overlay = false, showThemeToggle = f
     if (!overlay || !header) return;
 
     let frame = 0;
+    let scrolled: boolean | null = null;
     const update = () => {
       frame = 0;
-      const progress = Math.min(1, Math.max(0, window.scrollY / FADE_DISTANCE_PX));
-      header.style.setProperty('--u-top-p', progress.toFixed(3));
+      const next = window.scrollY > SCROLLED_AFTER_PX;
+      if (next === scrolled) return;
+      scrolled = next;
+      header.dataset.scrolled = String(next);
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);

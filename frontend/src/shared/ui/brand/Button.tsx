@@ -3,11 +3,11 @@ import { Link } from 'react-router';
 
 import { cn } from '@shared/lib/cn';
 
-type Variant = 'primary' | 'light';
+type Variant = 'primary' | 'secondary';
 
 const VARIANT_CLASS: Record<Variant, string> = {
   primary: 'u-btn',
-  light: 'u-btn-light',
+  secondary: 'u-btn-ghost',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -44,7 +44,7 @@ interface ButtonLinkProps {
 export function ButtonLink({
   children,
   to,
-  variant = 'light',
+  variant = 'primary',
   icon,
   className,
   onClick,

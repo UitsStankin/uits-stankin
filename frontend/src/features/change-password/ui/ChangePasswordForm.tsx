@@ -2,7 +2,6 @@ import type { FormEventHandler } from 'react';
 import { CheckCircle2, LoaderCircle } from 'lucide-react';
 import type { FieldErrors, UseFormRegister } from 'react-hook-form';
 
-import { cn } from '@shared/lib';
 
 import type { ChangePasswordFormValues } from '../model/changePasswordSchema';
 import type { PasswordFieldName } from '../model/useChangePasswordForm';
@@ -102,11 +101,7 @@ export function ChangePasswordForm({
         <button
           type="submit"
           disabled={isPending}
-          className={cn(
-            'flex items-center justify-center gap-2 self-start rounded-pill bg-primary px-4 py-2.5',
-            'text-base font-bold text-on-primary transition',
-            'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
-          )}
+          className="u-btn self-start"
         >
           {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
           {isPending ? 'Сохраняем…' : 'Сменить пароль'}

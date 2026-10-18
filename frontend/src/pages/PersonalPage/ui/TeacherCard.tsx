@@ -1,6 +1,5 @@
 import { degreeLabel, rankLabel } from '@shared/config/teacherDictionaries';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
-import { cn } from '@shared/lib';
 import type { Teacher } from '@shared/types';
 import { RichText } from '@shared/ui/RichText';
 import { formatYears, teacherFullName } from '@entities/teacher';
@@ -86,10 +85,7 @@ export function TeacherCard({ card, onEdit }: TeacherCardProps) {
         <button
           type="button"
           onClick={onEdit}
-          className={cn(
-            'rounded-pill bg-primary px-4 py-2.5 text-base font-bold text-on-primary transition',
-            'hover:brightness-95',
-          )}
+          className="u-btn"
         >
           Редактировать
         </button>

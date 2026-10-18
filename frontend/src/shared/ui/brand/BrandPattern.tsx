@@ -9,17 +9,21 @@ interface BrandPatternProps {
   className?: string;
 }
 
-function useSpinControl(svgRef: RefObject<SVGSVGElement | null>, enabled: boolean): void {
+const VIEW_BOX = '-520 -520 1040 1040';
+
+/**
+ * Вращение узора ставится на паузу, пока он вне экрана или вкладка скрыта.
+ * Сам поворот — CSS-анимация `transform` одного слоя: её ведёт композитор,
+ * главный поток не перерисовывает узор на каждом кадре.
+ */
+function usePauseOffscreen(ref: RefObject<HTMLDivElement | null>, enabled: boolean): void {
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!enabled || !svg || typeof svg.pauseAnimations !== 'function') return;
+    const node = ref.current;
+    if (!enabled || !node) return;
 
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let visible = true;
-
     const apply = () => {
-      if (visible && !motion.matches && !document.hidden) svg.unpauseAnimations();
-      else svg.pauseAnimations();
+      node.dataset.paused = String(!visible || document.hidden);
     };
 
     const observer =
@@ -29,50 +33,44 @@ function useSpinControl(svgRef: RefObject<SVGSVGElement | null>, enabled: boolea
             apply();
           })
         : null;
-    observer?.observe(svg);
+    observer?.observe(node);
     document.addEventListener('visibilitychange', apply);
-    motion.addEventListener('change', apply);
     apply();
 
     return () => {
       observer?.disconnect();
       document.removeEventListener('visibilitychange', apply);
-      motion.removeEventListener('change', apply);
     };
-  }, [svgRef, enabled]);
+  }, [ref, enabled]);
 }
 
 export function BrandPattern({ seed, colors, spin = false, className }: BrandPatternProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const rings = buildRings(seed, colors);
 
-  useSpinControl(svgRef, spin);
+  usePauseOffscreen(wrapRef, spin);
+
+  const paths = rings.map((ring, index) => (
+    <g key={index}>
+      {ring.segments.map((segment, i) => (
+        <path key={i} d={segment.d} fill={segment.fill} />
+      ))}
+    </g>
+  ));
+
+  if (!spin) {
+    return (
+      <svg className={className} viewBox={VIEW_BOX} aria-hidden focusable="false">
+        {paths}
+      </svg>
+    );
+  }
 
   return (
-    <svg
-      ref={svgRef}
-      className={className}
-      viewBox="-520 -520 1040 1040"
-      aria-hidden
-      focusable="false"
-    >
-      {rings.map((ring, index) => (
-        <g key={index}>
-          {ring.segments.map((segment, i) => (
-            <path key={i} d={segment.d} fill={segment.fill} />
-          ))}
-          {spin && (
-            <animateTransform
-              attributeName="transform"
-              type="rotate"
-              from="0 0 0"
-              to={`${ring.turn} 0 0`}
-              dur={`${ring.duration}s`}
-              repeatCount="indefinite"
-            />
-          )}
-        </g>
-      ))}
-    </svg>
+    <div ref={wrapRef} className={className} aria-hidden>
+      <svg className="u-pattern-spin" viewBox={VIEW_BOX} focusable="false">
+        {paths}
+      </svg>
+    </div>
   );
 }

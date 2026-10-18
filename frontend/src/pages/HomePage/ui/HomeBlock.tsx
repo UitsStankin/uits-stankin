@@ -1,4 +1,6 @@
-import Markdown from '@shared/ui/Markdown';
+import { lazy, Suspense } from 'react';
+
+const Markdown = lazy(() => import('@shared/ui/Markdown'));
 
 interface HomeBlockProps {
   /** Готовый Markdown или `null` — тогда блока не будет вовсе. */
@@ -14,6 +16,9 @@ interface HomeBlockProps {
  * Пустой блок не рисуется **вовсе** — ни карточки, ни отступа: пустой
  * прямоугольник с надписью «раздел пока не заполнен» сообщал бы посетителю
  * о внутренней кухне портала то, что ему знать незачем.
+ *
+ * Разборщик Markdown грузится отдельным куском и только когда в блоке есть
+ * текст: на чистой базе главная обходится без него.
  */
 export function HomeBlock({ text }: HomeBlockProps) {
   if (text === null) return null;
@@ -21,7 +26,9 @@ export function HomeBlock({ text }: HomeBlockProps) {
   return (
     <section className="u-wrap u-block">
       <div className="u-prose-block">
-        <Markdown text={text} />
+        <Suspense fallback={null}>
+          <Markdown text={text} />
+        </Suspense>
       </div>
     </section>
   );

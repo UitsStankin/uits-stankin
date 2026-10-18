@@ -1,8 +1,6 @@
-import { useEffect } from 'react';
-import { Outlet, ScrollRestoration, useLocation } from 'react-router';
+import { Outlet, ScrollRestoration, useLocation, useNavigation } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import { ADMIN_ROUTE, HOME_ROUTE } from '@shared/config/routes';
-import { startSmoothScroll } from '@shared/lib/smoothScroll';
 import { useDocumentTheme } from '@shared/lib/useDocumentTheme';
 import Header from '@widgets/Header';
 import Footer from '@widgets/Footer';
@@ -16,16 +14,16 @@ import type { AppLayoutProps } from './AppLayout.types';
  * и своё поле отступов, поэтому там тема всегда светлая, переключателя
  * в шапке нет, а цвета и скругления остаются прежними.
  *
- * Плавная прокрутка и шапка поверх первого экрана — только на главной.
+ * Шапка поверх первого экрана — только на главной. Пока подгружается
+ * страница, сверху бежит тонкая полоса: клик не выглядит зависшим.
  */
 export default function AppLayout({ className }: AppLayoutProps) {
   const { pathname } = useLocation();
+  const navigation = useNavigation();
   const isHome = pathname === HOME_ROUTE;
   const isAdmin = pathname === ADMIN_ROUTE || pathname.startsWith(`${ADMIN_ROUTE}/`);
 
   useDocumentTheme(!isAdmin);
-
-  useEffect(() => (isHome ? startSmoothScroll() : undefined), [isHome]);
 
   return (
     <div
@@ -40,15 +38,26 @@ export default function AppLayout({ className }: AppLayoutProps) {
         К содержимому
       </a>
 
+      {!isAdmin && (
+        <div
+          className="u-nav-progress"
+          data-active={navigation.state !== 'idle' ? '' : undefined}
+          aria-hidden
+        />
+      )}
+
       <Header overlay={isHome} showThemeToggle={!isAdmin} />
 
       {/* flex-1 прижимает подвал к низу на коротких страницах — иначе он
-          висел бы посреди экрана. */}
+          висел бы посреди экрана. Ключ по адресу пересоздаёт блок при
+          переходе, и страница проявляется, а не вспыхивает. */}
       <main
+        key={isAdmin ? 'admin' : pathname}
         id="main"
         className={cn(
           'flex-1',
           isAdmin && 'p-gutter-sm md:p-gutter lg:p-[1.875rem]',
+          !isAdmin && 'u-route-in',
           !isAdmin && !isHome && 'u-wrap u-page'
         )}
       >

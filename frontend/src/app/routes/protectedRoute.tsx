@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
 
-import { useAuth } from '@features/auth';
+import { useAuth } from '@features/auth/session';
 import Loader from '@shared/ui/Loader';
 import { LOGIN_ROUTE } from '@shared/config/routes';
 

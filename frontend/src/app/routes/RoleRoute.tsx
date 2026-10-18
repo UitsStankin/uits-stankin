@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { useAuth } from '@features/auth';
+import { useAuth } from '@features/auth/session';
 import { HOME_ROUTE } from '@shared/config/routes';
 import type { AdminAccess } from '@shared/types';
 import { ActionLink } from '@shared/ui/StatusAction';

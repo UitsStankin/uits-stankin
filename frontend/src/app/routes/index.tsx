@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
-import { Suspense } from 'react';
+import { Suspense, type ComponentType, type ReactNode } from 'react';
 
 // Layouts
 import AppLayout from '../layouts/AppLayout';
@@ -22,40 +22,31 @@ import {
 import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
 import Placeholder from '@pages/Placeholder';
 import HomePage from '@pages/HomePage';
-import HistoryPage from '@pages/HistoryPage';
-import ContactsPage from '@pages/ContactsPage';
-import ContributorsPage from '@pages/ContributorsPage';
-import PostgraduatePage from '@pages/PostgraduatePage';
-import LoginPage from '@pages/LoginPage';
-import PersonalPage from '@pages/PersonalPage';
-import NewsPage from '@pages/NewsPage';
-import NewsDetailPage from '@pages/NewsDetailPage';
-import AnnouncementsPage from '@pages/AnnouncementsPage';
-import TeachersPage from '@pages/TeachersPage';
-import TeacherDetailPage from '@pages/TeacherDetailPage';
-import HelpersPage from '@pages/HelpersPage';
-import ConferencesPage from '@pages/ConferencesPage';
-import ConferenceDetailPage from '@pages/ConferenceDetailPage';
-import AchievementsPage from '@pages/AchievementsPage';
-import AchievementDetailPage from '@pages/AchievementDetailPage';
-import EditablePagePage from '@pages/EditablePagePage';
 import type { EditablePageSlug } from '@shared/types';
-import AdminLayout from '../layouts/AdminLayout';
-import AdminHomePage from '@pages/admin/AdminHomePage';
-import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
-import AdminNewsPage from '@pages/admin/NewsPage';
-import UnknownSectionPage from '@pages/admin/UnknownSectionPage';
-import SubjectsPage from '@pages/admin/SubjectsPage';
-import AdminTeachersPage from '@pages/admin/TeachersPage';
-import TeacherFormPage from '@pages/admin/TeacherFormPage';
-import AdminHelpersPage from '@pages/admin/HelpersPage';
+import {
+  AdminHelpersPage,
+  AdminHomePage,
+  AdminLayout,
+  AdminNewsPage,
+  AdminTeachersPage,
+  PlannedSectionPage,
+  SubjectsPage,
+  TeacherFormPage,
+  UnknownSectionPage,
+} from './adminScreens';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
 
-// Ленивая загрузка страниц (аналог loadChildren из Angular)
-// const UitsRoutes = lazy(() => import('@pages/uits'));
-// const ErrorsRoutes = lazy(() => import('@pages/errors'));
+// Каждая страница, кроме главной, грузится отдельным куском при первом заходе:
+// посетителю главной не нужны ни админка, ни редактор, ни карта контактов.
+function lazyPage(load: () => Promise<{ default: ComponentType }>) {
+  return async () => ({ Component: (await load()).default });
+}
+
+function inLoader(node: ReactNode) {
+  return <Suspense fallback={<Loader />}>{node}</Suspense>;
+}
 
 /**
  * Редактируемые разделы: адрес → слаг раздела и заголовок страницы.
@@ -140,26 +131,26 @@ const EDITABLE_PAGES: ReadonlyArray<{
  * в тот день, когда его сделают.
  */
 function adminSectionScreen(section: AdminSection) {
-  if (section.plannedIn) return <PlannedSectionPage section={section} />;
+  if (section.plannedIn) return inLoader(<PlannedSectionPage section={section} />);
 
   switch (section.key) {
     case 'news':
       // Имя импорта отличается от имени файла: публичная лента новостей
       // — тоже `NewsPage`, и два одинаковых имени в одном модуле роутера
       // не ужились бы.
-      return <AdminNewsPage />;
+      return inLoader(<AdminNewsPage />);
     case 'teachers':
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список ППС — тоже `TeachersPage`.
-      return <AdminTeachersPage />;
+      return inLoader(<AdminTeachersPage />);
     case 'helpers':
-      return <AdminHelpersPage />;
+      return inLoader(<AdminHelpersPage />);
     case 'subjects':
-      return <SubjectsPage />;
+      return inLoader(<SubjectsPage />);
     default:
       // Раздел объявлен готовым, а экрана для него нет — это ошибка
       // конфига, и заглушка честнее пустой страницы.
-      return <PlannedSectionPage section={section} />;
+      return inLoader(<PlannedSectionPage section={section} />);
   }
 }
 
@@ -179,6 +170,7 @@ function adminChildPath(path: string): string {
 export const routes: RouteObject[] = [
   {
     path: '/',
+    HydrateFallback: Loader,
     element: (
       <Suspense fallback={<Loader />}>
         <AppLayout />
@@ -208,7 +200,7 @@ export const routes: RouteObject[] = [
       // страницы унесло бы шапку с меню, и уйти можно было бы только «назад».
       {
         path: '/about/history-of-department',
-        element: <HistoryPage />,
+        lazy: lazyPage(() => import('@pages/HistoryPage')),
         errorElement: <RouteError />,
       },
       // Контакты. Смешанная страница, и потому своей записью, а не строкой
@@ -223,7 +215,7 @@ export const routes: RouteObject[] = [
       // а больше собирать его некому.
       {
         path: '/about/contacts',
-        element: <ContactsPage />,
+        lazy: lazyPage(() => import('@pages/ContactsPage')),
         errorElement: <RouteError />,
       },
       // Благодарности. Статическая, как история: список тех, кто делал
@@ -237,7 +229,7 @@ export const routes: RouteObject[] = [
       // лежит своей записью, а больше собирать его некому.
       {
         path: '/about/contributors',
-        element: <ContributorsPage />,
+        lazy: lazyPage(() => import('@pages/ContributorsPage')),
         errorElement: <RouteError />,
       },
       // Аспирантура. Смешанная страница, как контакты: текст приходит
@@ -251,7 +243,7 @@ export const routes: RouteObject[] = [
       // пагинатора, то есть знает его не только роутер.
       {
         path: POSTGRADUATE_ROUTE,
-        element: <PostgraduatePage />,
+        lazy: lazyPage(() => import('@pages/PostgraduatePage')),
         errorElement: <RouteError />,
       },
       // Новости. Публичные: ручка `GET /api/public/news` открыта всем,
@@ -267,8 +259,8 @@ export const routes: RouteObject[] = [
       {
         path: NEWS_ROUTE,
         children: [
-          { index: true, element: <NewsPage />, errorElement: <RouteError /> },
-          { path: ':id', element: <NewsDetailPage />, errorElement: <RouteError /> },
+          { index: true, lazy: lazyPage(() => import('@pages/NewsPage')), errorElement: <RouteError /> },
+          { path: ':id', lazy: lazyPage(() => import('@pages/NewsDetailPage')), errorElement: <RouteError /> },
         ],
       },
       // Объявления. Та же лента с другим `postType`; детальной страницы
@@ -276,7 +268,7 @@ export const routes: RouteObject[] = [
       // (`shared/config/routes.ts`).
       {
         path: ANNOUNCEMENTS_ROUTE,
-        element: <AnnouncementsPage />,
+        lazy: lazyPage(() => import('@pages/AnnouncementsPage')),
         errorElement: <RouteError />,
       },
       // Преподаватели. Публичные: ручки `GET /api/public/teachers` открыты
@@ -286,8 +278,8 @@ export const routes: RouteObject[] = [
       {
         path: TEACHERS_ROUTE,
         children: [
-          { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
-          { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
+          { index: true, lazy: lazyPage(() => import('@pages/TeachersPage')), errorElement: <RouteError /> },
+          { path: ':id', lazy: lazyPage(() => import('@pages/TeacherDetailPage')), errorElement: <RouteError /> },
         ],
       },
       // УВП. Публичный: ручка `GET /api/public/helpers` открыта всем.
@@ -296,7 +288,7 @@ export const routes: RouteObject[] = [
       // одной карточки обслуживает форму правки (блок 4), не посетителя.
       {
         path: HELPERS_ROUTE,
-        element: <HelpersPage />,
+        lazy: lazyPage(() => import('@pages/HelpersPage')),
         errorElement: <RouteError />,
       },
       // Конференции. Публичные: ручка `GET /api/public/conferences` открыта
@@ -306,8 +298,8 @@ export const routes: RouteObject[] = [
       {
         path: CONFERENCES_ROUTE,
         children: [
-          { index: true, element: <ConferencesPage />, errorElement: <RouteError /> },
-          { path: ':id', element: <ConferenceDetailPage />, errorElement: <RouteError /> },
+          { index: true, lazy: lazyPage(() => import('@pages/ConferencesPage')), errorElement: <RouteError /> },
+          { path: ':id', lazy: lazyPage(() => import('@pages/ConferenceDetailPage')), errorElement: <RouteError /> },
         ],
       },
       // Достижения кафедры. Публичные: ручка `GET /api/public/achievements`
@@ -319,8 +311,8 @@ export const routes: RouteObject[] = [
       {
         path: ACHIEVEMENTS_ROUTE,
         children: [
-          { index: true, element: <AchievementsPage />, errorElement: <RouteError /> },
-          { path: ':id', element: <AchievementDetailPage />, errorElement: <RouteError /> },
+          { index: true, lazy: lazyPage(() => import('@pages/AchievementsPage')), errorElement: <RouteError /> },
+          { path: ':id', lazy: lazyPage(() => import('@pages/AchievementDetailPage')), errorElement: <RouteError /> },
         ],
       },
       // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`
@@ -328,7 +320,10 @@ export const routes: RouteObject[] = [
       // только слагом и заголовком, оба лежат в таблице выше.
       ...EDITABLE_PAGES.map(({ path, slug, heading }) => ({
         path,
-        element: <EditablePagePage slug={slug} heading={heading} />,
+        lazy: async () => {
+          const { default: EditablePagePage } = await import('@pages/EditablePagePage');
+          return { Component: () => <EditablePagePage slug={slug} heading={heading} /> };
+        },
         errorElement: <RouteError />,
       })),
       // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
@@ -347,11 +342,16 @@ export const routes: RouteObject[] = [
           },
           {
             path: PERSONAL_ROUTE,
-            element: (
-              <ProtectedRoute>
-                <PersonalPage />
-              </ProtectedRoute>
-            ),
+            lazy: async () => {
+              const { default: PersonalPage } = await import('@pages/PersonalPage');
+              return {
+                Component: () => (
+                  <ProtectedRoute>
+                    <PersonalPage />
+                  </ProtectedRoute>
+                ),
+              };
+            },
             errorElement: <RouteError />,
           },
         ],
@@ -371,12 +371,12 @@ export const routes: RouteObject[] = [
         path: ADMIN_ROUTE,
         element: (
           <RoleRoute access="moderator">
-            <AdminLayout />
+            {inLoader(<AdminLayout />)}
           </RoleRoute>
         ),
         errorElement: <RouteError />,
         children: [
-          { index: true, element: <AdminHomePage /> },
+          { index: true, element: inLoader(<AdminHomePage />) },
           ...ADMIN_SECTIONS.map((section) => ({
             path: adminChildPath(section.path),
             // Второй `RoleRoute` внутри первого — только там, где раздел
@@ -408,18 +408,18 @@ export const routes: RouteObject[] = [
            */
           {
             path: `${adminChildPath(ADMIN_TEACHERS_ROUTE)}/new`,
-            element: <TeacherFormPage />,
+            element: inLoader(<TeacherFormPage />),
             errorElement: <RouteError />,
           },
           {
             path: `${adminChildPath(ADMIN_TEACHERS_ROUTE)}/:id`,
-            element: <TeacherFormPage />,
+            element: inLoader(<TeacherFormPage />),
             errorElement: <RouteError />,
           },
           // Адрес внутри админки, которого нет. Без него такой адрес
           // ловил бы корневой '*' и говорил «страница ещё не перенесена» —
           // про раздел, которого не существует вовсе.
-          { path: '*', element: <UnknownSectionPage /> },
+          { path: '*', element: inLoader(<UnknownSectionPage />) },
         ],
       },
       // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на
@@ -434,6 +434,7 @@ export const routes: RouteObject[] = [
   },
   {
     path: '/auth',
+    HydrateFallback: Loader,
     element: (
       <Suspense fallback={<Loader />}>
         <AuthLayout />
@@ -449,7 +450,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: LOGIN_ROUTE,
-        element: <LoginPage />,
+        lazy: lazyPage(() => import('@pages/LoginPage')),
       },
       // Роута /auth/logout нет: выход в контракте не серверный, а локальный —
       // забыть токен и очистить кэш. Это действие кнопки в меню профиля

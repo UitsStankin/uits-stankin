@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 
-import { setSmoothScrollPaused } from '@shared/lib/smoothScroll';
 import { useAppStore } from '@shared/store';
 
 export function useMenuSheet() {
@@ -16,12 +15,10 @@ export function useMenuSheet() {
     };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    setSmoothScrollPaused(true);
     document.addEventListener('keydown', onKeyDown);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      setSmoothScrollPaused(false);
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [isOpen, close]);

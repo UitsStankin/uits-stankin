@@ -63,7 +63,7 @@ export default function TeachersPage() {
       {isEmpty && (
         <StatusBlock
           title="Преподавателей пока нет"
-          description="Карточки сотрудников появятся здесь, как только их заведут."
+          description="Карточки преподавателей появятся здесь."
         />
       )}
 

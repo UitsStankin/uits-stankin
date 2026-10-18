@@ -1,5 +1,9 @@
+import { Link } from 'react-router';
+import { ArrowUpRight } from 'lucide-react';
+
+import { newsItemRoute } from '@shared/config/routes';
 import { pluralize } from '@shared/lib';
-import type { TeacherExams, TeacherSchedule } from '@shared/types';
+import type { News, TeacherExams, TeacherSchedule } from '@shared/types';
 
 import type { HomeListState } from '../model/useHomeContent';
 import { AnchorLink } from './AnchorLink';
@@ -8,21 +12,21 @@ interface StatsBentoProps {
   schedules: HomeListState<TeacherSchedule>;
   exams: HomeListState<TeacherExams>;
   teachers: HomeListState<unknown>;
-  news: HomeListState<unknown>;
+  news: HomeListState<News>;
   announcements: HomeListState<unknown>;
   conferences: HomeListState<unknown>;
   achievements: HomeListState<unknown>;
 }
 
-interface Cell {
+interface Stat {
   key: string;
   value: number;
   title: string;
   note: string;
   target: string;
-  tone: string;
-  big?: boolean;
 }
+
+const TONES = ['u-n1', 'u-n2', 'u-n3', 'u-n4'] as const;
 
 function countLessons(schedules: readonly TeacherSchedule[]): number {
   return schedules.reduce((sum, schedule) => sum + schedule.lessons.length, 0);
@@ -32,93 +36,104 @@ function countExams(exams: readonly TeacherExams[]): number {
   return exams.reduce((sum, item) => sum + item.exams.length, 0);
 }
 
-function buildCells(props: StatsBentoProps): Cell[] {
+function buildStats(props: StatsBentoProps): Stat[] {
   const lessons = countLessons(props.schedules.items);
   const exams = countExams(props.exams.items);
   const teachers = props.teachers.total;
   const posts = props.news.total + props.announcements.total;
   const events = props.conferences.total + props.achievements.total;
-  const cells: Cell[] = [];
+  const stats: Stat[] = [];
 
   if (lessons > 0) {
     const count = props.schedules.total;
-    cells.push({
+    stats.push({
       key: 'lessons',
       value: lessons,
       title: pluralize(lessons, ['пара в расписании', 'пары в расписании', 'пар в расписании']),
       note: `${count} ${pluralize(count, ['преподаватель', 'преподавателя', 'преподавателей'])} с загруженным расписанием`,
       target: 'schedule',
-      tone: 'n1',
-      big: true,
     });
   }
   if (teachers > 0) {
-    cells.push({
+    stats.push({
       key: 'teachers',
       value: teachers,
       title: pluralize(teachers, ['преподаватель', 'преподавателя', 'преподавателей']),
       note: 'карточки на сайте',
       target: 'people',
-      tone: 'n2',
     });
   }
   if (exams > 0) {
-    cells.push({
+    stats.push({
       key: 'exams',
       value: exams,
       title: pluralize(exams, ['экзамен', 'экзамена', 'экзаменов']),
       note: 'в расписании сессии',
       target: 'schedule',
-      tone: 'n3',
     });
   }
   if (posts > 0) {
-    cells.push({
+    stats.push({
       key: 'posts',
       value: posts,
       title: 'новостей и объявлений',
       note: `из них объявлений: ${props.announcements.total}`,
       target: 'news',
-      tone: 'n4',
     });
   }
   if (events > 0) {
-    cells.push({
+    stats.push({
       key: 'events',
       value: events,
       title: 'мероприятия и достижения',
       note: `конференций: ${props.conferences.total}, достижений: ${props.achievements.total}`,
       target: 'events',
-      tone: 'n2',
     });
   }
 
-  return cells;
+  return stats;
 }
 
 export function StatsBento(props: StatsBentoProps) {
-  const cells = buildCells(props);
-  if (cells.length === 0) return null;
+  const stats = buildStats(props);
+  if (stats.length === 0) return null;
+
+  const photoNews = props.news.items.find((item) => item.previewImageUrl);
 
   return (
     <section id="numbers" className="u-wrap u-numbers" aria-labelledby="h-numbers">
       <h2 id="h-numbers" className="u-section-title u-small">
         Кафедра в&nbsp;цифрах
       </h2>
-      <div className="u-bento">
-        {cells.map((cell) => (
-          <AnchorLink
-            key={cell.key}
-            target={cell.target}
-            className={cell.big ? 'u-bento-cell u-big' : 'u-bento-cell'}
-          >
-            <span className={`u-bento-num u-${cell.tone}`}>{cell.value}</span>
-            <span className="u-bento-label">
-              <strong>{cell.title}</strong>
-              {cell.note}
+      <div className={photoNews ? 'u-stats u-has-photo' : 'u-stats'}>
+        {photoNews?.previewImageUrl && (
+          <Link to={newsItemRoute(photoNews.id)} className="u-stat-photo">
+            <img
+              src={photoNews.previewImageUrl}
+              alt={photoNews.previewImageDescription ?? ''}
+              loading="lazy"
+              decoding="async"
+            />
+            <span className="u-stat-photo-text">
+              <small>Свежая новость</small>
+              <strong>{photoNews.title}</strong>
             </span>
-          </AnchorLink>
-        ))}
+          </Link>
+        )}
+        <ul className="u-stat-list">
+          {stats.map((stat, index) => (
+            <li key={stat.key}>
+              <AnchorLink target={stat.target} className="u-stat">
+                <span className={`u-stat-num ${TONES[index % TONES.length]}`}>{stat.value}</span>
+                <span className="u-stat-text">
+                  <strong>{stat.title}</strong>
+                  <small>{stat.note}</small>
+                </span>
+                <ArrowUpRight className="u-stat-arrow" size={20} aria-hidden />
+              </AnchorLink>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
