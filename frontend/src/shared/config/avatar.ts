@@ -16,4 +16,4 @@
  * продублированный в двух местах, разъедется при первой же чистке
  * `public/img` — а исчезнувшую картинку заметит не сборка, а посетитель.
  */
-export const DEFAULT_AVATAR_URL = '/img/avatars/default-user.png';
+export const DEFAULT_AVATAR_URL = '/img/avatars/default-user.svg';

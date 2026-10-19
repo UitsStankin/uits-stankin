@@ -70,7 +70,7 @@ export function useImageUpload(
  * (сеть, 5xx). Своё только у `429`: контракт кладёт срок ожидания
  * в `Retry-After`, и «повторите позже» без срока хуже, чем со сроком.
  */
-function describeUploadError(error: unknown): string {
+export function describeUploadError(error: unknown): string {
   if (!isApiError(error)) return 'Не удалось загрузить изображение. Попробуйте ещё раз.';
 
   if (error.status === 429 && error.retryAfter !== null) {

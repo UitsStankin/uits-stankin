@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, type InitialEntry } from 'react-router';
 import { render } from '@testing-library/react';
 
 /**
@@ -41,7 +41,7 @@ export function renderWithProviders(
   {
     route = '/',
     queryClient = createTestQueryClient(),
-  }: { route?: string; queryClient?: QueryClient } = {},
+  }: { route?: InitialEntry; queryClient?: QueryClient } = {},
 ) {
 
   function Providers({ children }: { children: ReactNode }) {

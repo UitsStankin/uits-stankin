@@ -49,3 +49,14 @@ export function imageFileOf(transfer: DataTransfer | null): File | null {
 
   return null;
 }
+
+/**
+ * Все картинки среди файлов: несколько фото, брошенные разом, станут
+ * каруселью. Правило отбора то же, что у `imageFileOf`.
+ */
+export function imageFilesOf(transfer: DataTransfer | null): File[] {
+  const files = transfer?.files;
+  if (!files) return [];
+
+  return Array.from(files).filter((file) => file.type.startsWith('image/'));
+}
