@@ -13,7 +13,9 @@ import type { AppLayoutProps } from './AppLayout.types';
  * Тема (светлая или тёмная), токены и контейнер нового дизайна действуют
  * на всём портале, кроме админки: её экраны собраны под светлую палитру
  * и своё поле отступов, поэтому там тема всегда светлая, переключателя
- * в шапке нет, а цвета и скругления остаются прежними.
+ * в шапке нет, а цвета и скругления берутся из брендовой палитры
+ * в более спокойном исполнении (`.u-admin`). Вместо публичной шапки
+ * и подвала у админки узкая рабочая полоса с ссылкой «На сайт».
  *
  * Шапка поверх первого экрана — только на главной. Пока подгружается
  * страница, сверху бежит тонкая полоса: клик не выглядит зависшим.
@@ -31,7 +33,7 @@ export default function AppLayout({ className }: AppLayoutProps) {
     <div
       className={cn(
         'u-site flex min-h-screen flex-col',
-        isAdmin ? 'bg-background-default text-text-default' : 'u-themed',
+        isAdmin ? 'u-admin' : 'u-themed',
         isHome && 'u-site--home',
         className
       )}
@@ -48,7 +50,7 @@ export default function AppLayout({ className }: AppLayoutProps) {
         />
       )}
 
-      <Header overlay={isHome} showThemeToggle={!isAdmin} />
+      <Header overlay={isHome} showThemeToggle={!isAdmin} admin={isAdmin} />
 
       {/* flex-1 прижимает подвал к низу на коротких страницах — иначе он
           висел бы посреди экрана. */}
@@ -57,7 +59,6 @@ export default function AppLayout({ className }: AppLayoutProps) {
         id="main"
         className={cn(
           'flex-1',
-          isAdmin && 'p-gutter-sm md:p-gutter lg:p-[1.875rem]',
           !isAdmin && 'u-route-in',
           !isAdmin && !isHome && 'u-wrap u-page'
         )}
@@ -66,7 +67,7 @@ export default function AppLayout({ className }: AppLayoutProps) {
         <Outlet />
       </main>
 
-      <Footer />
+      {!isAdmin && <Footer />}
 
       {/* Восстановление прокрутки. Роутер данных сам этого не делает: без
           компонента переход по ссылке сохраняет позицию скролла, и клик

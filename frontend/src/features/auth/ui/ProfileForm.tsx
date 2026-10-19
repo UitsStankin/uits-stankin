@@ -64,6 +64,7 @@ export function ProfileForm({
 
       <ImagePicker
         variant="avatar"
+        crop
         previewUrl={avatarPreviewUrl}
         isUploading={isUploadingAvatar}
         error={avatarError}

@@ -1,7 +1,7 @@
 import { onlineManager } from '@tanstack/react-query';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { authKeys } from '@features/auth/api/profileQuery';
 import {
@@ -424,9 +424,26 @@ describe('PersonalPage, правка профиля', () => {
     const { container } = renderPersonalPage(makeProfile());
 
     const form = await openEditor();
+    URL.createObjectURL = vi.fn(() => 'blob:photo');
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      fillRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback, type) => {
+      callback(new Blob(['x'], { type: type ?? 'image/png' }));
+    });
+
     fireEvent.change(screen.getByLabelText('Выбрать фото'), {
       target: { files: [new File(['x'], 'photo.png', { type: 'image/png' })] },
     });
+
+    const dialog = await screen.findByRole('dialog', { name: 'Обрезка фото' });
+    const photo = dialog.querySelector('img') as HTMLImageElement;
+    Object.defineProperty(photo, 'naturalWidth', { value: 800, configurable: true });
+    Object.defineProperty(photo, 'naturalHeight', { value: 600, configurable: true });
+    fireEvent.load(photo);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Применить' }));
 
     expect(await screen.findByRole('button', { name: 'Удалить фото' })).toBeInTheDocument();
     fireEvent.click(form.save);

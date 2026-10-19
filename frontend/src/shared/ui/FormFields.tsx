@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { useId, type ComponentProps, type ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 
 import { cn, errorId, hintId, labelId } from '@shared/lib';
@@ -49,6 +49,7 @@ export function FieldShell({
   label,
   error,
   labelAsText = false,
+  labelHidden = false,
   children,
 }: Pick<FieldBaseProps, 'id' | 'label' | 'error'> & {
   /**
@@ -59,9 +60,11 @@ export function FieldShell({
    * `aria-labelledby`, которому нужен `id` самой подписи.
    */
   labelAsText?: boolean;
+  /** Подпись видна только диктору: поле само говорит, что в нём. */
+  labelHidden?: boolean;
   children: React.ReactNode;
 }) {
-  const labelClass = 'text-base font-bold text-text-heading';
+  const labelClass = cn('text-base font-bold text-text-heading', labelHidden && 'sr-only');
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -202,5 +205,29 @@ export function CheckboxField({
         </p>
       )}
     </div>
+  );
+}
+
+/** Группа полей формы с заголовком: длинную форму читают по разделам, а не по полям. */
+export function FormSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  /** Строка под заголовком: что в этом разделе заполнять. */
+  hint?: string;
+  children: ReactNode;
+}) {
+  const titleId = useId();
+
+  return (
+    <section aria-labelledby={titleId} className="u-fsec">
+      <h2 id={titleId} className="u-fsec-title">
+        {title}
+      </h2>
+      {hint && <p className="u-fsec-hint">{hint}</p>}
+      {children}
+    </section>
   );
 }

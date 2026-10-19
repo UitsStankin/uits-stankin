@@ -1,8 +1,10 @@
-import type { ChangeEventHandler } from 'react';
+import { useEffect, useState, type ChangeEventHandler } from 'react';
 import { ImageIcon, LoaderCircle } from 'lucide-react';
 
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
-import { IMAGE_ACCEPT, IMAGE_HINT, cn } from '@shared/lib';
+import { IMAGE_ACCEPT, IMAGE_HINT, checkImageFile, cn } from '@shared/lib';
+
+import { ImageCropper } from './ImageCropper';
 
 interface ImagePickerProps {
   /**
@@ -24,6 +26,13 @@ interface ImagePickerProps {
    * убирать: «Удалить фото» под заглушкой ничего не значит.
    */
   onRemove?: () => void;
+  /** Перед отправкой открыть окно обрезки по квадрату. */
+  crop?: boolean;
+}
+
+interface PendingCrop {
+  file: File;
+  url: string;
 }
 
 const LABELS = {
@@ -55,15 +64,28 @@ export function ImagePicker({
   error,
   onSelect,
   onRemove,
+  crop = false,
 }: ImagePickerProps) {
   const labels = LABELS[variant];
+  const [pending, setPending] = useState<PendingCrop | null>(null);
+
+  useEffect(() => {
+    if (!pending) return;
+    return () => URL.revokeObjectURL(pending.url);
+  }, [pending]);
 
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     const file = event.target.files?.[0];
-    if (file) onSelect(file);
     // Тот же файл, выбранный второй раз (после ошибки загрузки), должен
     // снова вызвать `change` — а без сброса значения браузер промолчит.
     event.target.value = '';
+    if (!file) return;
+
+    if (!crop || checkImageFile(file) !== null) {
+      onSelect(file);
+      return;
+    }
+    setPending({ file, url: URL.createObjectURL(file) });
   };
 
   return (
@@ -125,6 +147,17 @@ export function ImagePicker({
           </p>
         )}
       </div>
+      {pending && (
+        <ImageCropper
+          file={pending.file}
+          url={pending.url}
+          onCancel={() => setPending(null)}
+          onApply={(cropped) => {
+            setPending(null);
+            onSelect(cropped);
+          }}
+        />
+      )}
     </div>
   );
 }

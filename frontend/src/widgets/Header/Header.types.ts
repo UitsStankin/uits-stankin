@@ -4,4 +4,6 @@ export interface HeaderProps {
   overlay?: boolean;
   /** Показывать переключатель темы: на страницах админки тема всегда светлая. */
   showThemeToggle?: boolean;
+  /** Узкая рабочая полоса админки: без листа меню, с ссылкой «На сайт». */
+  admin?: boolean;
 }

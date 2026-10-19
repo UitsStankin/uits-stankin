@@ -77,12 +77,14 @@ export function newsColumns({
         <div className="flex justify-end gap-1">
           <RowAction
             label={`Править запись «${row.original.title}»`}
+            text="Править"
             onClick={() => onEdit(row.original)}
             icon={<Pencil aria-hidden="true" className="size-4" />}
           />
 
           <RowAction
             label={`Удалить запись «${row.original.title}»`}
+            text="Удалить"
             onClick={() => onDelete(row.original)}
             tone="danger"
             icon={<Trash2 aria-hidden="true" className="size-4" />}

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { ArrowUpRight } from 'lucide-react';
 
 import { NAVIGATION } from '@shared/config/navigation';
+import { HOME_ROUTE } from '@shared/config/routes';
 import { cn } from '@shared/lib/cn';
 import { Logo } from '@shared/ui/Logo';
 import { useAuth, useLogout } from '@features/auth/session';
@@ -29,7 +31,12 @@ const MENU_GROUPS = buildMenuGroups(NAVIGATION);
  * Сами разделы живут в листе меню, который открывает кнопка: горизонтального
  * навбара больше нет.
  */
-export default function Header({ className, overlay = false, showThemeToggle = false }: HeaderProps) {
+export default function Header({
+  className,
+  overlay = false,
+  showThemeToggle = false,
+  admin = false,
+}: HeaderProps) {
   const { pathname } = useLocation();
   const { profile, canEdit, isLoading } = useAuth();
   const logout = useLogout();
@@ -63,7 +70,9 @@ export default function Header({ className, overlay = false, showThemeToggle = f
     };
   }, [overlay]);
 
-  const items = buildProfileMenu({ canManage: canEdit });
+  const items = buildProfileMenu({ canManage: canEdit }).filter(
+    (item) => !admin || item.key !== 'admin',
+  );
 
   // Имя и фамилия в контракте по отдельности могут быть `null`; склейка
   // через filter не напишет в шапке «Demo null». Нет обоих — логин.
@@ -102,12 +111,31 @@ export default function Header({ className, overlay = false, showThemeToggle = f
     <>
       <header
         ref={headerRef}
-        className={cn('u-top', overlay ? 'u-top--overlay' : 'u-top--flow', className)}
+        className={cn(
+          'u-top',
+          overlay ? 'u-top--overlay' : 'u-top--flow',
+          admin && 'u-top--admin',
+          className,
+        )}
       >
-        <div className="u-wrap u-top-row">
-          <Logo withDescriptor />
+        <div className={cn('u-top-row', admin ? 'u-top-row--admin' : 'u-wrap')}>
+          {admin ? (
+            <div className="u-top-brand">
+              <Logo />
+              <span className="u-top-tag">Управление сайтом</span>
+            </div>
+          ) : (
+            <Logo withDescriptor />
+          )}
 
           <div className="u-top-actions">
+            {admin && (
+              <Link to={HOME_ROUTE} className="u-btn-ghost u-nw u-top-site">
+                На сайт
+                <ArrowUpRight size={16} aria-hidden />
+              </Link>
+            )}
+
             {/* Три состояния, а не два: «вошёл», «ещё не знаем» и «не вошёл».
                 Среднее — это первые миллисекунды после перезагрузки страницы
                 с сохранённым токеном. */}
@@ -131,12 +159,14 @@ export default function Header({ className, overlay = false, showThemeToggle = f
 
             {showThemeToggle && <ThemeToggle />}
 
-            <MenuButton isOpen={menu.isOpen} onClick={menu.open} buttonRef={menuButtonRef} />
+            {!admin && (
+              <MenuButton isOpen={menu.isOpen} onClick={menu.open} buttonRef={menuButtonRef} />
+            )}
           </div>
         </div>
       </header>
 
-      {menu.isOpen && (
+      {!admin && menu.isOpen && (
         <MenuSheet
           groups={MENU_GROUPS}
           pathname={pathname}

@@ -55,12 +55,14 @@ export function helperColumns({
         <div className="flex justify-end gap-1">
           <RowAction
             label={`Править карточку «${helperFullName(row.original)}»`}
+            text="Править"
             onClick={() => onEdit(row.original)}
             icon={<Pencil aria-hidden="true" className="size-4" />}
           />
 
           <RowAction
             label={`Удалить карточку «${helperFullName(row.original)}»`}
+            text="Удалить"
             onClick={() => onDelete(row.original)}
             tone="danger"
             icon={<Trash2 aria-hidden="true" className="size-4" />}

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
 
@@ -109,5 +109,76 @@ describe('ImagePicker, аватар', () => {
 
     expect(container.querySelector('img')).toHaveAttribute('src', DEFAULT_AVATAR_URL);
     expect(screen.getByLabelText('Выбрать фото')).toBeInTheDocument();
+  });
+});
+
+describe('ImagePicker, обрезка', () => {
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:photo');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function pick(onSelect: (file: File) => void, crop: boolean) {
+    render(
+      <ImagePicker
+        variant="avatar"
+        crop={crop}
+        previewUrl={null}
+        isUploading={false}
+        error={null}
+        onSelect={onSelect}
+      />,
+    );
+  }
+
+  function choose(file: File) {
+    fireEvent.change(screen.getByLabelText('Выбрать фото'), { target: { files: [file] } });
+  }
+
+  it('с обрезкой не отдаёт файл наверх, пока окно не закрыто «Применить»', () => {
+    const onSelect = vi.fn();
+    pick(onSelect, true);
+
+    choose(new File(['x'], 'photo.jpg', { type: 'image/jpeg' }));
+
+    expect(screen.getByRole('dialog', { name: 'Обрезка фото' })).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('«Отмена» закрывает окно и ничего не отправляет', () => {
+    const onSelect = vi.fn();
+    pick(onSelect, true);
+    choose(new File(['x'], 'photo.jpg', { type: 'image/jpeg' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('файл не того формата идёт наверх сразу, чтобы форма объяснила отказ', () => {
+    const onSelect = vi.fn();
+    pick(onSelect, true);
+    const gif = new File(['x'], 'anim.gif', { type: 'image/gif' });
+
+    choose(gif);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onSelect).toHaveBeenCalledWith(gif);
+  });
+
+  it('без обрезки отдаёт файл сразу, как раньше', () => {
+    const onSelect = vi.fn();
+    pick(onSelect, false);
+    const photo = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+
+    choose(photo);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onSelect).toHaveBeenCalledWith(photo);
   });
 });

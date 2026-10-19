@@ -103,17 +103,16 @@ export default function DataTable<TData extends RowData>({
         className="overflow-x-auto"
       >
         <table
-          className={cn(
-            'w-full min-w-[36rem] text-base transition-opacity',
-            isSwitching && 'opacity-50',
-          )}
+          role="table"
+          className={cn('u-dt-table w-full text-base transition-opacity', isSwitching && 'opacity-50')}
           // Иначе диктор прочитает строки прошлой страницы как актуальные.
           aria-busy={isSwitching}
         >
-          <thead>
+          <thead role="rowgroup">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
                 key={headerGroup.id}
+                role="row"
                 className="border-b border-default text-left align-bottom text-text-heading"
               >
                 {headerGroup.headers.map((header) => {
@@ -122,8 +121,12 @@ export default function DataTable<TData extends RowData>({
                   return (
                     <th
                       key={header.id}
+                      role="columnheader"
                       scope="col"
-                      className="px-3 py-2.5 font-bold"
+                      className={cn(
+                        'px-3 py-2.5 font-bold',
+                        header.column.id === 'actions' && 'pr-[1.375rem] text-right',
+                      )}
                       // Диктор объявляет направление сортировки колонки
                       // только по этому атрибуту — стрелка ему не видна.
                       aria-sort={
@@ -154,11 +157,20 @@ export default function DataTable<TData extends RowData>({
             ))}
           </thead>
 
-          <tbody>
+          <tbody role="rowgroup">
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-b border-default align-top last:border-b-0">
+              <tr
+                key={row.id}
+                role="row"
+                className="border-b border-default align-top last:border-b-0"
+              >
                 {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-3">
+                  <td
+                    key={cell.id}
+                    role="cell"
+                    data-label={columnLabel(cell.column.id, cell.column.columnDef.header)}
+                    className="px-3 py-3"
+                  >
                     <table.FlexRender cell={cell} />
                   </td>
                 ))}
@@ -169,6 +181,10 @@ export default function DataTable<TData extends RowData>({
       </div>
     </div>
   );
+}
+
+function columnLabel(columnId: string, header: unknown): string | undefined {
+  return columnId !== 'actions' && typeof header === 'string' ? header : undefined;
 }
 
 /**

@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
+
+import { cn } from '@shared/lib/cn';
 
 interface RowActionProps {
   /**
@@ -7,38 +10,58 @@ interface RowActionProps {
    * одинаково, и выбрать из них нужную нельзя.
    */
   label: string;
+  /** Слово на кнопке: «Править», «Удалить». Должно открывать `label`. */
+  text: string;
   onClick: () => void;
   icon: ReactNode;
   /** `danger` — для необратимого: удаления. */
   tone?: 'default' | 'danger';
 }
 
+function rowActionClass(tone: 'default' | 'danger'): string {
+  return cn('u-adm-act', tone === 'danger' && 'u-adm-act--danger');
+}
+
 /**
- * Кнопка действия в строке таблицы админки — «Править», «Удалить».
+ * Кнопка действия в строке таблицы админки — «Править», «Удалить»:
+ * значок и слово. Полное имя с записью лежит в `aria-label` для диктора
+ * и в `title` для того, кто навёл мышь.
  *
- * Иконка без подписи: двадцать строк по две подписи — это сорок слов,
- * из которых ни одно не помогает найти нужную строку. Имя при этом есть
- * всегда — в `aria-label` для диктора и в `title` для того, кто навёл
- * мышь и не узнал иконку.
- *
- * В `shared/ui`, а не в разделе дисциплин: те же две кнопки будут
- * в каждой таблице админки (F-43…F-46), и разошедшиеся копии — это
- * разные размеры кнопки в соседних разделах.
+ * В `shared/ui`, а не в разделе дисциплин: те же две кнопки стоят
+ * в каждой таблице админки, и разошедшиеся копии — это разные размеры
+ * кнопки в соседних разделах.
  */
-export function RowAction({ label, onClick, icon, tone = 'default' }: RowActionProps) {
+export function RowAction({ label, text, onClick, icon, tone = 'default' }: RowActionProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={
-        tone === 'danger'
-          ? 'rounded p-2 text-text-muted transition-colors hover:bg-danger/10 hover:text-danger'
-          : 'rounded p-2 text-text-muted transition-colors hover:bg-background-default hover:text-primary'
-      }
+      className={rowActionClass(tone)}
     >
       {icon}
+      <span>{text}</span>
     </button>
+  );
+}
+
+/** То же, что `RowAction`, но переход по адресу: ссылку можно открыть в новой вкладке. */
+export function RowActionLink({
+  label,
+  text,
+  to,
+  icon,
+}: {
+  label: string;
+  text: string;
+  to: string;
+  icon: ReactNode;
+}) {
+  return (
+    <Link to={to} aria-label={label} title={label} className={rowActionClass('default')}>
+      {icon}
+      <span>{text}</span>
+    </Link>
   );
 }

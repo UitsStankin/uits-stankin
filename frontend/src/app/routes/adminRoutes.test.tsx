@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -39,6 +39,37 @@ afterEach(() => {
   clearSession();
 });
 
+describe('каркас админки', () => {
+  it('рисует рабочую полосу вместо публичных шапки и подвала', async () => {
+    renderAt('/admin');
+
+    expect(await screen.findByRole('link', { name: /На сайт/ })).toHaveAttribute('href', '/');
+    expect(screen.getByText('Управление сайтом')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Открыть меню' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(await screen.findByRole('navigation', { name: 'Разделы админки' })).toBeInTheDocument();
+  });
+
+  it('на главной даёт готовые разделы со словами и одной строкой «Скоро» для остальных', async () => {
+    renderAt('/admin');
+
+    expect(await screen.findByRole('heading', { name: 'Управление сайтом' })).toBeInTheDocument();
+    expect(screen.getByText(/Опубликовать новость или объявление/)).toBeInTheDocument();
+    expect(screen.getByText(/^Скоро: конференции, достижения кафедры/)).toBeInTheDocument();
+    expect(screen.queryByText(/F-\d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/учётные записи\./)).not.toBeInTheDocument();
+  });
+
+  it('не предлагает в меню профиля админ-панель, пока человек в ней', async () => {
+    renderAt('/admin');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Пётр Петров/ }));
+
+    expect(screen.getByRole('link', { name: 'Личный кабинет' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Админ-панель' })).not.toBeInTheDocument();
+  });
+});
+
 describe('адреса админки', () => {
   it('у ненаписанного раздела показывает его тикет, а не «страница не найдена»', async () => {
     // Конференции, а не новости: на новостях эта проверка стояла до F-43,
@@ -49,8 +80,8 @@ describe('адреса админки', () => {
     // Ссылка в меню живая с самого начала: набор разделов — это карта
     // работ блока 4, и видеть её целиком полезнее, чем меню, растущее
     // по одному пункту.
-    expect(await screen.findByText('Раздел ещё не сделан')).toBeInTheDocument();
-    expect(screen.getByText(/F-45/)).toBeInTheDocument();
+    expect(await screen.findByText('Раздел скоро появится')).toBeInTheDocument();
+    expect(screen.queryByText(/F-\d+/)).not.toBeInTheDocument();
   });
 
   it('у несуществующего раздела говорит, что раздела нет', async () => {

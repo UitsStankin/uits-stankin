@@ -14,8 +14,9 @@ interface ModalProps {
    * запись из таблицы, и таблица остаётся видна рядом.
    * `center` — окно посреди экрана: им спрашивают подтверждение, и рядом
    * смотреть не на что.
+   * `page` — на весь экран: для длинного текста, которому тесно в панели.
    */
-  placement?: 'side' | 'center';
+  placement?: 'side' | 'center' | 'page';
   /**
    * Идёт запрос: окно нельзя закрыть ни подложкой, ни Escape. Закрытое
    * на полпути, оно оставило бы человека без ответа, сохранилось ли
@@ -74,12 +75,18 @@ export default function Modal({
         tabIndex={-1}
         className={cn(
           'relative z-modal flex max-h-full flex-col overflow-y-auto bg-surface shadow-lg',
-          placement === 'side'
-            ? 'ml-auto h-full w-full max-w-xl animate-slide-in-right'
-            : 'm-auto w-full max-w-md rounded animate-fade-in',
+          placement === 'side' && 'ml-auto h-full w-full max-w-xl animate-slide-in-right',
+          placement === 'center' && 'm-auto w-full max-w-md rounded animate-fade-in',
+          placement === 'page' && 'h-full w-full bg-background-default animate-fade-in',
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-default px-gutter py-4">
+        <div
+          className={cn(
+            'flex shrink-0 items-start justify-between gap-4 border-b border-default px-gutter py-4',
+            placement === 'page' &&
+              'sticky top-0 z-10 h-14 items-center bg-surface px-gutter-sm py-0 md:px-gutter',
+          )}
+        >
           <h2 id={titleId} className="text-h5 text-text-heading">
             {title}
           </h2>
@@ -97,7 +104,15 @@ export default function Modal({
 
         {/* `data-modal-body` — метка для переноса фокуса: он ставится
             на первое поле содержимого, а не на крестик в шапке. */}
-        <div data-modal-body className="flex flex-1 flex-col px-gutter py-gutter-sm">
+        <div
+          data-modal-body
+          className={cn(
+            'flex flex-1 flex-col',
+            placement === 'page'
+              ? 'px-gutter-sm pt-gutter md:px-gutter'
+              : 'px-gutter py-gutter-sm',
+          )}
+        >
           {children}
         </div>
       </div>

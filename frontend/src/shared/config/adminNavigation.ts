@@ -28,6 +28,8 @@ export interface AdminSection {
   path: string;
   /** Кому раздел показывать и кого пускать внутрь. */
   access: AdminAccess;
+  /** Одна строка о том, что делают в разделе: подпись под названием на главной админки. */
+  hint?: string;
   /**
    * Тикет, с которым раздел появится. У готовых разделов поля нет —
    * по нему же роутер отличает настоящую страницу от заглушки.
@@ -64,6 +66,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     icon: Newspaper,
     path: ADMIN_NEWS_ROUTE,
     access: 'moderator',
+    hint: 'Опубликовать новость или объявление, исправить или убрать запись',
   },
   {
     key: 'conferences',
@@ -87,6 +90,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     icon: Users,
     path: ADMIN_TEACHERS_ROUTE,
     access: 'moderator',
+    hint: 'Карточки преподавателей: фото, должность, контакты, дисциплины',
   },
   {
     key: 'helpers',
@@ -94,6 +98,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     icon: UserCog,
     path: ADMIN_HELPERS_ROUTE,
     access: 'moderator',
+    hint: 'Карточки сотрудников, которые помогают вести учебный процесс',
   },
   {
     key: 'postgraduates',
@@ -109,6 +114,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     icon: BookOpen,
     path: ADMIN_SUBJECTS_ROUTE,
     access: 'moderator',
+    hint: 'Список дисциплин, который выбирают в карточках преподавателей',
   },
   {
     key: 'pages',
@@ -143,4 +149,15 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
  */
 export function visibleAdminSections(isAdmin: boolean): readonly AdminSection[] {
   return ADMIN_SECTIONS.filter((section) => section.access !== 'admin' || isAdmin);
+}
+
+/** Готовые разделы и те, что только готовятся; порядок внутри групп прежний. */
+export function splitAdminSections(sections: readonly AdminSection[]): {
+  ready: AdminSection[];
+  soon: AdminSection[];
+} {
+  return {
+    ready: sections.filter((section) => !section.plannedIn),
+    soon: sections.filter((section) => section.plannedIn),
+  };
 }

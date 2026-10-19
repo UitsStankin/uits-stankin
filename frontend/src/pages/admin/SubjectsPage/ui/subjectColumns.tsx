@@ -55,12 +55,14 @@ export function subjectColumns({
         <div className="flex justify-end gap-1">
           <RowAction
             label={`Править дисциплину «${row.original.name}»`}
+            text="Править"
             onClick={() => onEdit(row.original)}
             icon={<Pencil aria-hidden="true" className="size-4" />}
           />
 
           <RowAction
             label={`Удалить дисциплину «${row.original.name}»`}
+            text="Удалить"
             onClick={() => onDelete(row.original)}
             tone="danger"
             icon={<Trash2 aria-hidden="true" className="size-4" />}

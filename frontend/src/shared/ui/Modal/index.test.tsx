@@ -145,6 +145,17 @@ describe('Modal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('на весь экран остаётся диалогом: с заголовком, фокусом внутри и закрытием по Escape', () => {
+    const { onClose } = renderModal({ placement: 'page' });
+
+    const dialog = screen.getByRole('dialog', { name: 'Новая дисциплина' });
+    expect(dialog).toHaveClass('w-full', 'h-full');
+    expect(screen.getByLabelText('Название')).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('закрывается кликом по подложке', () => {
     const { onClose } = renderModal();
 

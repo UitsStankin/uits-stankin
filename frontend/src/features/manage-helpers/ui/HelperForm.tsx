@@ -1,8 +1,7 @@
 import type { FormEventHandler } from 'react';
-import { LoaderCircle } from 'lucide-react';
 import type { FieldErrors, UseFormRegister } from 'react-hook-form';
 
-import { cn } from '@shared/lib';
+import { FormActions } from '@shared/ui/FormActions';
 import { TextField } from '@shared/ui/FormFields';
 import { ImagePicker } from '@shared/ui/ImagePicker';
 
@@ -110,33 +109,7 @@ export function HelperForm({
         registration={register('position')}
       />
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded bg-primary px-4 py-2.5',
-            'text-base font-bold text-white transition',
-            'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        >
-          {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
-          {isPending ? 'Сохраняем…' : submitLabel}
-        </button>
-
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isPending}
-          className={cn(
-            'rounded border border-default px-4 py-2.5 text-base font-bold text-text-heading',
-            'transition hover:border-primary hover:text-primary',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        >
-          Отмена
-        </button>
-      </div>
+      <FormActions isPending={isPending} onCancel={onCancel} submitLabel={submitLabel} />
     </form>
   );
 }

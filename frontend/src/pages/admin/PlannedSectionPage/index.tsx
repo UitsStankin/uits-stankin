@@ -6,11 +6,9 @@ import StatusBlock from '@shared/ui/StatusBlock';
 /**
  * Раздел админки, экран которого ещё не написан.
  *
- * Одна страница на все восемь: они отличаются названием и номером тикета,
- * а показывать им пока нечего. Заглушка портала (`pages/Placeholder`)
- * сюда не годится — та говорит «страница ещё не перенесена» про публичный
- * раздел старого сайта, а здесь речь о работе, которая запланирована
- * и названа по номеру.
+ * Одна страница на все такие разделы: они отличаются только названием.
+ * Заглушка портала (`pages/Placeholder`) сюда не годится — та говорит
+ * «страница ещё не перенесена» про публичный раздел старого сайта.
  */
 export default function PlannedSectionPage({ section }: { section: AdminSection }) {
   return (
@@ -18,9 +16,9 @@ export default function PlannedSectionPage({ section }: { section: AdminSection 
       <h1 className="u-page-title">{section.title}</h1>
 
       <StatusBlock
-        title="Раздел ещё не сделан"
-        description={`Экран управления появится с тикетом ${section.plannedIn ?? 'блока 4'}. Пока данные правятся через API.`}
-        action={<ActionLink to={ADMIN_ROUTE}>Ко всем разделам</ActionLink>}
+        title="Раздел скоро появится"
+        description="Он ещё готовится. Пока править здесь нечего."
+        action={<ActionLink to={ADMIN_ROUTE}>К началу</ActionLink>}
       />
     </div>
   );
