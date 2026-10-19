@@ -1,4 +1,4 @@
-import { loadEnv } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
 // Не из 'vite': `defineConfig` из 'vitest/config' — тот же самый,
 // но знает про секцию `test` ниже и типизирует её.
 import { defineConfig } from 'vitest/config'
@@ -6,6 +6,27 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path';
+
+function preloadBrandFonts(): Plugin {
+  return {
+    name: 'preload-brand-fonts',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, context) {
+        const files = Object.keys(context.bundle ?? {}).filter((name) =>
+          /jost-(latin|cyrillic)-wght-normal-.*\.woff2$/.test(name),
+        )
+
+        return files.map((file) => ({
+          tag: 'link',
+          attrs: { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `/${file}` },
+          injectTo: 'head' as const,
+        }))
+      },
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -30,6 +51,7 @@ export default defineConfig(({ mode }) => {
       // платили, ничего не получая взамен.
       babel({ presets: [reactCompilerPreset()] }),
       tailwindcss(),
+      preloadBrandFonts(),
     ],
     server: {
       proxy: {
