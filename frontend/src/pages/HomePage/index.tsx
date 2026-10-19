@@ -12,6 +12,7 @@ import { NewsTimeline } from './ui/NewsTimeline';
 import { PeopleList } from './ui/PeopleList';
 import { ProgramsBlock } from './ui/ProgramsBlock';
 import { PromoSlider } from './ui/PromoSlider';
+import { QuickTiles } from './ui/QuickTiles';
 import { ScheduleBand } from './ui/ScheduleBand';
 import { StatsBento } from './ui/StatsBento';
 
@@ -19,8 +20,8 @@ import { StatsBento } from './ui/StatsBento';
  * Титульная страница портала. Сборка: состояние из модели, разметка
  * из чистых компонентов, страница только соединяет одно с другим.
  *
- * Порядок разделов: первый экран с поиском расписания, «главное сейчас»,
- * расписание, уровни обучения, новости, мероприятия, преподаватели, цифры,
+ * Порядок разделов: первый экран с поиском расписания, ряд плиток быстрых
+ * ссылок, «главное сейчас», расписание, уровни обучения, новости, мероприятия, преподаватели, цифры,
  * контакты. Сначала то, за чем приходят (расписание, обучение), потом что
  * нового, в конце сама кафедра. Оба редактируемых блока (`home-before`,
  * `home-after`) остаются: первый — сразу под первым экраном, второй — перед
@@ -54,8 +55,9 @@ export default function HomePage() {
           setScheduleQuery(query);
           scrollToId('schedule');
         }}
-        onPickProgram={setProgram}
       />
+
+      <QuickTiles />
 
       <HomeBlock text={content.before} />
 
@@ -67,7 +69,6 @@ export default function HomePage() {
 
       <ScheduleBand
         schedules={content.schedules}
-        exams={content.exams}
         query={scheduleQuery}
         onQueryChange={setScheduleQuery}
       />

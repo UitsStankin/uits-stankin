@@ -1,6 +1,6 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
-import { cn, formatDate } from '@shared/lib';
+import { cn, feedLinkState, formatDate } from '@shared/lib';
 import type { News } from '@shared/types';
 
 import { authorLabel, postTypeLabel } from '../lib/newsPresenters';
@@ -22,6 +22,7 @@ interface NewsCardProps {
  * протаскивать через пропсы три готовые строки вместо одной сущности.
  */
 export function NewsCard({ news, href, className }: NewsCardProps) {
+  const location = useLocation();
   const date = formatDate(news.createdAt);
   const author = authorLabel(news.authorName);
 
@@ -66,6 +67,7 @@ export function NewsCard({ news, href, className }: NewsCardProps) {
         <h3 className="text-h5 text-text-heading">
           <Link
             to={href}
+            state={feedLinkState(location)}
             className="after:absolute after:inset-0 hover:text-primary focus-visible:text-primary"
           >
             {news.title}

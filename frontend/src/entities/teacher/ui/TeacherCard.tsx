@@ -34,7 +34,8 @@ export function TeacherCard({ teacher, href, className }: TeacherCardProps) {
     // и должность, и степень — диктор читал бы абзац вместо имени.
     <article
       className={cn(
-        'u-lift relative flex h-full flex-col items-center gap-3 rounded-lg bg-surface p-6 text-center',
+        'u-lift relative flex h-full items-center gap-4 rounded-lg bg-surface p-4 text-left',
+        'md:flex-col md:gap-3 md:p-6 md:text-center',
         'shadow-sm transition-shadow hover:shadow focus-within:shadow',
         className,
       )}
@@ -48,19 +49,21 @@ export function TeacherCard({ teacher, href, className }: TeacherCardProps) {
         // Двадцать карточек — двадцать фотографий; без lazy они уезжают
         // в сеть все разом ещё до первого экрана.
         loading="lazy"
-        className="h-28 w-28 shrink-0 rounded-full object-cover"
+        className="size-16 shrink-0 rounded-full object-cover md:size-28"
       />
 
-      <h3 className="text-h5 text-text-heading">
-        <Link
-          to={href}
-          className="after:absolute after:inset-0 hover:text-primary focus-visible:text-primary"
-        >
-          {fullName}
-        </Link>
-      </h3>
+      <div className="flex min-w-0 flex-col gap-1 md:items-center md:gap-3">
+        <h3 className="text-h5 text-text-heading">
+          <Link
+            to={href}
+            className="after:absolute after:inset-0 hover:text-primary focus-visible:text-primary"
+          >
+            {fullName}
+          </Link>
+        </h3>
 
-      <p className="text-base text-text-muted">{teacherCredentials(teacher)}</p>
+        <p className="text-base text-text-muted">{teacherCredentials(teacher)}</p>
+      </div>
     </article>
   );
 }

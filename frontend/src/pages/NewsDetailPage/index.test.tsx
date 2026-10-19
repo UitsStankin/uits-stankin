@@ -12,12 +12,12 @@ import NewsDetailPage from './index';
  * Проверяется через роут, а не голым рендером: `id` страница берёт из адреса
  * через `useParams`, а он пуст, пока запись не сопоставлена с шаблоном пути.
  */
-function renderDetail(id: number) {
+function renderDetail(id: number, state?: unknown) {
   return renderWithProviders(
     <Routes>
       <Route path="/about/news/:id" element={<NewsDetailPage />} />
     </Routes>,
-    { route: `/about/news/${id}` },
+    { route: { pathname: `/about/news/${id}`, state } },
   );
 }
 
@@ -55,5 +55,23 @@ describe('NewsDetailPage', () => {
       'href',
       '/about/news',
     );
+  });
+
+  /**
+   * Читатель пришёл из ленты: карточка положила в переход её адрес
+   * со страницей, и ссылка возвращает ровно туда, а не на первую страницу.
+   */
+  it('из ленты возвращает на ту же страницу ленты', async () => {
+    renderDetail(1, { feedUrl: '/about/news?page=3' });
+
+    const back = await screen.findByRole('link', { name: 'Ко всем новостям' });
+    expect(back).toHaveAttribute('href', '/about/news?page=3');
+  });
+
+  it('адрес не из портала в состоянии игнорирует', async () => {
+    renderDetail(1, { feedUrl: 'https://example.com/' });
+
+    const back = await screen.findByRole('link', { name: 'Ко всем новостям' });
+    expect(back).toHaveAttribute('href', '/about/news');
   });
 });

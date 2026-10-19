@@ -1,29 +1,28 @@
 import { useState, type KeyboardEvent } from 'react';
-import { Link } from 'react-router';
-import { ArrowUpRight, CalendarDays, GraduationCap } from 'lucide-react';
 
 import { pluralize } from '@shared/lib';
+import { useMediaQuery } from '@shared/lib/useMediaQuery';
 import { Button } from '@shared/ui/brand/Button';
 import {
   WEEK_DAYS,
   classStartTime,
   findLessons,
-  lessonPeriod,
   shortName,
   trimSeconds,
   type DayNumber,
   type FoundLesson,
 } from '@entities/schedule';
-import type { TeacherExams, TeacherSchedule } from '@shared/types';
+import type { TeacherSchedule } from '@shared/types';
 
 import type { HomeListState } from '../model/useHomeContent';
+import { groupByDiscipline } from '../lib/groupLessons';
+import { ScheduleLine } from './ScheduleLine';
+import { ScheduleSheet } from './ScheduleSheet';
 
-const SCHEDULE_SUMMARY_ROUTE = '/educational-activities/schedule/schedule-summary';
-const EXAMS_ROUTE = '/educational-activities/schedule/schedule-exams';
+const WIDE_QUERY = '(min-width: 1100px)';
 
 interface ScheduleBandProps {
   schedules: HomeListState<TeacherSchedule>;
-  exams: HomeListState<TeacherExams>;
   query: string;
   onQueryChange: (query: string) => void;
 }
@@ -41,10 +40,25 @@ function helpText(schedules: HomeListState<TeacherSchedule>): string {
   return `Загружено расписаний: ${schedules.items.length}, пар: ${lessons}. Источник: PDF-расписания кафедры.`;
 }
 
-export function ScheduleBand({ schedules, exams, query, onQueryChange }: ScheduleBandProps) {
-  const examCount = exams.items.reduce((sum, item) => sum + item.exams.length, 0);
+export function ScheduleBand({ schedules, query, onQueryChange }: ScheduleBandProps) {
+  const [draft, setDraft] = useState(query);
+  const [shownQuery, setShownQuery] = useState(query);
   const lessons = findLessons(schedules.items, query);
   const normalized = query.trim().toLowerCase();
+  const typed = draft.trim().toLowerCase();
+  const picks = typed
+    ? schedules.items.filter((schedule) => schedule.teacherName.toLowerCase().includes(typed))
+    : schedules.items;
+
+  if (query !== shownQuery) {
+    setShownQuery(query);
+    setDraft(query);
+  }
+
+  const apply = (next: string) => {
+    setDraft(next);
+    onQueryChange(next);
+  };
 
   return (
     <section id="schedule" className="u-band" aria-labelledby="h-schedule">
@@ -62,7 +76,10 @@ export function ScheduleBand({ schedules, exams, query, onQueryChange }: Schedul
           <form
             className="u-sched-form"
             role="search"
-            onSubmit={(event) => event.preventDefault()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              onQueryChange(draft);
+            }}
           >
             <label htmlFor="sched-q" className="u-label">
               Преподаватель или группа
@@ -72,15 +89,18 @@ export function ScheduleBand({ schedules, exams, query, onQueryChange }: Schedul
                 id="sched-q"
                 type="search"
                 autoComplete="off"
-                placeholder="фамилия или номер группы"
-                value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder="фамилия или группа"
+                value={draft}
+                onChange={(event) => {
+                  setDraft(event.target.value);
+                  if (event.target.value.trim() === '') onQueryChange('');
+                }}
               />
               <Button type="submit">Найти</Button>
             </div>
 
             <div className="u-chips u-picks">
-              {schedules.items.map((schedule) => {
+              {picks.map((schedule) => {
                 const name = surname(schedule.teacherName);
                 const isOn = normalized !== '' && name.toLowerCase() === normalized;
                 return (
@@ -89,7 +109,7 @@ export function ScheduleBand({ schedules, exams, query, onQueryChange }: Schedul
                     type="button"
                     className={isOn ? 'u-chip u-is-on' : 'u-chip'}
                     aria-pressed={isOn}
-                    onClick={() => onQueryChange(name)}
+                    onClick={() => apply(name)}
                   >
                     {shortName(schedule.teacherName)}
                   </button>
@@ -97,33 +117,6 @@ export function ScheduleBand({ schedules, exams, query, onQueryChange }: Schedul
               })}
             </div>
           </form>
-
-          <div className="u-sched-side">
-            <Link className="u-tile-link" to={SCHEDULE_SUMMARY_ROUTE}>
-              <span className="u-tile-icon" aria-hidden>
-                <CalendarDays size={22} />
-              </span>
-              <span className="u-tile-text">
-                <strong>Сводное расписание преподавателей</strong>
-                {schedules.items.length > 0 && <small>{schedules.items.length} преп.</small>}
-              </span>
-              <span className="u-tile-arrow" aria-hidden>
-                <ArrowUpRight size={18} />
-              </span>
-            </Link>
-            <Link className="u-tile-link" to={EXAMS_ROUTE}>
-              <span className="u-tile-icon" aria-hidden>
-                <GraduationCap size={22} />
-              </span>
-              <span className="u-tile-text">
-                <strong>Расписание экзаменов</strong>
-                {examCount > 0 && <small>{examCount} экз.</small>}
-              </span>
-              <span className="u-tile-arrow" aria-hidden>
-                <ArrowUpRight size={18} />
-              </span>
-            </Link>
-          </div>
         </div>
 
         {normalized !== '' && <ScheduleInbox key={normalized} lessons={lessons} />}
@@ -141,7 +134,7 @@ function defaultDay(lessons: readonly FoundLesson[]): DayNumber | null {
 }
 
 function ScheduleInbox({ lessons }: { lessons: readonly FoundLesson[] }) {
-  const [picked, setPicked] = useState<DayNumber | null>(null);
+  const isWide = useMediaQuery(WIDE_QUERY);
 
   if (lessons.length === 0) {
     return (
@@ -152,6 +145,12 @@ function ScheduleInbox({ lessons }: { lessons: readonly FoundLesson[] }) {
       </div>
     );
   }
+
+  return isWide ? <ScheduleSheet lessons={lessons} /> : <ScheduleDays lessons={lessons} />;
+}
+
+function ScheduleDays({ lessons }: { lessons: readonly FoundLesson[] }) {
+  const [picked, setPicked] = useState<DayNumber | null>(null);
 
   const counts = WEEK_DAYS.map((day) => lessons.filter((l) => l.weekNumber === day.number).length);
   const activeDay = picked ?? defaultDay(lessons);
@@ -200,33 +199,35 @@ function ScheduleInbox({ lessons }: { lessons: readonly FoundLesson[] }) {
         <p className="u-inbox-summary">
           {`${activeName}: ${dayLessons.length} ${pluralize(dayLessons.length, ['пара', 'пары', 'пар'])} · всего найдено ${lessons.length}`}
         </p>
-        {dayLessons.map((lesson) => (
-          <LessonRow key={lesson.id} lesson={lesson} />
-        ))}
+        {Array.from(new Set(dayLessons.map((lesson) => lesson.classTime))).flatMap((time) =>
+          groupByDiscipline(dayLessons.filter((lesson) => lesson.classTime === time)).map((group) => (
+            <LessonGroupRow key={group[0].id} lessons={group} />
+          )),
+        )}
       </div>
     </div>
   );
 }
 
-function LessonRow({ lesson }: { lesson: FoundLesson }) {
-  const period = lessonPeriod(lesson);
+function LessonGroupRow({ lessons }: { lessons: readonly FoundLesson[] }) {
+  const head = lessons[0];
+  const details = [head.group, !head.byTeacher && head.teacher].filter(Boolean).join(' · ');
 
   return (
     <article className="u-mail">
       <span className="u-mail-time">
-        {trimSeconds(classStartTime(lesson.classTime))}
-        <small>{lesson.classTime}-я пара</small>
+        {trimSeconds(classStartTime(head.classTime))}
+        <small>{head.classTime}-я пара</small>
       </span>
       <div>
-        <div className="u-mail-name">{lesson.name}</div>
+        <div className="u-mail-name">{head.name}</div>
         <div className="u-mail-meta">
-          {lesson.type && <span className="u-mail-tag">{lesson.type}</span>}
-          {lesson.group && <span>{lesson.group}</span>}
-          {lesson.subgroup && <span>подгруппа {lesson.subgroup}</span>}
-          {lesson.cabinet && <span>ауд. {lesson.cabinet}</span>}
-          {!lesson.byTeacher && <span>{lesson.teacher}</span>}
-          {period && <span>{period}</span>}
+          {head.type && <span className="u-mail-tag">{head.type}</span>}
+          {details && <span>{details}</span>}
         </div>
+        {lessons.map((lesson) => (
+          <ScheduleLine key={lesson.id} lesson={lesson} />
+        ))}
       </div>
     </article>
   );

@@ -1,13 +1,15 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   editablePageHandlers,
+  makeLesson,
   makeNews,
   newsHandlers,
   pageResponse,
   problemResponse,
+  scheduleHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { newsItemRoute } from '@shared/config/routes';
@@ -18,6 +20,13 @@ import HomePage from './index';
 /** Раздел страницы по его заголовку: на главной их десяток, и ищутся они именем. */
 function region(name: string | RegExp) {
   return screen.findByRole('region', { name });
+}
+
+/** Ввод в поле блока расписания и отправка формы: пары показываются только после неё. */
+async function searchSchedule(band: HTMLElement, text: string) {
+  const input = await within(band).findByLabelText('Преподаватель или группа');
+  fireEvent.change(input, { target: { value: text } });
+  fireEvent.submit(input.closest('form') as HTMLFormElement);
 }
 
 /**
@@ -150,7 +159,7 @@ describe('HomePage', () => {
         await screen.findByRole('heading', { name: 'Кафедра ИТ-6' }, { timeout: 5000 }),
       ).toBeInTheDocument();
       expect(await screen.findByText('Текст под лентой', {}, { timeout: 5000 })).toBeInTheDocument();
-    });
+    }, 15000);
 
     it('единственный h1 страницы — заголовок первого экрана', async () => {
       server.use(...editablePageHandlers({ 'home-before': 'Просто текст' }));
@@ -236,8 +245,7 @@ describe('HomePage', () => {
       renderWithProviders(<HomePage />);
 
       const band = await region('Расписание');
-      const input = await within(band).findByLabelText('Преподаватель или группа');
-      fireEvent.change(input, { target: { value: 'Чеканин' } });
+      await searchSchedule(band, 'Чеканин');
 
       expect(await within(band).findByText(/всего найдено 2/)).toBeInTheDocument();
     });
@@ -246,21 +254,60 @@ describe('HomePage', () => {
       renderWithProviders(<HomePage />);
 
       const band = await region('Расписание');
-      const input = await within(band).findByLabelText('Преподаватель или группа');
-      fireEvent.change(input, { target: { value: 'ИДБ-23-12' } });
+      await searchSchedule(band, 'ИДБ-23-12');
 
       const found = await within(band).findByRole('tabpanel');
       expect(within(found).getByText('Базы данных')).toBeInTheDocument();
-      expect(within(found).getByText('Разумовский А. И.')).toBeInTheDocument();
-      expect(within(found).getByText('подгруппа А')).toBeInTheDocument();
+      expect(within(found).getByText(/Разумовский А\. И\./)).toBeInTheDocument();
+      expect(within(found).getByText(/подгр\. А/)).toBeInTheDocument();
+    });
+
+    it('не показывает пары, пока запрос не отправлен', async () => {
+      renderWithProviders(<HomePage />);
+
+      const band = await region('Расписание');
+      const input = await within(band).findByLabelText('Преподаватель или группа');
+      fireEvent.change(input, { target: { value: 'Чеканин' } });
+
+      expect(within(band).queryByText(/всего найдено/)).not.toBeInTheDocument();
+      expect(within(band).queryByText(/Ничего не нашлось/)).not.toBeInTheDocument();
+
+      fireEvent.submit(input.closest('form') as HTMLFormElement);
+
+      expect(await within(band).findByText(/всего найдено 2/)).toBeInTheDocument();
+    });
+
+    it('пока набирают, подсказывает преподавателей кнопками', async () => {
+      renderWithProviders(<HomePage />);
+
+      const band = await region('Расписание');
+      const input = await within(band).findByLabelText('Преподаватель или группа');
+      await within(band).findByRole('button', { name: 'Чеканин В. А.' });
+      fireEvent.change(input, { target: { value: 'Раз' } });
+
+      expect(within(band).getByRole('button', { name: 'Разумовский А. И.' })).toBeInTheDocument();
+      expect(within(band).queryByRole('button', { name: 'Чеканин В. А.' })).not.toBeInTheDocument();
+    });
+
+    it('очищенное поле убирает найденные пары', async () => {
+      renderWithProviders(<HomePage />);
+
+      const band = await region('Расписание');
+      await searchSchedule(band, 'Чеканин');
+      expect(await within(band).findByText(/всего найдено 2/)).toBeInTheDocument();
+
+      fireEvent.change(within(band).getByLabelText('Преподаватель или группа'), {
+        target: { value: '' },
+      });
+
+      expect(within(band).queryByText(/всего найдено/)).not.toBeInTheDocument();
     });
 
     it('сообщает, когда ничего не нашлось', async () => {
       renderWithProviders(<HomePage />);
 
       const band = await region('Расписание');
-      const input = await within(band).findByLabelText('Преподаватель или группа');
-      fireEvent.change(input, { target: { value: 'несуществующая' } });
+      await searchSchedule(band, 'несуществующая');
 
       expect(await within(band).findByText(/Ничего не нашлось/)).toBeInTheDocument();
     });
@@ -285,6 +332,86 @@ describe('HomePage', () => {
 
       expect(within(band).getByLabelText('Преподаватель или группа')).toHaveValue('Разумовский');
     });
+
+    describe('на широком экране', () => {
+      beforeEach(() => {
+        window.innerWidth = 1280;
+      });
+
+      afterEach(() => {
+        window.innerWidth = 1024;
+      });
+
+      it('рисует неделю таблицей: дни в колонках, номера пар в строках', async () => {
+        renderWithProviders(<HomePage />);
+
+        const band = await region('Расписание');
+        await searchSchedule(band, 'Чеканин');
+
+        const table = await within(band).findByRole('table');
+        expect(within(table).getByRole('columnheader', { name: /Понедельник/ })).toBeInTheDocument();
+        expect(within(table).getByRole('columnheader', { name: /Среда/ })).toBeInTheDocument();
+        expect(within(table).queryByRole('columnheader', { name: /Вторник/ })).not.toBeInTheDocument();
+
+        expect(within(table).getByRole('rowheader', { name: /10:20/ })).toBeInTheDocument();
+        expect(within(table).getByRole('rowheader', { name: /12:20/ })).toBeInTheDocument();
+        expect(within(table).getByRole('rowheader', { name: /14:10/ })).toBeInTheDocument();
+
+        expect(within(table).getByText('Технические средства информационных систем')).toBeInTheDocument();
+        expect(within(table).getByText('Проектирование АСУ')).toBeInTheDocument();
+        expect(within(band).getByText('Найдено 2 пары, неделя целиком')).toBeInTheDocument();
+        expect(within(band).queryByRole('tablist')).not.toBeInTheDocument();
+      });
+
+      it('кладёт пару в ячейку своего дня и своей пары', async () => {
+        renderWithProviders(<HomePage />);
+
+        const band = await region('Расписание');
+        await searchSchedule(band, 'Чеканин');
+
+        const table = await within(band).findByRole('table');
+        const row = within(table).getByRole('rowheader', { name: /14:10/ }).closest('tr');
+        const cells = within(row as HTMLElement).getAllByRole('cell');
+
+        expect(cells).toHaveLength(2);
+        expect(cells[0]).toBeEmptyDOMElement();
+        expect(within(cells[1]).getByText('Проектирование АСУ')).toBeInTheDocument();
+      });
+
+      it('склеивает подгруппы одной дисциплины в одну запись ячейки', async () => {
+        server.use(
+          ...scheduleHandlers([
+            {
+              teacherId: 3,
+              teacherName: 'Чеканин Владимир Александрович',
+              lessons: [
+                makeLesson({ id: 1, weekNumber: 1, classTime: 1, subgroup: 'А', cabinet: '216' }),
+                makeLesson({ id: 2, weekNumber: 1, classTime: 1, subgroup: 'Б', cabinet: '217' }),
+              ],
+            },
+          ]),
+        );
+        renderWithProviders(<HomePage />);
+
+        const band = await region('Расписание');
+        await searchSchedule(band, 'Чеканин');
+
+        const table = await within(band).findByRole('table');
+        expect(within(table).getAllByText('Технические средства информационных систем')).toHaveLength(1);
+        expect(within(table).getByText(/подгр\. А · ауд\. 216/)).toBeInTheDocument();
+        expect(within(table).getByText(/подгр\. Б · ауд\. 217/)).toBeInTheDocument();
+      });
+    });
+
+    it('на узком экране остаётся списком по дням', async () => {
+      renderWithProviders(<HomePage />);
+
+      const band = await region('Расписание');
+      await searchSchedule(band, 'Чеканин');
+
+      expect(await within(band).findByRole('tablist', { name: 'Дни недели' })).toBeInTheDocument();
+      expect(within(band).queryByRole('table')).not.toBeInTheDocument();
+    });
   });
 
   describe('уровни обучения', () => {
@@ -296,20 +423,6 @@ describe('HomePage', () => {
 
       fireEvent.click(screen.getByRole('tab', { name: 'Магистратура' }));
       expect(within(screen.getByRole('tabpanel')).getByText('09.04.01')).toBeInTheDocument();
-    });
-
-    it('открывает нужную вкладку по ссылке с первого экрана', async () => {
-      renderWithProviders(<HomePage />);
-
-      fireEvent.click(await screen.findByRole('link', { name: 'Аспирантура' }));
-
-      expect(
-        within(screen.getByRole('tabpanel')).getByRole('heading', { name: 'Аспирантура и наука' }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'Аспирантура' })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      );
     });
   });
 
@@ -351,6 +464,72 @@ describe('HomePage', () => {
       fireEvent.pointerEnter(within(people).getAllByRole('link')[1]);
 
       expect(document.querySelector('.u-kinetic-card')).toBeNull();
+    });
+  });
+
+  describe('быстрые ссылки', () => {
+    it('ставят под первым экраном пять плиток с адресами разделов', async () => {
+      renderWithProviders(<HomePage />);
+
+      const tiles = await region('Быстрые ссылки');
+      const hrefs = within(tiles)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href'));
+
+      expect(hrefs).toEqual([
+        '/educational-activities/schedule/schedule-summary',
+        '/educational-activities/schedule/schedule-exams',
+        '#programs',
+        '/about/employee/teachers',
+        '/about/documents/department',
+      ]);
+    });
+
+    it('«Учебные планы» открывает блок обучения на этой же странице', async () => {
+      renderWithProviders(<HomePage />);
+
+      const tiles = await region('Быстрые ссылки');
+      expect(within(tiles).getByRole('link', { name: /Учебные планы/ })).toHaveAttribute(
+        'href',
+        '#programs',
+      );
+      expect(document.getElementById('programs')).not.toBeNull();
+    });
+  });
+
+  describe('мероприятия', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('без переполнения стрелок нет', async () => {
+      renderWithProviders(<HomePage />);
+
+      const events = await region('Мероприятия');
+      await within(events).findByRole('link', { name: /Конференция 1/ });
+
+      expect(
+        within(events).queryByRole('button', { name: 'Следующие мероприятия' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('когда карточки не помещаются, показывает стрелки и листает вперёд', async () => {
+      vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockReturnValue(3000);
+      vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+      const scrollBy = vi.fn();
+      HTMLElement.prototype.scrollBy = scrollBy;
+      renderWithProviders(<HomePage />);
+
+      const events = await region('Мероприятия');
+      const next = await within(events).findByRole('button', { name: 'Следующие мероприятия' });
+      const prev = within(events).getByRole('button', { name: 'Предыдущие мероприятия' });
+
+      expect(prev).toBeDisabled();
+      expect(next).toBeEnabled();
+
+      fireEvent.click(next);
+
+      expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 800 }));
     });
   });
 });

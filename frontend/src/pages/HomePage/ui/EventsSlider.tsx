@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 import { achievementRoute, conferenceRoute, CONFERENCES_ROUTE } from '@shared/config/routes';
 import { conferenceDatesLabel } from '@entities/conference';
@@ -7,6 +8,7 @@ import { formatDate } from '@shared/lib';
 import type { Achievement, Conference } from '@shared/types';
 
 import type { HomeListState } from '../model/useHomeContent';
+import { useTrackArrows } from '../model/useTrackArrows';
 import { SectionStatus } from './SectionStatus';
 
 interface EventItem {
@@ -51,6 +53,8 @@ interface EventsSliderProps {
 
 export function EventsSlider({ conferences, achievements }: EventsSliderProps) {
   const items = [...conferences.items.map(conferenceItem), ...achievements.items.map(achievementItem)];
+  const trackRef = useRef<HTMLDivElement>(null);
+  const arrows = useTrackArrows(trackRef, items.length);
   const status = {
     isLoading: conferences.isLoading || achievements.isLoading,
     isOffline: conferences.isOffline && achievements.isOffline,
@@ -76,14 +80,40 @@ export function EventsSlider({ conferences, achievements }: EventsSliderProps) {
 
       {items.length > 0 ? (
         <div className="u-wrap">
-          <div
-            className="u-events-track"
-            tabIndex={0}
-            aria-label="Мероприятия, листаются по горизонтали"
-          >
-            {items.map((item) => (
-              <EventCard key={item.key} item={item} />
-            ))}
+          <div className="u-events-stage">
+            <div
+              ref={trackRef}
+              className="u-events-track"
+              tabIndex={0}
+              aria-label="Мероприятия, листаются по горизонтали"
+            >
+              {items.map((item) => (
+                <EventCard key={item.key} item={item} />
+              ))}
+            </div>
+
+            {arrows.overflows && (
+              <div className="u-events-nav">
+                <button
+                  type="button"
+                  className="u-round-btn u-promo-arrow u-events-arrow--prev"
+                  aria-label="Предыдущие мероприятия"
+                  disabled={!arrows.canPrev}
+                  onClick={() => arrows.step(-1)}
+                >
+                  <ArrowLeft size={20} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="u-round-btn u-promo-arrow u-events-arrow--next"
+                  aria-label="Следующие мероприятия"
+                  disabled={!arrows.canNext}
+                  onClick={() => arrows.step(1)}
+                >
+                  <ArrowRight size={20} aria-hidden />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : (

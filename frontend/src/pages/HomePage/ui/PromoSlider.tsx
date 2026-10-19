@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { ArrowLeft, ArrowRight, Megaphone, Trophy, type LucideIcon } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Megaphone, Trophy, type LucideIcon } from 'lucide-react';
 
 import { achievementRoute, conferenceRoute, newsItemRoute } from '@shared/config/routes';
 import { ButtonLink } from '@shared/ui/brand/Button';
@@ -172,7 +172,7 @@ export function PromoSlider(props: PromoSliderProps) {
               aria-label="Предыдущая карточка"
               onClick={() => step(-1)}
             >
-              <ArrowLeft size={20} aria-hidden />
+              <ChevronLeft size={22} aria-hidden />
             </button>
             <button
               type="button"
@@ -180,7 +180,7 @@ export function PromoSlider(props: PromoSliderProps) {
               aria-label="Следующая карточка"
               onClick={() => step(1)}
             >
-              <ArrowRight size={20} aria-hidden />
+              <ChevronRight size={22} aria-hidden />
             </button>
           </div>
         )}

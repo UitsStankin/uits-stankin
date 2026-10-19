@@ -8,24 +8,15 @@ import { Button } from '@shared/ui/brand/Button';
 import type { News } from '@shared/types';
 
 import { BRAND_COLORS } from '@shared/config/brandColors';
-import type { ProgramKey } from '../lib/programs';
-import { AnchorLink } from './AnchorLink';
 
 const HERO_PATTERN_SEED = 1930;
-
-const HERO_PATHS: readonly { key: ProgramKey; label: string }[] = [
-  { key: 'bac', label: 'Бакалавриат 09.03.03' },
-  { key: 'mag', label: 'Магистратура 09.04.01' },
-  { key: 'phd', label: 'Аспирантура' },
-];
 
 interface HeroProps {
   announcement: News | undefined;
   onSearch: (query: string) => void;
-  onPickProgram: (key: ProgramKey) => void;
 }
 
-export function Hero({ announcement, onSearch, onPickProgram }: HeroProps) {
+export function Hero({ announcement, onSearch }: HeroProps) {
   const [value, setValue] = useState('');
 
   return (
@@ -69,7 +60,7 @@ export function Hero({ announcement, onSearch, onPickProgram }: HeroProps) {
               id="hero-q"
               type="search"
               autoComplete="off"
-              placeholder="фамилия или номер группы"
+              placeholder="фамилия или группа"
               value={value}
               onChange={(event) => setValue(event.target.value)}
             />
@@ -77,19 +68,6 @@ export function Hero({ announcement, onSearch, onPickProgram }: HeroProps) {
           </BorderBeam>
         </form>
 
-        <ul className="u-hero-paths">
-          {HERO_PATHS.map((path) => (
-            <li key={path.key}>
-              <AnchorLink
-                target="programs"
-                className="u-path u-nw"
-                onActivate={() => onPickProgram(path.key)}
-              >
-                {path.label}
-              </AnchorLink>
-            </li>
-          ))}
-        </ul>
       </div>
     </section>
   );

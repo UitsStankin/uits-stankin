@@ -54,12 +54,13 @@ export function useEndlessTrack(
       });
     };
 
+    const middleCopy = (copies - 1) / 2;
+
     const recenter = () => {
       if (isTouching) return;
-      const width = loopWidth();
-      const origin = centerOn(slides[middleStart]);
-      if (track.scrollLeft < origin - width / 2) track.scrollLeft += width;
-      else if (track.scrollLeft >= origin + width / 2) track.scrollLeft -= width;
+      markActive();
+      const shift = (middleCopy - Math.floor(current / count)) * loopWidth();
+      if (shift !== 0) track.scrollLeft += shift;
     };
 
     const onScroll = () => {
