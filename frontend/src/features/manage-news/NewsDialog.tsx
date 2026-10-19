@@ -32,7 +32,12 @@ export function NewsDialog({ news, onClose }: NewsDialogProps) {
   const form = useNewsForm(news, onClose);
 
   return (
-    <Modal title={news ? 'Правка записи' : 'Новая запись'} onClose={onClose} isBusy={form.isPending}>
+    <Modal
+      title={news ? 'Правка записи' : 'Новая запись'}
+      onClose={onClose}
+      isBusy={form.isPending}
+      placement="page"
+    >
       <NewsForm
         register={form.register}
         control={form.control}

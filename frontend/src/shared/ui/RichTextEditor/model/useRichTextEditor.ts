@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { useEditor, useEditorState, type Editor } from '@tiptap/react';
+import { useEditor, useEditorState, type Editor, type Extensions } from '@tiptap/react';
 
-import { cn, imageFileOf } from '@shared/lib';
-import { richTextClass } from '@shared/ui/richTextClass';
+import { cn, imageFilesOf } from '@shared/lib';
+import { richTextClass, richTextDocumentClass } from '@shared/ui/richTextClass';
 
 import { isEmptyHtml } from '../lib/html';
+import { blockPosition } from './blockPosition';
 import { richTextExtensions } from './extensions';
 
 /** Кнопки панели — они же команды редактора. */
@@ -40,11 +41,19 @@ interface RichTextEditorParams {
   describedBy: string | undefined;
   /** Поле не прошло проверку: диктор говорит об этом до чтения текста. */
   invalid: boolean;
+  /** Схема документа; не задана — обычная схема поля. */
+  extensions?: Extensions;
   /**
-   * Картинка пришла файлом — из буфера обмена или перетаскиванием.
+   * Картинки пришли файлами — из буфера обмена или перетаскиванием.
    * Не задан — картинок в поле нет, и такие события идут своим чередом.
+   * `pos` — место в документе, куда файлы уронили; у вставки из буфера
+   * его нет, и картинка встанет туда, где курсор.
    */
-  onImageFile?: (file: File) => void;
+  onImageFiles?: (files: File[], pos?: number) => void;
+  /** Вид поля: страница-документ крупнее и без рамки, короткое поле ниже обычного. */
+  variant?: 'field' | 'document' | 'compact';
+  /** Подсказка в пустом поле. */
+  placeholder?: string;
 }
 
 /**
@@ -77,7 +86,10 @@ export function useRichTextEditor({
   labelledBy,
   describedBy,
   invalid,
-  onImageFile,
+  extensions = richTextExtensions,
+  onImageFiles,
+  variant = 'field',
+  placeholder,
 }: RichTextEditorParams) {
   /**
    * Файл-картинка из события — в загрузку, минуя ProseMirror.
@@ -88,18 +100,18 @@ export function useRichTextEditor({
    * ProseMirror его не трогает; иначе оно идёт как обычно, в том числе
    * перетаскивание картинки внутри текста, у которого файлов нет.
    */
-  function takeImageFile(transfer: DataTransfer | null): boolean {
-    if (!onImageFile) return false;
+  function takeImageFiles(transfer: DataTransfer | null, pos?: number): boolean {
+    if (!onImageFiles) return false;
 
-    const file = imageFileOf(transfer);
-    if (!file) return false;
+    const files = imageFilesOf(transfer);
+    if (files.length === 0) return false;
 
-    onImageFile(file);
+    onImageFiles(files, pos);
     return true;
   }
 
   const editor = useEditor({
-    extensions: richTextExtensions,
+    extensions,
     content: value,
     editable,
     editorProps: {
@@ -107,8 +119,10 @@ export function useRichTextEditor({
         // Типографика — общая с показом на странице: модератор правит
         // ровно то, что увидит посетитель.
         class: cn(
-          richTextClass,
-          'min-h-40 px-3 py-2 focus:outline-none',
+          variant === 'document' ? richTextDocumentClass : richTextClass,
+          variant === 'document' && 'min-h-[24rem] px-5 py-4 focus:outline-none',
+          variant === 'compact' && 'min-h-24 px-3 py-2 focus:outline-none',
+          variant === 'field' && 'min-h-40 px-3 py-2 focus:outline-none',
           // Плейсхолдер prose'а: пустой абзац схлопывается в ноль высоты,
           // и по пустому полю нечем попасть курсором.
           'prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2',
@@ -116,13 +130,20 @@ export function useRichTextEditor({
         // contenteditable диктор читает как «правка», но без роли не
         // объявляет его полем ввода и не переключается в режим форм.
         role: 'textbox',
+        ...(placeholder
+          ? { 'data-placeholder': placeholder, style: `--u-placeholder: ${JSON.stringify(placeholder)}` }
+          : {}),
         'aria-multiline': 'true',
         'aria-labelledby': labelledBy,
         'aria-invalid': String(invalid),
         ...(describedBy ? { 'aria-describedby': describedBy } : {}),
       },
-      handlePaste: (_view, event) => takeImageFile(event.clipboardData),
-      handleDrop: (_view, event) => takeImageFile(event.dataTransfer),
+      handlePaste: (_view, event) => takeImageFiles(event.clipboardData),
+      handleDrop: (view, event) => {
+        const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+
+        return takeImageFiles(event.dataTransfer, at?.pos);
+      },
     },
     onUpdate: ({ editor }) => onChange(editorHtml(editor)),
     // Тесты и браузер одинаково рисуют редактор на первом рендере;
@@ -249,10 +270,23 @@ export function runToolbarAction(editor: Editor, action: Exclude<ToolbarAction, 
 }
 
 /**
- * Картинка блоком туда, где стоит курсор. Пустое `alt` уходит как `alt=""`,
- * а не снимается: без атрибута диктор читает адрес файла, с пустым —
- * пропускает картинку как украшение.
+ * Картинка блоком туда, где стоит курсор, а если дано `pos` — рядом
+ * с тем абзацем, куда файл уронили: перед ним, если попали в первую
+ * половину, и после него, если во вторую. Резать абзац посреди слова
+ * ради картинки незачем. Пустое `alt` уходит как `alt=""`, а не снимается:
+ * без атрибута диктор читает адрес файла, с пустым — пропускает картинку
+ * как украшение.
  */
-export function insertImage(editor: Editor, image: { src: string; alt: string }) {
-  editor.chain().focus().setImage(image).run();
+export function insertImage(
+  editor: Editor,
+  image: { src: string; alt: string },
+  pos?: number,
+) {
+  if (pos === undefined) {
+    editor.chain().focus().setImage(image).run();
+
+    return;
+  }
+
+  editor.chain().focus().insertContentAt(blockPosition(editor, pos), { type: 'image', attrs: image }).run();
 }

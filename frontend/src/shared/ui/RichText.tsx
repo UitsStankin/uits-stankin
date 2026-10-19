@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react';
+
 import { cn } from '@shared/lib';
 
+import { enhanceGalleries } from './enhanceGalleries';
 import { richTextClass } from './richTextClass';
 
 interface RichTextProps {
@@ -42,12 +45,25 @@ interface RichTextProps {
  * обязан чистить сам; если этого не сделают — сюда придёт `dompurify`,
  * и это осознанный размен, а не забытая дыра.
  *
+ * Таблица из одних фото — это фото-блок редактора: после вставки
+ * она оживает каруселью (`enhanceGalleries`).
+ *
  * Для `text` редактируемых страниц приём **не годится**: там в базе лежит
  * исходник Markdown, который бэкенд не санитизирует вовсе, — его рендерит
  * `shared/ui/Markdown.tsx` без `rehype-raw` (docs/API.md).
  */
 export function RichText({ html, className }: RichTextProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current) enhanceGalleries(ref.current);
+  }, [html]);
+
   return (
-    <div className={cn(richTextClass, className)} dangerouslySetInnerHTML={{ __html: html }} />
+    <div
+      ref={ref}
+      className={cn(richTextClass, className)}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }

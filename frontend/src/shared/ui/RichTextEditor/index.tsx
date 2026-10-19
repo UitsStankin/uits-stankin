@@ -64,8 +64,14 @@ const Editor = lazy(() => import('./Editor'));
  */
 export function RichTextEditor(props: RichTextEditorProps) {
   return (
-    <FieldShell id={props.id} label={props.label} error={props.error} labelAsText>
-      <Suspense fallback={<EditorPlaceholder />}>
+    <FieldShell
+      id={props.id}
+      label={props.label}
+      error={props.error}
+      labelAsText
+      labelHidden={props.variant === 'document'}
+    >
+      <Suspense fallback={<EditorPlaceholder variant={props.variant ?? 'field'} />}>
         <Editor {...props} />
       </Suspense>
     </FieldShell>
@@ -80,6 +86,13 @@ export function RichTextEditor(props: RichTextEditorProps) {
  * на быстрой сети она мелькает долями секунды, и надпись «Загружается»
  * успела бы только моргнуть.
  */
-function EditorPlaceholder() {
-  return <div aria-hidden="true" className="h-52 rounded border border-field bg-light" />;
+function EditorPlaceholder({ variant }: { variant: 'field' | 'document' | 'compact' }) {
+  if (variant === 'document') return <div aria-hidden="true" className="h-96 rounded bg-light" />;
+
+  return (
+    <div
+      aria-hidden="true"
+      className={`${variant === 'compact' ? 'h-32' : 'h-52'} rounded border border-field bg-light`}
+    />
+  );
 }

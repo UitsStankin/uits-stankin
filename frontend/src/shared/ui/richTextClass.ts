@@ -24,3 +24,9 @@ export const richTextClass = cn(
   'prose prose-sm max-w-none',
   'prose-headings:text-text-heading prose-a:text-primary prose-img:rounded',
 );
+
+/** Та же типографика, но в обычном размере: для поля-документа на всю страницу. */
+export const richTextDocumentClass = cn(
+  'prose max-w-none',
+  'prose-headings:text-text-heading prose-a:text-primary prose-img:rounded',
+);

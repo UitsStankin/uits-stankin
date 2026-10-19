@@ -1,10 +1,16 @@
-import type { FormEventHandler } from 'react';
-import { LoaderCircle } from 'lucide-react';
-import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import type { FormEventHandler, KeyboardEvent } from 'react';
+import {
+  Controller,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormRegisterReturn,
+} from 'react-hook-form';
 
 import { POST_TYPES, postTypeLabel } from '@entities/news';
-import { cn } from '@shared/lib';
-import { CheckboxField, SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
+import { cn, errorId } from '@shared/lib';
+import { FormActions } from '@shared/ui/FormActions';
+import { CheckboxField, SelectField, TextField } from '@shared/ui/FormFields';
 import { ImagePicker } from '@shared/ui/ImagePicker';
 import { RichTextEditor } from '@shared/ui/RichTextEditor';
 
@@ -31,19 +37,24 @@ interface NewsFormProps {
 
 const POST_TYPE_OPTIONS = POST_TYPES.map((value) => ({ value, label: postTypeLabel(value) }));
 
+function saveOnCtrlS(event: KeyboardEvent<HTMLFormElement>) {
+  if (!(event.ctrlKey || event.metaKey) || event.code !== 'KeyS') return;
+
+  event.preventDefault();
+  event.currentTarget.requestSubmit();
+}
+
 /**
- * Форма новости или объявления. Чистая: ничего не помнит, не запрашивает
+ * Форма новости или объявления, собранная как документ: заголовок
+ * и краткое описание без рамок прямо на странице, под ними текст
+ * на всю ширину колонки, а тип, обложка и флажок «Опубликовать» — справа
+ * отдельной колонкой параметров. Чистая: ничего не помнит, не запрашивает
  * и не решает, что считать ошибкой, — всё приходит пропсами из
  * `model/useNewsForm.ts`.
  *
- * Поля — общие (`shared/ui/FormFields`), те же, что у карточки ППС,
- * профиля и дисциплины. Содержание — общий rich-text редактор (F-41),
- * и раздел хранилища для его картинок называет здесь форма: права
- * на загрузку зависят от раздела, и знать про них редактору незачем.
- *
- * Всё в одну колонку, хотя у карточки ППС поля стоят по два в ряд:
- * панель формы шириной 576 px, и заголовок новости в половине этой
- * ширины обрезался бы на середине.
+ * Содержание — общий rich-text редактор в виде документа, и раздел
+ * хранилища для его картинок называет здесь форма: права на загрузку
+ * зависят от раздела, и знать про них редактору незачем.
  */
 export function NewsForm({
   register,
@@ -61,120 +72,154 @@ export function NewsForm({
   onCoverRemove,
 }: NewsFormProps) {
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
-      {formError && (
-        <p role="alert" className="rounded bg-danger/10 px-3 py-2 text-base text-danger">
-          {formError}
-        </p>
-      )}
+    <form onSubmit={onSubmit} onKeyDown={saveOnCtrlS} noValidate className="u-doc">
+      <div className="u-doc-main">
+        {formError && (
+          <p role="alert" className="rounded bg-danger/10 px-3 py-2 text-base text-danger">
+            {formError}
+          </p>
+        )}
 
-      <TextField
-        id="news-title"
-        label="Заголовок"
-        error={fieldErrors.title?.message}
-        registration={register('title')}
-      />
+        <BareField
+          id="news-title"
+          label="Заголовок"
+          placeholder="Заголовок"
+          className="u-doc-title"
+          error={fieldErrors.title?.message}
+          registration={register('title')}
+          onEnter={() => document.getElementById('news-short-description')?.focus()}
+        />
 
-      {/* Без пустого значения: тип записи обязателен, и «не выбрано»
-          предлагало бы отправить форму в состояние, которое сервер
-          отклонит. */}
-      <SelectField
-        id="news-post-type"
-        label="Тип записи"
-        options={POST_TYPE_OPTIONS}
-        error={fieldErrors.postType?.message}
-        registration={register('postType')}
-      />
+        <BareField
+          id="news-short-description"
+          label="Краткое описание"
+          placeholder="Краткое описание: оно показывается в ленте новостей"
+          className="u-doc-summary"
+          error={fieldErrors.shortDescription?.message}
+          registration={register('shortDescription')}
+        />
 
-      <TextAreaField
-        id="news-short-description"
-        label="Краткое описание"
-        rows={3}
-        error={fieldErrors.shortDescription?.message}
-        registration={register('shortDescription')}
-      />
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-base font-bold text-text-heading">Обложка</span>
-
-        <ImagePicker
-          variant="cover"
-          previewUrl={coverUrl}
-          isUploading={isUploadingCover}
-          error={coverError}
-          onSelect={onCoverSelect}
-          onRemove={onCoverRemove}
+        <Controller
+          name="content"
+          control={control}
+          render={({ field }) => (
+            <RichTextEditor
+              id="news-content"
+              label="Содержание"
+              variant="document"
+              placeholder="Начните писать текст новости…"
+              value={field.value}
+              onChange={field.onChange}
+              error={fieldErrors.content?.message}
+              disabled={isPending}
+              imageCategory="news"
+            />
+          )}
         />
       </div>
 
-      {/* Описание обложки спрашивается только вместе с обложкой: без
-          картинки оно ничего не описывает. Это текст атрибута `alt` —
-          то, что услышит диктор вместо картинки, и оставлять его пустым
-          можно, но осознанно. */}
-      {hasCover && (
-        <TextField
-          id="news-preview-image-description"
-          label="Описание обложки"
-          placeholder="Что на картинке"
-          error={fieldErrors.previewImageDescription?.message}
-          registration={register('previewImageDescription')}
+      <aside className="u-doc-side" aria-label="Параметры записи">
+        {/* Без пустого значения: тип записи обязателен, и «не выбрано»
+            предлагало бы отправить форму в состояние, которое сервер
+            отклонит. */}
+        <SelectField
+          id="news-post-type"
+          label="Тип записи"
+          options={POST_TYPE_OPTIONS}
+          error={fieldErrors.postType?.message}
+          registration={register('postType')}
         />
-      )}
 
-      <Controller
-        name="content"
-        control={control}
-        render={({ field }) => (
-          <RichTextEditor
-            id="news-content"
-            label="Содержание"
-            value={field.value}
-            onChange={field.onChange}
-            error={fieldErrors.content?.message}
-            disabled={isPending}
-            imageCategory="news"
+        <div className="flex flex-col gap-1.5">
+          <span className="text-base font-bold text-text-heading">Обложка</span>
+
+          <ImagePicker
+            variant="cover"
+            previewUrl={coverUrl}
+            isUploading={isUploadingCover}
+            error={coverError}
+            onSelect={onCoverSelect}
+            onRemove={onCoverRemove}
+          />
+        </div>
+
+        {/* Описание обложки спрашивается только вместе с обложкой: без
+            картинки оно ничего не описывает. Это текст атрибута `alt` —
+            то, что услышит диктор вместо картинки, и оставлять его пустым
+            можно, но осознанно. */}
+        {hasCover && (
+          <TextField
+            id="news-preview-image-description"
+            label="Описание обложки"
+            placeholder="Что на картинке"
+            error={fieldErrors.previewImageDescription?.message}
+            registration={register('previewImageDescription')}
           />
         )}
-      />
 
-      {/* Флажок рядом с кнопкой сохранения, а не в начале формы: это
-          последнее решение перед отправкой, и здесь его видно вместе
-          с тем, что оно означает. */}
-      <CheckboxField
-        id="news-display"
-        label="Опубликовать"
-        hint="Снятый флажок оставляет запись черновиком: на сайте её не видно."
-        error={fieldErrors.display?.message}
-        registration={register('display')}
-      />
+        <CheckboxField
+          id="news-display"
+          label="Опубликовать"
+          hint="Снятый флажок оставляет запись черновиком: на сайте её не видно."
+          error={fieldErrors.display?.message}
+          registration={register('display')}
+        />
+      </aside>
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded bg-primary px-4 py-2.5',
-            'text-base font-bold text-white transition',
-            'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        >
-          {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
-          {isPending ? 'Сохраняем…' : 'Сохранить'}
-        </button>
-
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isPending}
-          className={cn(
-            'rounded border border-default px-4 py-2.5 text-base font-bold text-text-heading',
-            'transition hover:border-primary hover:text-primary',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        >
-          Отмена
-        </button>
-      </div>
+      <FormActions isPending={isPending} onCancel={onCancel} />
     </form>
+  );
+}
+
+/**
+ * Поле без рамки для заголовка и краткого описания документа: строка
+ * растёт вместе с текстом, подпись есть только у диктора. Enter в нём
+ * не переводит строку, а передаёт фокус дальше, если ему сказали куда.
+ */
+function BareField({
+  id,
+  label,
+  placeholder,
+  className,
+  error,
+  registration,
+  onEnter,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  className: string;
+  error?: string;
+  registration: UseFormRegisterReturn;
+  onEnter?: () => void;
+}) {
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || !onEnter) return;
+
+    event.preventDefault();
+    onEnter();
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <textarea
+        id={id}
+        rows={1}
+        placeholder={placeholder}
+        className={cn('u-doc-bare', className)}
+        aria-invalid={error !== undefined}
+        aria-describedby={error && errorId(id)}
+        onKeyDown={onKeyDown}
+        {...registration}
+      />
+      {error && (
+        <p id={errorId(id)} className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

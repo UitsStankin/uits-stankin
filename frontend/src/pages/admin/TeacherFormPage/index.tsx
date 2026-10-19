@@ -9,6 +9,7 @@ import {
 } from '@features/manage-teachers';
 import { ADMIN_TEACHERS_ROUTE } from '@shared/config/routes';
 import type { Teacher } from '@shared/types';
+import { FormSection } from '@shared/ui/FormFields';
 import Loader from '@shared/ui/Loader';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
@@ -101,12 +102,8 @@ function TeacherEditor({ card, onDone }: { card: Teacher | null; onDone: () => v
         onAvatarSelect={form.onAvatarSelect}
         onAvatarRemove={form.onAvatarRemove}
         submitLabel={card ? 'Сохранить' : 'Создать'}
-        // Картинки в «Образовании» и «Повышении квалификации» — раздел
-        // `staff`; в кабинете этого пропса нет, потому что преподавателю
-        // раздел закрыт (docs/API.md, «Загрузка файлов»).
-        imageCategory="staff"
         beforeActions={
-          <>
+          <FormSection title="Дисциплины и учётная запись">
             <SubjectsField
               subjects={form.subjects}
               value={form.subjectIds}
@@ -123,7 +120,7 @@ function TeacherEditor({ card, onDone }: { card: Teacher | null; onDone: () => v
               error={form.accountsError}
               hasFailed={form.hasAccountsFailed}
             />
-          </>
+          </FormSection>
         }
       />
     </section>

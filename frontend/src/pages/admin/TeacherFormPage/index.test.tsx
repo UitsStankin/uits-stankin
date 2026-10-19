@@ -563,37 +563,39 @@ describe('TeacherFormPage, создание', () => {
 });
 
 /**
- * Картинки внутри «Образования» и «Повышения квалификации» — раздел
- * хранилища `staff` (B-5, приехал с T-79). Раздел закрыт от преподавателя,
- * поэтому кнопка есть только здесь, у модератора; в кабинете её нет
- * (проверка — в тестах личного кабинета).
+ * «Образование» и «Повышение квалификации» — короткие поля: пара строк
+ * текста со списком, а не статья. Фотографий в них не вставляют, поэтому
+ * загрузки картинок нет вовсе, а панель — только самое нужное.
  */
-describe('TeacherFormPage, картинки в rich-text полях', () => {
-  it('грузит картинку «Образования» в раздел staff', async () => {
-    renderForm('/admin/teachers/3');
+describe('TeacherFormPage, короткие rich-text поля', () => {
+  it('без загрузки картинок и с подсказкой, что писать', async () => {
+    renderForm('/admin/teachers/new');
 
-    // Ждём саму форму: редактор приезжает отдельным куском.
-    await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
+    const education = await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
 
-    const выбор = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
-    // Три: фото карточки и по одному у каждого rich-text поля.
-    expect(выбор).toHaveLength(3);
+    // Один выбор файла — фото карточки; у полей текста его нет.
+    expect(document.querySelectorAll('input[type="file"]')).toHaveLength(1);
+    expect(education.getAttribute('data-placeholder')).toMatch(/^Например:/);
+    expect(
+      screen.getByRole('textbox', { name: 'Повышение квалификации' }).getAttribute('data-placeholder'),
+    ).toMatch(/^Например:/);
+  });
 
-    fireEvent.change(выбор[1], {
-      target: { files: [new File(['x'], 'diplom.png', { type: 'image/png' })] },
-    });
+  it('панель короткая: жирный, курсив, списки, ссылка', async () => {
+    renderForm('/admin/teachers/new');
 
-    const описание = await screen.findByLabelText('Описание');
-    fireEvent.change(описание, { target: { value: 'Диплом' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Вставить' }));
-
-    // Раздел виден в ключе, который вернула загрузка: мок кладёт его туда,
-    // куда просили. Уйди запрос с разделом `news` — тут был бы `news`,
-    // а живой бэкенд ответил бы `403`.
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Образование' }).querySelector('img'),
-      ).toHaveAttribute('src', '/media/staff/uploaded-1.jpg'),
+    const toolbar = await screen.findByRole(
+      'toolbar',
+      { name: 'Форматирование: Образование' },
+      { timeout: 3000 },
     );
+
+    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Жирный',
+      'Курсив',
+      'Список',
+      'Нумерованный список',
+      'Ссылка',
+    ]);
   });
 });

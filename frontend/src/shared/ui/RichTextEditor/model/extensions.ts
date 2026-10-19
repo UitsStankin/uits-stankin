@@ -4,7 +4,11 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import StarterKit from '@tiptap/starter-kit';
 
+import type { FileCategory } from '@shared/types';
+
 import { isAllowedHref } from '../lib/html';
+import { Gallery } from './galleryNode';
+import { SlashMenu } from './slashMenu';
 
 /**
  * Схема редактора, подогнанная под белый список бэкенда.
@@ -33,6 +37,8 @@ export const richTextExtensions = [
      * иначе черта приезжала бы ещё и по Markdown-вводу «---».
      */
     horizontalRule: false,
+
+    dropcursor: { color: 'var(--u-brand-violet)', width: 2 },
 
     /*
      * Пустой абзац в конце документа. Нужен он затем, чтобы после
@@ -120,3 +126,23 @@ export const richTextExtensions = [
   Subscript,
   Superscript,
 ];
+
+/**
+ * Схема поля-документа: то же, что у обычного поля, но вместо штатной
+ * картинки — фото-блок с подписью и каруселью, плюс меню блоков по «/».
+ * Фото-блок разбирает и обычный `<img>`, поэтому старые тексты
+ * открываются без потерь.
+ */
+export function documentExtensions({
+  category,
+  onPickPhotos,
+}: {
+  category: FileCategory | undefined;
+  onPickPhotos: (() => void) | null;
+}) {
+  return [
+    ...richTextExtensions.filter((extension) => extension !== Image),
+    Gallery.configure({ category }),
+    SlashMenu.configure({ onPickPhotos }),
+  ];
+}

@@ -1,5 +1,4 @@
 import type { FormEventHandler, ReactNode } from 'react';
-import { LoaderCircle } from 'lucide-react';
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 
 import {
@@ -8,12 +7,10 @@ import {
   RANK_CODES,
   RANK_LABELS,
 } from '@shared/config/teacherDictionaries';
-import { cn } from '@shared/lib';
+import { FormActions } from '@shared/ui/FormActions';
+import { FormSection, SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
 import { ImagePicker } from '@shared/ui/ImagePicker';
-import { SelectField, TextAreaField, TextField } from '@shared/ui/FormFields';
 import { RichTextEditor } from '@shared/ui/RichTextEditor';
-
-import type { FileCategory } from '@shared/types';
 
 import type { TeacherCardFormValues } from '../model/teacherCardSchema';
 
@@ -52,22 +49,20 @@ interface TeacherCardFormProps {
   beforeActions?: ReactNode;
   /** Подпись кнопки отправки: у новой карточки это не «Сохранить». */
   submitLabel?: string;
-  /**
-   * Раздел хранилища для картинок внутри «Образования» и «Повышения
-   * квалификации». Не передан — кнопки «Картинка» у полей нет вовсе.
-   *
-   * Передаёт его только модератор, и это не забывчивость в кабинете:
-   * раздел `staff` преподавателю закрыт (docs/API.md, «Загрузка файлов»),
-   * то есть кнопка обещала бы ему `403` в ответ на выбранный файл.
-   * Разметку с картинками его форма при этом открывает и сохраняет —
-   * теряется только вставка новых.
-   */
-  imageCategory?: FileCategory;
 }
 
 const RICH_TEXT_FIELDS = [
-  { name: 'education', label: 'Образование' },
-  { name: 'qualification', label: 'Повышение квалификации' },
+  {
+    name: 'education',
+    label: 'Образование',
+    placeholder:
+      'Например: МГТУ «СТАНКИН», 2008, инженер по специальности «Информатика и вычислительная техника»',
+  },
+  {
+    name: 'qualification',
+    label: 'Повышение квалификации',
+    placeholder: 'Например: «Цифровые технологии в образовании», МГТУ «СТАНКИН», 2024, 72 часа',
+  },
 ] as const;
 
 const DEGREE_OPTIONS = DEGREE_CODES.map((code) => ({ value: code, label: DEGREE_LABELS[code] }));
@@ -101,187 +96,179 @@ export function TeacherCardForm({
   onAvatarRemove,
   beforeActions,
   submitLabel = 'Сохранить',
-  imageCategory,
 }: TeacherCardFormProps) {
   return (
-    <form onSubmit={onSubmit} noValidate className="mt-5 flex flex-col gap-5">
+    <form onSubmit={onSubmit} noValidate className="mt-5 flex flex-col gap-6">
       {formError && (
         <p role="alert" className="rounded bg-danger/10 px-3 py-2 text-base text-danger">
           {formError}
         </p>
       )}
 
-      {/* Фото: предпросмотр и выбор файла. Загрузка уходит сразу при
-          выборе, до «Сохранить», — в кружке то, что вернул сервер.
-          Кнопка удаления появляется, только если её дали: разбор
-          у пропса `onAvatarRemove`. */}
-      <ImagePicker
-        variant="avatar"
-        previewUrl={avatarPreviewUrl}
-        isUploading={isUploadingAvatar}
-        error={avatarError}
-        onSelect={onAvatarSelect}
-        onRemove={onAvatarRemove}
-      />
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <TextField
-          id="teacher-last-name"
-          label="Фамилия"
-          autoComplete="family-name"
-          error={fieldErrors.lastName?.message}
-          registration={register('lastName')}
-        />
-        <TextField
-          id="teacher-first-name"
-          label="Имя"
-          autoComplete="given-name"
-          error={fieldErrors.firstName?.message}
-          registration={register('firstName')}
-        />
-        <TextField
-          id="teacher-patronymic"
-          label="Отчество"
-          autoComplete="additional-name"
-          error={fieldErrors.patronymic?.message}
-          registration={register('patronymic')}
-        />
-        <TextField
-          id="teacher-position"
-          label="Должность"
-          error={fieldErrors.position?.message}
-          registration={register('position')}
+      <FormSection title="Основное">
+        {/* Фото: предпросмотр и выбор файла. Загрузка уходит сразу при
+            выборе, до «Сохранить», — в кружке то, что вернул сервер.
+            Кнопка удаления появляется, только если её дали: разбор
+            у пропса `onAvatarRemove`. */}
+        <ImagePicker
+          variant="avatar"
+          previewUrl={avatarPreviewUrl}
+          isUploading={isUploadingAvatar}
+          error={avatarError}
+          onSelect={onAvatarSelect}
+          onRemove={onAvatarRemove}
         />
 
-        <SelectField
-          id="teacher-degree"
-          label="Учёная степень"
-          emptyLabel="Без степени"
-          options={DEGREE_OPTIONS}
-          error={fieldErrors.degree?.message}
-          registration={register('degree')}
-        />
-        <SelectField
-          id="teacher-rank"
-          label="Учёное звание"
-          emptyLabel="Без звания"
-          options={RANK_OPTIONS}
-          error={fieldErrors.rank?.message}
-          registration={register('rank')}
-        />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            id="teacher-last-name"
+            label="Фамилия"
+            autoComplete="family-name"
+            error={fieldErrors.lastName?.message}
+            registration={register('lastName')}
+          />
+          <TextField
+            id="teacher-first-name"
+            label="Имя"
+            autoComplete="given-name"
+            error={fieldErrors.firstName?.message}
+            registration={register('firstName')}
+          />
+          <TextField
+            id="teacher-patronymic"
+            label="Отчество"
+            autoComplete="additional-name"
+            error={fieldErrors.patronymic?.message}
+            registration={register('patronymic')}
+          />
+          <TextField
+            id="teacher-position"
+            label="Должность"
+            error={fieldErrors.position?.message}
+            registration={register('position')}
+          />
+        </div>
+      </FormSection>
 
-        <TextField
-          id="teacher-experience"
-          label="Общий стаж, лет"
-          inputMode="numeric"
-          error={fieldErrors.experience?.message}
-          registration={register('experience')}
-        />
-        <TextField
-          id="teacher-professional-experience"
-          label="Стаж по специальности, лет"
-          inputMode="numeric"
-          error={fieldErrors.professionalExperience?.message}
-          registration={register('professionalExperience')}
-        />
+      <FormSection title="Степень и стаж">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <SelectField
+            id="teacher-degree"
+            label="Учёная степень"
+            emptyLabel="Без степени"
+            options={DEGREE_OPTIONS}
+            error={fieldErrors.degree?.message}
+            registration={register('degree')}
+          />
+          <SelectField
+            id="teacher-rank"
+            label="Учёное звание"
+            emptyLabel="Без звания"
+            options={RANK_OPTIONS}
+            error={fieldErrors.rank?.message}
+            registration={register('rank')}
+          />
 
-        <TextField
-          id="teacher-phone"
-          label="Телефон"
-          autoComplete="tel"
-          error={fieldErrors.phoneNumber?.message}
-          registration={register('phoneNumber')}
-        />
-        <TextField
-          id="teacher-email"
-          label="Электронная почта"
-          autoComplete="email"
-          error={fieldErrors.email?.message}
-          registration={register('email')}
-        />
-        <TextField
-          id="teacher-messenger"
-          label="Мессенджер"
-          placeholder="@username"
-          error={fieldErrors.messenger?.message}
-          registration={register('messenger')}
-        />
-      </div>
+          <TextField
+            id="teacher-experience"
+            label="Общий стаж, лет"
+            inputMode="numeric"
+            error={fieldErrors.experience?.message}
+            registration={register('experience')}
+          />
+          <TextField
+            id="teacher-professional-experience"
+            label="Стаж по специальности, лет"
+            inputMode="numeric"
+            error={fieldErrors.professionalExperience?.message}
+            registration={register('professionalExperience')}
+          />
+        </div>
+      </FormSection>
 
-      {/* Образование и повышение квалификации — rich-text поля контракта:
-          сервер чистит их санитайзером, а карточка ППС показывает
-          разметкой. В обычной textarea преподаватель видел здесь теги
-          и правил их руками — F-41. Биография ниже осталась текстовым
-          полем: её сервер как раз не чистит и выводится она текстом. */}
-      {RICH_TEXT_FIELDS.map(({ name, label }) => (
-        <Controller
-          key={name}
-          name={name}
-          control={control}
-          render={({ field }) => (
-            <RichTextEditor
-              id={`teacher-${name}`}
-              label={label}
-              value={field.value}
-              onChange={field.onChange}
-              error={fieldErrors[name]?.message}
-              imageCategory={imageCategory}
-            />
-          )}
-        />
-      ))}
-      <TextAreaField
-        id="teacher-bio"
-        label="Биография"
-        error={fieldErrors.bio?.message}
-        registration={register('bio')}
-      />
+      <FormSection title="Контакты">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            id="teacher-phone"
+            label="Телефон"
+            autoComplete="tel"
+            error={fieldErrors.phoneNumber?.message}
+            registration={register('phoneNumber')}
+          />
+          <TextField
+            id="teacher-email"
+            label="Электронная почта"
+            autoComplete="email"
+            error={fieldErrors.email?.message}
+            registration={register('email')}
+          />
+          <TextField
+            id="teacher-messenger"
+            label="Мессенджер"
+            placeholder="@username"
+            error={fieldErrors.messenger?.message}
+            registration={register('messenger')}
+          />
+        </div>
+      </FormSection>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <TextField
-          id="teacher-exam-graduation"
-          label="Расписание экзаменов: выпускные курсы"
-          placeholder="Ссылка на PDF"
-          error={fieldErrors.examScheduleGraduation?.message}
-          registration={register('examScheduleGraduation')}
+      <FormSection title="Образование и биография">
+        {/* Образование и повышение квалификации — rich-text поля контракта:
+            сервер чистит их санитайзером, а карточка ППС показывает
+            разметкой. В обычной textarea преподаватель видел здесь теги
+            и правил их руками — F-41. Биография ниже осталась текстовым
+            полем: её сервер как раз не чистит и выводится она текстом. */}
+        {RICH_TEXT_FIELDS.map(({ name, label, placeholder }) => (
+          <Controller
+            key={name}
+            name={name}
+            control={control}
+            render={({ field }) => (
+              <RichTextEditor
+                id={`teacher-${name}`}
+                label={label}
+                variant="compact"
+                placeholder={placeholder}
+                value={field.value}
+                onChange={field.onChange}
+                error={fieldErrors[name]?.message}
+              />
+            )}
+          />
+        ))}
+        <TextAreaField
+          id="teacher-bio"
+          label="Биография"
+          error={fieldErrors.bio?.message}
+          registration={register('bio')}
         />
-        <TextField
-          id="teacher-exam-non-graduation"
-          label="Расписание экзаменов: невыпускные курсы"
-          placeholder="Ссылка на PDF"
-          error={fieldErrors.examScheduleNonGraduation?.message}
-          registration={register('examScheduleNonGraduation')}
-        />
-      </div>
+      </FormSection>
+
+      <FormSection
+        title="Расписание экзаменов"
+        hint="Ссылка на PDF-файл, который уже лежит на сайте. Загрузить файл сюда пока нельзя."
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField
+            id="teacher-exam-graduation"
+            label="Для студентов выпускных курсов"
+            placeholder="https://…"
+            error={fieldErrors.examScheduleGraduation?.message}
+            registration={register('examScheduleGraduation')}
+          />
+          <TextField
+            id="teacher-exam-non-graduation"
+            label="Для студентов остальных курсов"
+            placeholder="https://…"
+            error={fieldErrors.examScheduleNonGraduation?.message}
+            registration={register('examScheduleNonGraduation')}
+          />
+        </div>
+      </FormSection>
 
       {beforeActions}
 
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded bg-primary px-4 py-2.5',
-            'text-base font-bold text-white transition',
-            'hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        >
-          {isPending && <LoaderCircle size={18} className="animate-spin" aria-hidden />}
-          {isPending ? 'Сохраняем…' : submitLabel}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isPending}
-          className={cn(
-            'rounded border border-default px-4 py-2.5 text-base font-bold text-text-heading',
-            'transition hover:border-primary hover:text-primary',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        >
-          Отмена
-        </button>
-      </div>
+      <FormActions isPending={isPending} onCancel={onCancel} submitLabel={submitLabel} />
     </form>
   );
 }
