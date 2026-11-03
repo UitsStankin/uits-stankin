@@ -28,6 +28,7 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.service.UserService;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -128,7 +129,7 @@ public class TeacherService {
                 .orElseThrow(() -> teacherNotFound(id));
 
         if (teacher.getArchivedAt() == null) {
-            teacher.setArchivedAt(OffsetDateTime.now());
+            teacher.setArchivedAt(OffsetDateTime.now(ZoneOffset.UTC));
         }
     }
 
