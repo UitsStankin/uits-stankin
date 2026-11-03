@@ -1,6 +1,7 @@
 package ru.stankin.uits.module.staff.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,7 @@ import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.service.UserService;
 
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -48,8 +50,14 @@ public class TeacherService {
     private final UserService userService;
 
     @Transactional(readOnly = true)
-    public PageResponseDto<TeacherResponseDto> getAllTeachers(Pageable pageable) {
-        return PageResponseDto.from(teacherRepository.findAll(pageable)
+    public PageResponseDto<TeacherResponseDto> getActiveTeachers(Pageable pageable) {
+        return PageResponseDto.from(teacherRepository.findByArchivedAtIsNull(pageable)
+                .map(teacherMapper::toDto));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<TeacherResponseDto> getTeachers(Boolean archived, Pageable pageable) {
+        return PageResponseDto.from(findByArchived(archived, pageable)
                 .map(teacherMapper::toDto));
     }
 
@@ -112,6 +120,24 @@ public class TeacherService {
         if (avatarKey != null) {
             fileCleanup.deleteAfterCommit(avatarKey);
         }
+    }
+
+    @Transactional
+    public void archive(Long id) {
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> teacherNotFound(id));
+
+        if (teacher.getArchivedAt() == null) {
+            teacher.setArchivedAt(OffsetDateTime.now());
+        }
+    }
+
+    @Transactional
+    public void unarchive(Long id) {
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> teacherNotFound(id));
+
+        teacher.setArchivedAt(null);
     }
 
     @Transactional(readOnly = true)
@@ -213,6 +239,16 @@ public class TeacherService {
         if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
             throw new FieldValidationException("avatar", "Файл аватара не найден: " + key);
         }
+    }
+
+    private Page<Teacher> findByArchived(Boolean archived, Pageable pageable) {
+        if (archived == null) {
+            return teacherRepository.findAll(pageable);
+        }
+
+        return archived
+                ? teacherRepository.findByArchivedAtIsNotNull(pageable)
+                : teacherRepository.findByArchivedAtIsNull(pageable);
     }
 
     private NotFoundException teacherNotFound(Long id) {

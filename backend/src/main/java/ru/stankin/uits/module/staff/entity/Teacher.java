@@ -6,6 +6,7 @@ import ru.stankin.uits.module.staff.enums.TeacherDegree;
 import ru.stankin.uits.module.staff.enums.TeacherRank;
 import ru.stankin.uits.module.user.entity.User;
 
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -79,6 +80,9 @@ public class Teacher {
     @Column(name = "exam_schedule_non_graduation", length = 200)
     private String examScheduleNonGraduation;
 
+    @Column(name = "archived_at")
+    private OffsetDateTime archivedAt;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "employee_teacher_subjects",
             joinColumns = @JoinColumn(name = "teacher_id"),
@@ -86,4 +90,8 @@ public class Teacher {
     @OrderBy("name")
     @Builder.Default
     private Set<Subject> subjects = new HashSet<>();
+
+    public boolean isArchived() {
+        return archivedAt != null;
+    }
 }

@@ -37,11 +37,13 @@ public abstract class TeacherMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "subjects", ignore = true)
+    @Mapping(target = "archivedAt", ignore = true)
     public abstract Teacher toEntity(TeacherRequestDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "subjects", ignore = true)
+    @Mapping(target = "archivedAt", ignore = true)
     public abstract void updateEntity(@MappingTarget Teacher teacher, TeacherRequestDto dto);
 
     @Named("avatarUrl")

@@ -18,4 +18,5 @@ public class TeacherResponseDto {
     private String degree;
     private String rank;
     private String avatarUrl;
+    private boolean archived;
 }
