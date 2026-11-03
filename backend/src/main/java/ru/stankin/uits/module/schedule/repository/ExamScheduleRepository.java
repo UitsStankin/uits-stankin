@@ -17,10 +17,10 @@ public interface ExamScheduleRepository extends JpaRepository<ExamSchedule, Long
     Optional<ExamSchedule> findByTeacherId(Long teacherId);
 
     @EntityGraph(attributePaths = {"teacher", "exams"})
-    List<ExamSchedule> findAllBy(Sort sort);
+    List<ExamSchedule> findByTeacherArchivedAtIsNull(Sort sort);
 
     @EntityGraph(attributePaths = {"teacher", "exams"})
-    List<ExamSchedule> findByTeacherIdIn(Collection<Long> teacherIds, Sort sort);
+    List<ExamSchedule> findByTeacherIdInAndTeacherArchivedAtIsNull(Collection<Long> teacherIds, Sort sort);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ExamSchedule> findWithLockByTeacherId(Long teacherId);

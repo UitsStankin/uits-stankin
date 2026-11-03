@@ -17,10 +17,10 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     Optional<Schedule> findByTeacherId(Long teacherId);
 
     @EntityGraph(attributePaths = {"teacher", "lessons", "lessons.dates"})
-    List<Schedule> findAllBy(Sort sort);
+    List<Schedule> findByTeacherArchivedAtIsNull(Sort sort);
 
     @EntityGraph(attributePaths = {"teacher", "lessons", "lessons.dates"})
-    List<Schedule> findByTeacherIdIn(Collection<Long> teacherIds, Sort sort);
+    List<Schedule> findByTeacherIdInAndTeacherArchivedAtIsNull(Collection<Long> teacherIds, Sort sort);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Schedule> findWithLockByTeacherId(Long teacherId);

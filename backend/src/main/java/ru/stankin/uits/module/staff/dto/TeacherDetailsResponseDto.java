@@ -33,4 +33,5 @@ public class TeacherDetailsResponseDto {
     private String examScheduleGraduation;
     private String examScheduleNonGraduation;
     private List<SubjectDto> subjects;
+    private boolean archived;
 }
