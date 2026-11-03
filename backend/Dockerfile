@@ -27,8 +27,8 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # Приложение только читает jar и слушает порт выше 1024 — root ему не нужен.
 # Пробой в приложении под root даёт root внутри контейнера, а дальше остаётся
 # только выбраться наружу.
-RUN groupadd --system uits && useradd --system --gid uits uits
-RUN mkdir -p /app/media && chown uits:uits /app/media
+RUN groupadd --system uits && useradd --system --gid uits uits \
+    && mkdir -p /app/media && chown uits:uits /app/media
 USER uits
 
 EXPOSE 8080
