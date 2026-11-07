@@ -53,7 +53,7 @@ dependencies {
 	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
-	implementation("org.jsoup:jsoup:1.23.2")
+	implementation("org.jsoup:jsoup:1.24.1")
 	implementation("net.coobird:thumbnailator:0.4.21")
 	implementation("com.bucket4j:bucket4j_jdk17-core:8.22.0")
 
