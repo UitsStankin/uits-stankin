@@ -35,7 +35,7 @@ jobs:
     uses: ./.github/workflows/frontend.yml
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Запускается, только если прошли тесты обеих зон и образы опубликованы
     needs: [build-and-test, frontend-checks]
     # Доступы к VPS должны жить в секретах этого environment, а не репозитория:

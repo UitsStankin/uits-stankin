@@ -60,8 +60,8 @@ public class ScheduleService {
     @Transactional(readOnly = true)
     public List<ScheduleResponseDto> getSummary(Collection<Long> teacherIds) {
         List<Schedule> schedules = teacherIds == null || teacherIds.isEmpty()
-                ? scheduleRepository.findAllBy(SUMMARY_SORT)
-                : scheduleRepository.findByTeacherIdIn(teacherIds, SUMMARY_SORT);
+                ? scheduleRepository.findByTeacherArchivedAtIsNull(SUMMARY_SORT)
+                : scheduleRepository.findByTeacherIdInAndTeacherArchivedAtIsNull(teacherIds, SUMMARY_SORT);
 
         return schedules.stream().map(scheduleMapper::toDto).toList();
     }
