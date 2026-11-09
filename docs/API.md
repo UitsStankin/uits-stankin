@@ -1946,6 +1946,12 @@ GET /api/public/postgraduates?teacherId=3&speciality=2.3.1
 (`BACHELOR`, `MASTER`, `POSTGRADUATE`, `SPECIALIST`), подписи рисует фронт,
 как у `degree` и `rank` в карточке ППС.
 
+Запись аспирантуры без студента не бывает: колонка `student_id` обязательна в
+базе. `student` в ответе `GET /api/postgraduates/{id}` всегда объект, а
+`studentId`, `studentName` и `admissionYear` в публичном списке всегда заполнены.
+`null` приходит только в необязательных полях: `patronymic`, `speciality`,
+`diplomaTheme` и в руководителе.
+
 Что даёт `400`: уровень образования, отличный от `POSTGRADUATE` (в записи
 аспирантуры может состоять только аспирант — проверяется и при создании,
 и при правке), год поступления в будущем или раньше 2000, неизвестный

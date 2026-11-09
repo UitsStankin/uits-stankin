@@ -34,7 +34,10 @@ import ru.stankin.uits.module.staff.dto.TeacherResponseDto;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
 import ru.stankin.uits.module.students.entity.Postgraduate;
+import ru.stankin.uits.module.students.entity.Student;
+import ru.stankin.uits.module.students.enums.EducationLevel;
 import ru.stankin.uits.module.students.repository.PostgraduateRepository;
+import ru.stankin.uits.module.students.repository.StudentRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -69,6 +72,9 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private PostgraduateRepository postgraduateRepository;
+
+    @Autowired
+    private StudentRepository studentRepository;
 
     @Autowired
     private GradeSheetRepository gradeSheetRepository;
@@ -200,7 +206,15 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
                 .previewImage("achievements/2026/09/a1.jpg")
                 .teacher(card)
                 .build()).getId();
+        Student student = studentRepository.save(Student.builder()
+                .lastName("Абрамов")
+                .firstName("Пётр")
+                .group("ИДМ-24-01")
+                .educationLevel(EducationLevel.POSTGRADUATE)
+                .admissionYear(2024)
+                .build());
         Long postgraduateId = postgraduateRepository.save(Postgraduate.builder()
+                .student(student)
                 .teacher(card)
                 .build()).getId();
         Long gradeSheetId = gradeSheetRepository.save(GradeSheet.builder()
