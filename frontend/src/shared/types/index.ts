@@ -22,6 +22,13 @@ export type {
   ChangePasswordRequest,
   ProfileUpdateRequest,
   UserDirectoryEntry,
+  UserRole,
+  AdminUser,
+  AdminUserPage,
+  AdminUserListParams,
+  UserCreateRequest,
+  UserUpdateRequest,
+  PasswordResetRequest,
 } from './auth.types';
 
 // Новости и объявления

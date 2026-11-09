@@ -54,6 +54,7 @@ import AdminConferencesPage from '@pages/admin/ConferencesPage';
 import AdminAchievementsPage from '@pages/admin/AchievementsPage';
 import AdminEditablePagesPage from '@pages/admin/EditablePagesPage';
 import EditablePageFormPage from '@pages/admin/EditablePageFormPage';
+import UsersPage from '@pages/admin/UsersPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -171,6 +172,8 @@ function adminSectionScreen(section: AdminSection) {
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичная страница раздела — `EditablePagePage`.
       return <AdminEditablePagesPage />;
+    case 'users':
+      return <UsersPage />;
     default:
       // Раздел объявлен готовым, а экрана для него нет — это ошибка
       // конфига, и заглушка честнее пустой страницы.
