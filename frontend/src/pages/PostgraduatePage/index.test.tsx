@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   editablePageHandlers,
   problemResponse,
-  publicPostgraduateHandlers,
+  postgraduateHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
@@ -366,7 +366,7 @@ describe('PostgraduatePage', () => {
 
   /** Искать не в чем — поля нет: раздел пуст целиком, а не по запросу. */
   it('не показывает поле поиска в пустом разделе', async () => {
-    server.use(...publicPostgraduateHandlers([]));
+    server.use(...postgraduateHandlers([]));
 
     renderPage();
 
@@ -416,7 +416,7 @@ describe('PostgraduatePage', () => {
   });
 
   it('на пустом списке объясняет, что записей нет', async () => {
-    server.use(...publicPostgraduateHandlers([]));
+    server.use(...postgraduateHandlers([]));
 
     renderWithProviders(<PostgraduatePage />, { route: ROUTE });
 

@@ -1,11 +1,19 @@
 import { http, HttpResponse } from 'msw';
 
-import type { Postgraduate } from '@shared/types';
+import type {
+  Postgraduate,
+  PostgraduateDetails,
+  PostgraduateRequest,
+  PostgraduateStudent,
+} from '@shared/types';
 
 import { pageFromUrl } from './page';
+import { problemResponse } from './problemResponse';
+import { teachersFixture } from './teachers';
 
 /** `*` вместо origin — по той же причине, что и у новостей. */
 const PUBLIC_POSTGRADUATES = '*/api/public/postgraduates';
+const POSTGRADUATES = '*/api/postgraduates';
 
 /**
  * Запись аспирантуры со всеми полями контракта. Переопределяется точечно:
@@ -176,39 +184,264 @@ function searchableText(item: Postgraduate): string {
 }
 
 /**
- * Публичная ручка аспирантуры — страница записей с поиском.
+ * Запись так, как её хранит мок: студент по частям и с группой, как
+ * в форме правки, плюс подпись руководителя для публичного списка.
+ * Обе проекции контракта — элемент списка и запись формы — собираются
+ * из неё, а не хранятся рядом: две копии разошлись бы на первой правке.
+ */
+type StoredPostgraduate = {
+  id: number;
+  studentId: number;
+  student: PostgraduateStudent;
+  teacherId: number | null;
+};
+
+/**
+ * Записи аспирантуры целиком: публичное чтение и модераторский CRUD.
+ *
+ * Мок **с состоянием**, как у УВП и карточек ППС: заведённая запись
+ * появляется в списке, правка видна там же, удалённая исчезает. Один
+ * набор на две роли — разведённые, чтение и правка стали бы двумя
+ * разными выдумками.
+ *
+ * ### Публичный список
  *
  * `q` разобран, потому что фронт его отправляет: поиск приехал с T-78
- * по заявке B-3 и стал единственным способом искать по разделу.
- * Регистр не учитывается, `%` и `_` — обычные символы (бэкенд экранирует
- * их перед `like`), пустой и пробельный запрос равносилен отсутствию
- * фильтра.
+ * по заявке B-3. Регистр не учитывается, `%` и `_` — обычные символы
+ * (бэкенд экранирует их перед `like`), пустой и пробельный запрос
+ * равносилен отсутствию фильтра. Счётчики страницы считаются **после**
+ * поиска: `totalElements` контракта — «сколько всего с учётом фильтров».
  *
- * Фильтры `?teacherId=` и `?speciality=` контракта по-прежнему не
- * разобраны намеренно: фронт их не отправляет (`entities/postgraduate`),
- * и мок фильтра, который никто не проверяет, — не задел, а вторая выдумка
- * рядом с первой. Заведутся вместе со своим потребителем.
+ * Фильтры `?teacherId=` и `?speciality=` и `?sort=` не разобраны
+ * намеренно: фронт их не отправляет ни с публичной страницы, ни из админки
+ * (разбор, почему у раздела нет сортировки, — в `useAdminPostgraduates`).
  *
- * Счётчики страницы считаются **после** поиска, а не по всей фикстуре:
- * `totalElements` контракта — «сколько всего с учётом фильтров», и на
- * этом стоит и пагинатор, и надпись «найдено».
+ * ### Запись
  *
- * Список берётся аргументом, чтобы тест пустого раздела был одной строкой
- * `server.use(...publicPostgraduateHandlers([]))`, а не копией хендлера
- * с другим телом.
+ * Отказы — те же, что у сервера, и того же вида. Словарь `errors`
+ * с вложенными именами (`student.lastName`) — у проверок `@Valid`;
+ * без словаря — у проверок сервиса: уровень образования не `POSTGRADUATE`,
+ * год поступления в будущем, неизвестный руководитель. Последний —
+ * `400`, а не `404`: так отвечает `TeacherService.getTeacherEntity`.
+ *
+ * Записи принимаются аргументом публичной формы, как и раньше: тесту
+ * публичной страницы нужна одна фамилия, а не студент по частям. Части
+ * восстанавливаются из склеенного ФИО, группа выдумывается из года.
  */
-export function publicPostgraduateHandlers(
-  items: readonly Postgraduate[] = postgraduatesFixture,
-) {
+export function postgraduateHandlers(items: readonly Postgraduate[] = postgraduatesFixture) {
+  let current: readonly StoredPostgraduate[] = items.map(fromListItem);
+  let nextId = current.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+  let nextStudentId = current.reduce((max, item) => Math.max(max, item.studentId), 0) + 1;
+
+  // Подписи руководителей: из фикстуры ППС — её же видит выбор
+  // в форме, — поверх неё из самих записей, чтобы тест с выдуманным
+  // руководителем не терял его имя на первой же правке.
+  const teacherNames = new Map<number, string>(
+    teachersFixture.map((teacher) => [
+      teacher.id,
+      [teacher.lastName, teacher.firstName, teacher.patronymic].filter(Boolean).join(' '),
+    ]),
+  );
+  for (const item of items) {
+    if (item.teacherId !== null && item.teacherName !== null) {
+      teacherNames.set(item.teacherId, item.teacherName);
+    }
+  }
+
+  const toListItem = (stored: StoredPostgraduate): Postgraduate => ({
+    id: stored.id,
+    studentId: stored.studentId,
+    studentName: [stored.student.lastName, stored.student.firstName, stored.student.patronymic]
+      .filter(Boolean)
+      .join(' '),
+    speciality: stored.student.speciality,
+    diplomaTheme: stored.student.diplomaTheme,
+    admissionYear: stored.student.admissionYear,
+    teacherId: stored.teacherId,
+    teacherName: stored.teacherId === null ? null : (teacherNames.get(stored.teacherId) ?? null),
+  });
+
+  const notFound = (id: string) =>
+    problemResponse(404, {
+      title: 'Not Found',
+      detail: `Запись аспирантуры id=${id} не найдена`,
+      instance: `/api/postgraduates/${id}`,
+    });
+
+  /** Отказ на тело запроса либо `null`, если тело годится. */
+  const refusal = (body: PostgraduateRequest, instance: string) => {
+    const errors = validationErrors(body.student);
+
+    if (errors) {
+      return problemResponse(400, {
+        title: 'Bad Request',
+        detail: 'Ошибка валидации',
+        instance,
+        errors,
+      });
+    }
+
+    const detail = serviceRefusal(body, teacherNames);
+
+    return detail === null
+      ? null
+      : problemResponse(400, { title: 'Bad Request', detail, instance });
+  };
+
   return [
     http.get(PUBLIC_POSTGRADUATES, ({ request }) => {
       const url = new URL(request.url);
       const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+      const list = current.map(toListItem);
 
-      const found =
-        q === '' ? items : items.filter((item) => searchableText(item).includes(q));
+      const found = q === '' ? list : list.filter((item) => searchableText(item).includes(q));
 
       return HttpResponse.json(pageFromUrl(found, url));
     }),
+
+    http.get(`${POSTGRADUATES}/:id`, ({ params }) => {
+      const stored = current.find((item) => item.id === Number(params.id));
+
+      if (!stored) return notFound(String(params.id));
+
+      const details: PostgraduateDetails = {
+        id: stored.id,
+        student: stored.student,
+        teacherId: stored.teacherId,
+      };
+
+      return HttpResponse.json(details);
+    }),
+
+    http.post(POSTGRADUATES, async ({ request }) => {
+      const body = (await request.json()) as PostgraduateRequest;
+      const refused = refusal(body, '/api/postgraduates');
+
+      if (refused) return refused;
+
+      const created: StoredPostgraduate = {
+        id: nextId++,
+        studentId: nextStudentId++,
+        student: body.student,
+        teacherId: body.teacherId,
+      };
+
+      current = sortStored([...current, created]);
+
+      return HttpResponse.json(toListItem(created), {
+        status: 201,
+        headers: { Location: `/api/postgraduates/${created.id}` },
+      });
+    }),
+
+    http.put(`${POSTGRADUATES}/:id`, async ({ params, request }) => {
+      const id = Number(params.id);
+      const existing = current.find((item) => item.id === id);
+
+      if (!existing) return notFound(String(params.id));
+
+      const body = (await request.json()) as PostgraduateRequest;
+      const refused = refusal(body, `/api/postgraduates/${id}`);
+
+      if (refused) return refused;
+
+      const updated: StoredPostgraduate = {
+        ...existing,
+        student: body.student,
+        teacherId: body.teacherId,
+      };
+
+      current = sortStored(current.map((item) => (item.id === id ? updated : item)));
+
+      return HttpResponse.json(toListItem(updated));
+    }),
+
+    http.delete(`${POSTGRADUATES}/:id`, ({ params }) => {
+      const id = Number(params.id);
+
+      if (!current.some((item) => item.id === id)) return notFound(String(params.id));
+
+      current = current.filter((item) => item.id !== id);
+
+      return new HttpResponse(null, { status: 204 });
+    }),
   ];
+}
+
+/**
+ * Элемент публичного списка → запись мока. ФИО режется по пробелам:
+ * фикстура склеивает его так же, как бэкенд, — фамилия, имя и, если есть,
+ * отчество. Группа выдумана из года поступления: в публичном списке
+ * её нет вовсе.
+ */
+function fromListItem(item: Postgraduate): StoredPostgraduate {
+  const [lastName = '', firstName = '', ...rest] = item.studentName.split(' ');
+
+  return {
+    id: item.id,
+    studentId: item.studentId,
+    student: {
+      lastName,
+      firstName,
+      patronymic: rest.length > 0 ? rest.join(' ') : null,
+      group: `АДМ-${String(item.admissionYear).slice(2)}-01`,
+      educationLevel: 'POSTGRADUATE',
+      speciality: item.speciality,
+      diplomaTheme: item.diplomaTheme,
+      admissionYear: item.admissionYear,
+    },
+    teacherId: item.teacherId,
+  };
+}
+
+/**
+ * Порядок контракта по умолчанию: фамилия, имя, `id` (`@PageableDefault`).
+ * Держится после каждой записи, иначе новая запись вставала бы в конец
+ * списка, а не на место своей фамилии.
+ */
+function sortStored(items: readonly StoredPostgraduate[]): readonly StoredPostgraduate[] {
+  return [...items].sort(
+    (a, b) =>
+      a.student.lastName.localeCompare(b.student.lastName, 'ru') ||
+      a.student.firstName.localeCompare(b.student.firstName, 'ru') ||
+      a.id - b.id,
+  );
+}
+
+/**
+ * Проверки `@Valid` из `StudentRequestDto` — те, что дают словарь
+ * с вложенными именами полей. Длины строк мок не сверяет: форма режет
+ * их сама, и проверить ими нечего.
+ */
+function validationErrors(student: PostgraduateStudent): Record<string, string[]> | null {
+  const errors: Record<string, string[]> = {};
+
+  if (student.lastName.trim() === '') errors['student.lastName'] = ['Фамилия обязательна'];
+  if (student.firstName.trim() === '') errors['student.firstName'] = ['Имя обязательно'];
+  if (student.group.trim() === '') errors['student.group'] = ['Группа обязательна'];
+  if (student.admissionYear < 2000) {
+    errors['student.admissionYear'] = ['Год поступления не раньше 2000'];
+  }
+
+  return Object.keys(errors).length > 0 ? errors : null;
+}
+
+/** Проверки сервиса — отказ без словаря, одной строкой `detail`. */
+function serviceRefusal(
+  body: PostgraduateRequest,
+  teacherNames: ReadonlyMap<number, string>,
+): string | null {
+  if (body.student.educationLevel !== 'POSTGRADUATE') {
+    return 'В записи аспирантуры уровень образования должен быть POSTGRADUATE';
+  }
+
+  if (body.student.admissionYear > new Date().getFullYear()) {
+    return `Год поступления не может быть в будущем: ${body.student.admissionYear}`;
+  }
+
+  if (body.teacherId !== null && !teacherNames.has(body.teacherId)) {
+    return `Преподаватель не найден: id=${body.teacherId}`;
+  }
+
+  return null;
 }

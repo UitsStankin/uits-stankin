@@ -85,3 +85,57 @@ export type PostgraduateListParams = PageParams & {
    */
   q?: string;
 };
+
+/**
+ * Уровень образования студента — код закрытого словаря, подписи рисует
+ * фронт (docs/API.md, «Аспирантура»). В записи аспирантуры допустим
+ * только `POSTGRADUATE`: остальное сервер отвергает `400` и при создании,
+ * и при правке. Весь словарь всё равно описан — так он приходит в ответе,
+ * и запись, заведённая мимо портала, не должна ломать тип.
+ */
+export type EducationLevel = 'BACHELOR' | 'MASTER' | 'POSTGRADUATE' | 'SPECIALIST';
+
+/**
+ * Студент в составе записи аспирантуры — так он уходит в теле запроса
+ * и так же приходит в ответе `GET /api/postgraduates/{id}`.
+ *
+ * Своих ручек у студента нет: он заводится вместе с записью и удаляется
+ * вместе с ней. Группа живёт только здесь — в публичный список она
+ * не уходила и на старом портале.
+ */
+export type PostgraduateStudent = {
+  lastName: string;
+  firstName: string;
+  patronymic: string | null;
+  group: string;
+  educationLevel: EducationLevel;
+  speciality: string | null;
+  diplomaTheme: string | null;
+  admissionYear: number;
+};
+
+/**
+ * Запись аспирантуры в составе полей формы — ответ модераторской ручки
+ * `GET /api/postgraduates/{id}`. Ровно то, что принимает `PUT`, плюс `id`.
+ *
+ * `student` объявлен нулевым, хотя docs/API.md всегда показывает объект:
+ * колонка `student_id` в схеме необязательна — наследство Django, где
+ * удаление студента обнуляло ссылку (`on_delete=SET_NULL`), — и маппер
+ * бэкенда в этом случае отдаёт `null`. Форма такую запись открывает
+ * пустой, а сохранение заводит ей студента заново (`updatePostgraduate`).
+ */
+export type PostgraduateDetails = {
+  id: number;
+  student: PostgraduateStudent | null;
+  teacherId: number | null;
+};
+
+/**
+ * Тело `POST` и `PUT /api/postgraduates` — одно на оба. `PUT` — полная
+ * замена: поле, не пришедшее в теле, обнуляется. Руководитель —
+ * идентификатором карточки ППС, `null` — «не назначен».
+ */
+export type PostgraduateRequest = {
+  student: PostgraduateStudent;
+  teacherId: number | null;
+};

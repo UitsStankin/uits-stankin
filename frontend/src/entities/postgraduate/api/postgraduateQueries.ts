@@ -2,21 +2,20 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 
 import type { PostgraduateListParams } from '@shared/types';
 
-import { fetchPostgraduatesPage } from './postgraduateApi';
+import { fetchPostgraduate, fetchPostgraduatesPage } from './postgraduateApi';
 
 /**
  * Ключи кэша аспирантуры.
  *
  * Иерархия та же, что у преподавателей и УВП: `all` инвалидирует всё
- * разом — это понадобится админке после `PUT /api/postgraduates/{id}`, —
- * `lists()` — только списки. Ветки `item` нет: единственный потребитель
- * сущности читает список, а ключ, на который никто ничего не кладёт, —
- * не задел, а мёртвая строка.
+ * разом — админка сбрасывает его после записи, — `lists()` — только
+ * списки, `item(id)` — запись для формы правки (F-47).
  */
 export const postgraduateKeys = {
   all: ['postgraduate'] as const,
   lists: () => [...postgraduateKeys.all, 'list'] as const,
   list: (params: PostgraduateListParams) => [...postgraduateKeys.lists(), params] as const,
+  item: (id: number) => [...postgraduateKeys.all, 'item', id] as const,
 };
 
 /**
@@ -35,4 +34,14 @@ export const postgraduatesListQuery = (params: PostgraduateListParams) =>
     queryKey: postgraduateKeys.list(params),
     queryFn: ({ signal }) => fetchPostgraduatesPage(params, signal),
     placeholderData: keepPreviousData,
+  });
+
+/**
+ * Запись для формы правки. Без `keepPreviousData`: у формы другой записи
+ * нет «прошлой страницы», и подставленная чужая запись была бы враньём.
+ */
+export const postgraduateQuery = (id: number) =>
+  queryOptions({
+    queryKey: postgraduateKeys.item(id),
+    queryFn: ({ signal }) => fetchPostgraduate(id, signal),
   });
