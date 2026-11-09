@@ -1,5 +1,5 @@
 import { api } from '@shared/api';
-import type { Page, UserDirectoryEntry } from '@shared/types';
+import type { AdminUserListParams, AdminUserPage, Page, UserDirectoryEntry } from '@shared/types';
 
 /**
  * Справочник учётных записей преподавателей — `GET /api/users/directory`.
@@ -15,6 +15,7 @@ import type { Page, UserDirectoryEntry } from '@shared/types';
  * ручка, а закрытую зовёт фича правки.
  */
 const USER_DIRECTORY_PATH = '/api/users/directory';
+const USERS_PATH = '/api/users';
 
 /**
  * Размер страницы справочника у контракта — `50`, а не общие `20`,
@@ -43,6 +44,26 @@ export async function fetchUserDirectory(
     params: { size: DIRECTORY_SIZE },
     signal,
   });
+
+  return data;
+}
+
+/**
+ * Список учётных записей целиком — `GET /api/users`, ручка админская.
+ *
+ * Чтение лежит в сущности, как у новостей админская выдача
+ * (`fetchAllNewsPage`): сущность знает, как прочитать учётки, а создание,
+ * правка и блокировка — действия админа и живут в фиче `manage-users`.
+ *
+ * Отборы (`q`, `active`, `role`) уходят как есть: имена параметров
+ * в адресе страницы и в запросе совпадают. Неопределённые axios
+ * в строку запроса не кладёт.
+ */
+export async function fetchUsers(
+  params: AdminUserListParams,
+  signal?: AbortSignal,
+): Promise<AdminUserPage> {
+  const { data } = await api.get<AdminUserPage>(USERS_PATH, { params, signal });
 
   return data;
 }

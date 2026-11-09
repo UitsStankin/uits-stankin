@@ -1,3 +1,5 @@
+import type { Page, PageParams } from './api.types';
+
 /**
  * Профиль пользователя и тела ручек аутентификации.
  *
@@ -168,4 +170,89 @@ export type UserDirectoryEntry = {
   id: number;
   lastName: string | null;
   firstName: string | null;
+};
+
+/**
+ * Роль в фильтре списка учёток — значение `?role=` у `GET /api/users`.
+ *
+ * Роли друг друга не исключают: модератор-преподаватель попадает в выдачу
+ * обоих фильтров. `user` — не роль, а её отсутствие: учётка без единого
+ * флага (docs/API.md, «Учётные записи (админ)»).
+ */
+export type UserRole = 'admin' | 'moderator' | 'teacher' | 'user';
+
+/**
+ * Учётная запись в админке — элемент `GET /api/users` и ответ
+ * `GET`/`POST`/`PUT` одной учётки.
+ *
+ * Не `Profile` с тремя полями сверху: ключа аватара здесь нет вовсе,
+ * только готовый адрес. Хеша пароля и telegram-кода тоже нет — их
+ * админская ручка не отдаёт.
+ */
+export type AdminUser = {
+  id: number;
+  /** Логин. Уникален и не меняется нигде — ни здесь, ни в профиле. */
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  teacher: boolean;
+  moderator: boolean;
+  superuser: boolean;
+  /** `false` — учётка заблокирована: войти нельзя, открытые сессии оборваны. */
+  active: boolean;
+  /** Время последнего входа; `null` — ни разу не входил. */
+  lastLogin: string | null;
+  dateJoined: string;
+};
+
+/** Страница списка учёток. */
+export type AdminUserPage = Page<AdminUser>;
+
+/** Параметры списка учёток: пагинация и три необязательных отбора. */
+export type AdminUserListParams = PageParams & {
+  /** Подстрока логина, ФИО или почты; регистр не важен. */
+  q?: string;
+  /** `true` — только действующие, `false` — только заблокированные. */
+  active?: boolean;
+  role?: UserRole;
+};
+
+/**
+ * Тело `POST /api/users`. Учётка создаётся действующей — поля `active`
+ * у создания нет.
+ */
+export type UserCreateRequest = {
+  username: string;
+  /** От 8 символов и не длиннее 72 байт в UTF-8 — предел bcrypt. */
+  password: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  superuser: boolean;
+  moderator: boolean;
+  teacher: boolean;
+};
+
+/**
+ * Тело `PUT /api/users/{id}`. Заменяет карточку целиком: необязательное
+ * поле, которого в теле нет, очищается. Четыре флага обязательны — тело
+ * без любого из них сервер отвергает, чтобы правка почты не сняла заодно
+ * роль. Логина и пароля здесь нет: первый не меняется, второй — своей
+ * ручкой.
+ */
+export type UserUpdateRequest = {
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  superuser: boolean;
+  moderator: boolean;
+  teacher: boolean;
+  active: boolean;
+};
+
+/** Тело `POST /api/users/{id}/reset-password`. Ответ — `204`. */
+export type PasswordResetRequest = {
+  newPassword: string;
 };
