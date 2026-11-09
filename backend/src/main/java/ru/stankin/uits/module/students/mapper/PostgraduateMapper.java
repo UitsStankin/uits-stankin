@@ -36,10 +36,6 @@ public interface PostgraduateMapper {
     void updateStudent(@MappingTarget Student student, StudentRequestDto dto);
 
     default String studentName(Student student) {
-        if (student == null) {
-            return null;
-        }
-
         return FullName.of(student.getLastName(), student.getFirstName(), student.getPatronymic());
     }
 

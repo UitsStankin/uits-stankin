@@ -144,10 +144,12 @@ $env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
 ## Прод-контур локально
 
 `docker-compose.prod.yml` описывает боевой стек из четырёх сервисов: postgres, backend,
-schedule-service и nginx с запечённым фронтендом. Образы `uits-backend`,
-`uits-schedule-service` и `uits-frontend` из `ghcr.io/uitsstankin` собирает CI под общим
-тегом. Наружу опубликован только порт nginx; база, приложение и микросервис живут
-во внутренней сети. Секреты и тег образа заданы через `${VAR:?...}` — без переменной
+schedule-service и nginx с запечённым фронтендом (пятый сервис, `certbot`, лежит под
+профилем `tools` и сам не стартует). Образы `uits-backend`, `uits-schedule-service`
+и `uits-frontend` из `ghcr.io/uitsstankin` собирает CI под общим тегом. Наружу опубликованы
+только порты nginx — 80 (редирект на https) и 443; база, приложение и микросервис живут
+во внутренней сети. Тот же файл работает на боевом стенде; порядок выкатки, секреты, TLS
+и бэкапы — в [`docs/DEPLOY.md`](../docs/DEPLOY.md). Секреты и тег образа заданы через `${VAR:?...}` — без переменной
 compose не стартует и пишет, чего не хватает; мягкий дефолт только у `SERPER_API_KEY`:
 без ключа не работает один поиск публикаций, а не весь портал.
 
@@ -164,22 +166,40 @@ docker run --rm --entrypoint id ghcr.io/uitsstankin/uits-backend:local
 Нужны все три: образ, которого нет локально, compose пойдёт тянуть из GHCR, а тега
 `local` там нет.
 
+nginx прод-образа слушает https и без файла сертификата не стартует, поэтому до подъёма
+стека в том `uits_letsencrypt` нужно положить самоподписанный сертификат — по пути
+`live/uits/`, который ждёт `nginx.conf`:
+
+```powershell
+docker run --rm -v uits_letsencrypt:/etc/letsencrypt alpine:3.20 sh -c "apk add --no-cache openssl >/dev/null && mkdir -p /etc/letsencrypt/live/uits && openssl req -x509 -newkey rsa:2048 -nodes -days 30 -subj /CN=localhost -keyout /etc/letsencrypt/live/uits/privkey.pem -out /etc/letsencrypt/live/uits/fullchain.pem && chmod -R a+rX /etc/letsencrypt"
+```
+
+Права `a+rX` обязательны: nginx в контейнере работает не под root и закрытый ключ,
+созданный root, иначе не прочитает.
+
 Поднять стек целиком (у прод- и локального compose одинаковые имена контейнера
 и тома, поэтому локальную базу нужно сначала остановить):
 
 ```powershell
 docker stop uits_postgres
 $env:IMAGE_TAG = "local"
-$env:CORS_ALLOWED_ORIGINS = "https://uits.example.test"
+$env:CORS_ALLOWED_ORIGINS = "https://localhost"
 docker compose --env-file .env -f docker-compose.prod.yml up -d
 ```
 
 Приложение стартует только после того, как база пройдёт healthcheck
 (`depends_on.condition: service_healthy`), иначе Liquibase упрётся в неподнятый
 кластер. Проверка: `docker compose -f docker-compose.prod.yml ps` показывает четыре
-сервиса `healthy`, `http://localhost/` открывает фронтенд, `http://localhost/api/public/news`
-отвечает JSON через прокси. Порт бэкенда наружу не опубликован, поэтому сам он
-проверяется изнутри контейнера:
+сервиса `healthy`; `http://localhost/` отвечает `301` на `https://localhost/`, который
+открывает фронтенд (браузер предупредит о самоподписанном сертификате);
+`https://localhost/api/public/news` отвечает JSON через прокси. `curl` самоподписанному
+сертификату не доверяет, поэтому нужен ключ `-k`:
+
+```powershell
+curl.exe -k https://localhost/api/public/news
+```
+
+Порт бэкенда наружу не опубликован, поэтому сам он проверяется изнутри контейнера:
 
 ```powershell
 docker exec uits_backend curl -s localhost:8080/actuator/health
@@ -193,10 +213,12 @@ docker exec uits_backend curl -s -o /dev/null -w "%{http_code}" localhost:8080/s
 
 ```powershell
 docker compose -f docker-compose.prod.yml down
+docker volume rm uits_letsencrypt
 docker compose up -d
 ```
 
-Без `-v` том с данными сохраняется.
+Без `-v` том с данными сохраняется. Том `uits_letsencrypt` в нём лежит только самоподписанный
+сертификат, поэтому его удаляют отдельной командой.
 
 ---
 
@@ -307,6 +329,7 @@ docker compose up -d --wait
 | `port is already allocated` | Порт 5433 занят. Изменить `POSTGRES_HOST_PORT` в `.env` и пересоздать контейнер. |
 | `DecodingException` или `WeakKeyException` при логине | `JWT_SECRET_KEY` не является Base64 или короче 32 байт. Сгенерировать заново. |
 | `Cannot connect to the Docker daemon` | Docker Desktop не запущен. |
+| `cannot load certificate "/etc/letsencrypt/live/uits/fullchain.pem"` в логе nginx | Прод-стек поднят без сертификата. Создать самоподписанный по инструкции в разделе «Прод-контур локально». |
 
 Посмотреть, что происходит с базой:
 

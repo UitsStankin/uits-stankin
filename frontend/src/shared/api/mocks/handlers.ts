@@ -6,7 +6,7 @@ import { newsHandlers } from './news';
 import { publicPostgraduateHandlers } from './postgraduates';
 import { subjectHandlers } from './subjects';
 import { myTeacherCardHandlers, teacherHandlers } from './teachers';
-import { userDirectoryHandlers } from './users';
+import { adminUserHandlers, userDirectoryHandlers } from './users';
 
 /**
  * Хендлеры по умолчанию — «всё хорошо, данные есть».
@@ -24,9 +24,10 @@ import { userDirectoryHandlers } from './users';
  * Закрытые ручки в наборе есть, и стоят они тут ради браузера: под
  * `VITE_ENABLE_MOCKS` разделы админки должны открываться и работать
  * целиком, а не упираться в необработанный запрос. Это словарь дисциплин,
- * с F-43 — правка новостей, а с F-44 — правка карточек ППС и УВП
- * и справочник учёток. Правка приезжает тем же набором, что и публичное
- * чтение: список у них общий, и созданная модератором запись обязана
+ * с F-43 — правка новостей, с F-44 — правка карточек ППС и УВП
+ * и справочник учёток, а с F-45 — правка конференций, достижений
+ * и редактируемых разделов, с F-46 — учётные записи. Правка приезжает
+ * тем же набором, что и публичное чтение: список у них общий, и созданная модератором запись обязана
  * появиться на публичной странице. Публичным страницам закрытые ручки
  * не мешают: никто из них туда не ходит. Профиль в набор по-прежнему
  * не входит: он означал бы вошедшего пользователя в каждом тесте
@@ -41,6 +42,7 @@ export const handlers = [
   ...myTeacherCardHandlers(),
   ...helperHandlers(),
   ...userDirectoryHandlers(),
+  ...adminUserHandlers(),
   ...publicPostgraduateHandlers(),
   ...subjectHandlers(),
 ];

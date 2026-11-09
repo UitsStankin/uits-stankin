@@ -68,7 +68,7 @@ function typeSearch(value: string) {
 
 /**
  * Ожидание длиннее обычного: между набором и запросом стоит пауза
- * в 300 мс (`model/usePostgraduateSearch.ts`), и умолчания в 1000 мс
+ * в 300 мс (`shared/lib/useUrlSearch.ts`), и умолчания в 1000 мс
  * на неё вместе с ответом мока хватает впритык.
  */
 const AFTER_DEBOUNCE = { timeout: 3000 };

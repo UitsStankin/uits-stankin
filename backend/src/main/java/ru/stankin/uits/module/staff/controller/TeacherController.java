@@ -24,10 +24,19 @@ public class TeacherController {
     private final TeacherService teacherService;
 
     @GetMapping("/public/teachers")
-    public PageResponseDto<TeacherResponseDto> getAllTeachers(
+    public PageResponseDto<TeacherResponseDto> getActiveTeachers(
             @PageableDefault(size = 20, sort = {"lastName", "firstName", "id"}) Pageable pageable
     ) {
-        return teacherService.getAllTeachers(pageable);
+        return teacherService.getActiveTeachers(pageable);
+    }
+
+    @GetMapping("/teachers")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public PageResponseDto<TeacherResponseDto> getTeachers(
+            @RequestParam(required = false) Boolean archived,
+            @PageableDefault(size = 20, sort = {"lastName", "firstName", "id"}) Pageable pageable
+    ) {
+        return teacherService.getTeachers(archived, pageable);
     }
 
     @GetMapping("/public/teachers/{id}")
@@ -57,6 +66,22 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<Void> deleteTeacher(@PathVariable Long id) {
         teacherService.deleteTeacher(id);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/teachers/{id}/archive")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public ResponseEntity<Void> archiveTeacher(@PathVariable Long id) {
+        teacherService.archive(id);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/teachers/{id}/unarchive")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public ResponseEntity<Void> unarchiveTeacher(@PathVariable Long id) {
+        teacherService.unarchive(id);
 
         return ResponseEntity.noContent().build();
     }

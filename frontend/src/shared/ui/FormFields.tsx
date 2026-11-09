@@ -97,11 +97,23 @@ export function TextField({
   label,
   error,
   registration,
+  type = 'text',
   ...inputProps
-}: FieldBaseProps & Pick<ComponentProps<'input'>, 'autoComplete' | 'inputMode' | 'placeholder'>) {
+}: FieldBaseProps & {
+  /**
+   * Вид поля. `date` и `time` — родные выборы даты и времени (F-45):
+   * значение у них строка `YYYY-MM-DD` и `HH:mm`, то есть ровно то, что
+   * ждёт контракт, и разбирать её в `Date` не нужно. `email` и `tel` —
+   * ради клавиатуры телефона; формат браузер не проверяет — у форм
+   * портала стоит `noValidate`, и проверять остаётся схеме и серверу.
+   * `password` — пароль, который админ задаёт чужой учётке (F-46): кнопки
+   * «показать» у него нет, опечатку ловит поле повтора.
+   */
+  type?: 'text' | 'email' | 'tel' | 'date' | 'time' | 'password';
+} & Pick<ComponentProps<'input'>, 'autoComplete' | 'inputMode' | 'placeholder' | 'disabled'>) {
   return (
     <FieldShell id={id} label={label} error={error}>
-      <input id={id} type="text" className={inputClass} {...ariaProps(id, error)} {...inputProps} {...registration} />
+      <input id={id} type={type} className={inputClass} {...ariaProps(id, error)} {...inputProps} {...registration} />
     </FieldShell>
   );
 }
@@ -169,7 +181,16 @@ export function CheckboxField({
   hint,
   error,
   registration,
-}: FieldBaseProps & { hint?: string }) {
+  disabled,
+}: FieldBaseProps & {
+  hint?: string;
+  /**
+   * Запертый флажок — показать значение, которое менять нельзя: админу
+   * нельзя снять с себя права и заблокировать себя (F-46). Значение
+   * отправляет вызывающий: у запертого поля react-hook-form его не ждут.
+   */
+  disabled?: boolean;
+}) {
   // Диктору объяснение и ошибка достаются только через `aria-describedby`:
   // текст, стоящий рядом в разметке, он к полю сам не привяжет.
   const describedBy = [hint && hintId(id), error && errorId(id)].filter(Boolean).join(' ');
@@ -180,7 +201,8 @@ export function CheckboxField({
         <input
           id={id}
           type="checkbox"
-          className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+          className="size-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
+          disabled={disabled}
           aria-invalid={error !== undefined}
           aria-describedby={describedBy === '' ? undefined : describedBy}
           {...registration}

@@ -54,3 +54,30 @@ export function pageFromUrl<T>(items: readonly T[], url: URL): Page<T> {
     numberParam(url, 'size', DEFAULT_PAGE_SIZE, 1),
   );
 }
+
+/**
+ * Порядок по дате создания: новые сверху, если параметра нет, — как
+ * `@PageableDefault(sort = {"createdAt", "id"}, direction = DESC)`
+ * у новостей, конференций и достижений. `?sort=createdAt,asc` его
+ * переворачивает; других полей сюда не приходит: у всех трёх разделов
+ * админки сортируется одна колонка — дата, а публичные списки порядка
+ * не выбирают вовсе и зовут функцию с `null`.
+ *
+ * Сравниваются моменты, а не строки. Строкой сравнивать нельзя: даты
+ * в фикстурах со смещением `+03:00`, а созданная запись получает
+ * `toISOString()` с `Z`, и лексикографически «10:15+03:00» больше,
+ * чем «09:00Z», хотя произошло раньше.
+ *
+ * Жила в моке новостей (F-43) и переехала сюда с F-45, когда изменяемыми
+ * стали ещё два мока: три копии разошлись бы ровно на этой ловушке.
+ */
+export function sortByCreatedAt<T extends { createdAt: string }>(
+  items: readonly T[],
+  sort: string | null,
+): T[] {
+  const asc = sort === 'createdAt,asc';
+
+  return [...items].sort(
+    (a, b) => (asc ? 1 : -1) * (Date.parse(a.createdAt) - Date.parse(b.createdAt)),
+  );
+}

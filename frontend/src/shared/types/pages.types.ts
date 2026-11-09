@@ -6,6 +6,8 @@
  * кроме хранения текста, за ними нет (docs/API.md, «Редактируемые страницы»).
  */
 
+import type { Page } from './api.types';
+
 /**
  * Слаг раздела — короткий латинский идентификатор в пути (`contacts`, а не `7`).
  *
@@ -38,7 +40,7 @@ export type EditablePageSlug =
   | 'home-before'
   | 'home-after';
 
-/** Раздел — ответ `GET /api/public/pages/{slug}`. */
+/** Раздел — ответ `GET /api/public/pages/{slug}` и элемент `GET /api/pages`. */
 export type EditablePage = {
   slug: EditablePageSlug;
   /**
@@ -47,8 +49,8 @@ export type EditablePage = {
    * поведение сохраняется. Рисовать `title` над текстом не нужно.
    *
    * `null` приходит в строках, перенесённых со старого портала, где поле
-   * заполнено не везде. На запись оно обязательно — форма правки (F-23,
-   * блок 4) требует непустую подпись.
+   * заполнено не везде. На запись оно обязательно — форма правки (F-45)
+   * требует непустую подпись.
    */
   title: string | null;
   /**
@@ -74,3 +76,21 @@ export type EditablePage = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * Тело `PUT /api/pages/{slug}`. Слаг в теле не передаётся: он берётся
+ * из пути и не редактируется.
+ *
+ * `title` на запись обязателен — непустой, до 255 символов, — хотя в ответе
+ * бывает `null`. `text` обязателен присутствием: пустая строка допустима
+ * и опустошает раздел, `null` — `400` (docs/API.md, «Редактируемые
+ * страницы»). Серверный десериализатор у `text` свой и пустую строку
+ * в `null` не превращает.
+ */
+export type EditablePageRequest = {
+  title: string;
+  text: string;
+};
+
+/** Страница списка разделов — ответ `GET /api/pages`, порядок по `id`. */
+export type EditablePagesPage = Page<EditablePage>;

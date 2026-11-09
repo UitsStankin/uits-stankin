@@ -22,6 +22,13 @@ export type {
   ChangePasswordRequest,
   ProfileUpdateRequest,
   UserDirectoryEntry,
+  UserRole,
+  AdminUser,
+  AdminUserPage,
+  AdminUserListParams,
+  UserCreateRequest,
+  UserUpdateRequest,
+  PasswordResetRequest,
 } from './auth.types';
 
 // Новости и объявления
@@ -34,7 +41,12 @@ export type { Conference, ConferenceRequest, ConferencePage } from './conference
 export type { Achievement, AchievementRequest, AchievementPage } from './achievement.types';
 
 // Редактируемые разделы
-export type { EditablePage, EditablePageSlug } from './pages.types';
+export type {
+  EditablePage,
+  EditablePageRequest,
+  EditablePageSlug,
+  EditablePagesPage,
+} from './pages.types';
 
 // Преподаватели и УВП
 export type {

@@ -29,6 +29,9 @@ export {
 } from './teachers';
 export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
 export {
+  adminUserHandlers,
+  adminUsersFixture,
+  makeAdminUser,
   makeUserDirectoryEntry,
   userDirectoryFixture,
   userDirectoryHandlers,

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { SEARCH_PARAM, parseSearch } from '@shared/lib';
+import { PAGE_PARAM } from './pageParam';
+import { SEARCH_PARAM, parseSearch } from './searchParam';
 
 /**
  * Пауза между последней нажатой клавишей и запросом.
@@ -15,6 +16,12 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Поле поиска: что в нём набрано и когда это уезжает в адрес.
+ *
+ * Жил в странице аспирантов (F-34) и переехал сюда со вторым потребителем —
+ * списком учётных записей в админке (F-46). Там рядом с запросом в адресе
+ * лежат отборы и порядок, поэтому смена запроса сбрасывает **только**
+ * номер страницы, а прочие параметры оставляет как были. У аспирантов
+ * других параметров нет, и для них это то же, что прежний сброс всего.
  *
  * **Источник правды — адрес, а не поле.** Список читает `?q=` оттуда же,
  * откуда номер страницы, поэтому поиск переживает перезагрузку, ссылку
@@ -34,7 +41,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * не трогаем, это эхо собственной записи; не совпало — адрес сменил
  * кто-то другой, и поле обязано его догнать.
  */
-export function usePostgraduateSearch() {
+export function useUrlSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = parseSearch(searchParams.get(SEARCH_PARAM));
 
@@ -42,8 +49,7 @@ export function usePostgraduateSearch() {
   const written = useRef(urlSearch);
 
   /**
-   * Запрос в адрес. Набор параметров собирается заново, а не правится:
-   * смена запроса обязана сбрасывать номер страницы. Искать со второй
+   * Запрос в адрес. Смена запроса обязана сбрасывать номер страницы. Искать со второй
    * страницы бессмысленно — под новый запрос её может не быть вовсе,
    * и человек получил бы «такой страницы нет» вместо результатов.
    *
@@ -52,7 +58,18 @@ export function usePostgraduateSearch() {
    * ранний вызов не увидел бы её пересоздания.
    */
   function applySearch(value: string, replace: boolean) {
-    setSearchParams(value === '' ? {} : { [SEARCH_PARAM]: value }, { replace });
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+
+        next.delete(PAGE_PARAM);
+        if (value === '') next.delete(SEARCH_PARAM);
+        else next.set(SEARCH_PARAM, value);
+
+        return next;
+      },
+      { replace },
+    );
   }
 
   // Адрес сменили снаружи: «назад», «вперёд», чужая ссылка, наша же
