@@ -138,8 +138,15 @@ export default function UsersPage() {
         </>
       )}
 
+      {/*
+        `key` — по учётке: начальные значения формы берутся при монтировании,
+        и смена правимой учётки без пересоздания оставила бы в форме чужие
+        флажки. Подложка этого не допускает, но правка, на которой держится
+        «кого разжаловали», не должна зависеть от подложки.
+      */}
       {model.editing && (
         <UserDialog
+          key={model.editing.user?.id ?? 'new'}
           user={model.editing.user}
           currentUserId={model.currentUserId}
           onClose={model.closeEditor}
