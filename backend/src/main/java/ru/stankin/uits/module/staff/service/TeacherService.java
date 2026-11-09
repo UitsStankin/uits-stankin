@@ -1,28 +1,37 @@
 package ru.stankin.uits.module.staff.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
-import ru.stankin.uits.common.exception.InvalidFileException;
+import ru.stankin.uits.common.exception.FieldValidationException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
 import ru.stankin.uits.common.storage.FileCleanup;
 import ru.stankin.uits.common.storage.FileStorage;
+import ru.stankin.uits.common.validation.HtmlSanitizer;
 import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherResponseDto;
 import ru.stankin.uits.module.staff.entity.Subject;
 import ru.stankin.uits.module.staff.entity.Teacher;
+import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.staff.mapper.TeacherMapper;
 import ru.stankin.uits.module.staff.repository.SubjectRepository;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
+import ru.stankin.uits.module.user.entity.User;
+import ru.stankin.uits.module.user.service.UserService;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,15 +41,24 @@ public class TeacherService {
 
     private static final String AVATAR_CATEGORY = "avatars";
 
+    private static final Sort EXAM_SCHEDULE_SORT = Sort.by("lastName", "firstName", "id");
+
     private final TeacherRepository teacherRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherMapper teacherMapper;
     private final FileStorage fileStorage;
     private final FileCleanup fileCleanup;
+    private final UserService userService;
 
     @Transactional(readOnly = true)
-    public PageResponseDto<TeacherResponseDto> getAllTeachers(Pageable pageable) {
-        return PageResponseDto.from(teacherRepository.findAll(pageable)
+    public PageResponseDto<TeacherResponseDto> getActiveTeachers(Pageable pageable) {
+        return PageResponseDto.from(teacherRepository.findByArchivedAtIsNull(pageable)
+                .map(teacherMapper::toDto));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<TeacherResponseDto> getTeachers(Boolean archived, Pageable pageable) {
+        return PageResponseDto.from(findByArchived(archived, pageable)
                 .map(teacherMapper::toDto));
     }
 
@@ -48,7 +66,19 @@ public class TeacherService {
     public TeacherDetailsResponseDto getTeacherDetails(Long id) {
         return teacherRepository.findById(id)
                 .map(teacherMapper::toDetailsDto)
-                .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+                .orElseThrow(() -> teacherNotFound(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Teacher> getWithExamSchedule(ExamScheduleType type) {
+        if (type == ExamScheduleType.GRADUATION) {
+            return teacherRepository.findWithGraduationExamSchedule(EXAM_SCHEDULE_SORT);
+        }
+        if (type == ExamScheduleType.NON_GRADUATION) {
+            return teacherRepository.findWithNonGraduationExamSchedule(EXAM_SCHEDULE_SORT);
+        }
+
+        return teacherRepository.findWithExamSchedule(EXAM_SCHEDULE_SORT);
     }
 
     @Transactional(readOnly = true)
@@ -59,8 +89,9 @@ public class TeacherService {
 
     @Transactional
     public TeacherDetailsResponseDto createTeacher(TeacherRequestDto request) {
-        validateAvatar(request);
+        prepare(request);
         Teacher teacher = teacherMapper.toEntity(request);
+        teacher.setUser(resolveUser(request.getUserId(), null));
         teacher.getSubjects().addAll(resolveSubjects(request.getSubjectIds()));
 
         return teacherMapper.toDetailsDto(teacherRepository.save(teacher));
@@ -69,9 +100,10 @@ public class TeacherService {
     @Transactional
     public TeacherDetailsResponseDto updateTeacher(Long id, TeacherRequestDto request) {
         Teacher teacher = teacherRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+                .orElseThrow(() -> teacherNotFound(id));
 
         applyUpdate(teacher, request);
+        teacher.setUser(resolveUser(request.getUserId(), teacher.getId()));
         teacher.getSubjects().clear();
         teacher.getSubjects().addAll(resolveSubjects(request.getSubjectIds()));
 
@@ -81,7 +113,7 @@ public class TeacherService {
     @Transactional
     public void deleteTeacher(Long id) {
         Teacher teacher = teacherRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Преподаватель id=" + id + " не найден"));
+                .orElseThrow(() -> teacherNotFound(id));
         String avatarKey = teacher.getAvatar();
 
         teacherRepository.delete(teacher);
@@ -89,6 +121,24 @@ public class TeacherService {
         if (avatarKey != null) {
             fileCleanup.deleteAfterCommit(avatarKey);
         }
+    }
+
+    @Transactional
+    public void archive(Long id) {
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> teacherNotFound(id));
+
+        if (teacher.getArchivedAt() == null) {
+            teacher.setArchivedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        }
+    }
+
+    @Transactional
+    public void unarchive(Long id) {
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> teacherNotFound(id));
+
+        teacher.setArchivedAt(null);
     }
 
     @Transactional(readOnly = true)
@@ -105,13 +155,29 @@ public class TeacherService {
     }
 
     private void applyUpdate(Teacher teacher, TeacherRequestDto request) {
-        validateAvatar(request);
+        prepare(request);
         String oldAvatarKey = teacher.getAvatar();
         teacherMapper.updateEntity(teacher, request);
 
         if (oldAvatarKey != null && !oldAvatarKey.equals(teacher.getAvatar())) {
             fileCleanup.deleteAfterCommit(oldAvatarKey);
         }
+    }
+
+    private void prepare(TeacherRequestDto request) {
+        validateAvatar(request);
+        request.setEducation(sanitizeRichText(request.getEducation()));
+        request.setQualification(sanitizeRichText(request.getQualification()));
+    }
+
+    private String sanitizeRichText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = HtmlSanitizer.sanitize(value);
+
+        return cleaned.isBlank() ? null : cleaned;
     }
 
     private Teacher findMyCard() {
@@ -129,6 +195,28 @@ public class TeacherService {
         return authentication.getName();
     }
 
+    private User resolveUser(Long userId, Long teacherId) {
+        if (userId == null) {
+            return null;
+        }
+
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new FieldValidationException("userId", "Учётная запись не найдена: id=" + userId));
+
+        if (!user.isTeacher()) {
+            throw new FieldValidationException("userId", "У учётной записи id=" + userId + " нет роли преподавателя");
+        }
+
+        teacherRepository.findByUserId(userId)
+                .filter(linked -> !Objects.equals(linked.getId(), teacherId))
+                .ifPresent(linked -> {
+                    throw new FieldValidationException("userId",
+                            "Учётная запись уже связана с карточкой преподавателя id=" + linked.getId());
+                });
+
+        return user;
+    }
+
     private Set<Subject> resolveSubjects(List<Long> subjectIds) {
         if (subjectIds == null || subjectIds.isEmpty()) {
             return new HashSet<>();
@@ -141,7 +229,7 @@ public class TeacherService {
                 .collect(Collectors.toSet());
 
         if (!missing.isEmpty()) {
-            throw new InvalidRequestException("Дисциплины не найдены: " + missing);
+            throw new FieldValidationException("subjectIds", "Дисциплины не найдены: " + missing);
         }
 
         return new HashSet<>(found);
@@ -150,7 +238,21 @@ public class TeacherService {
     private void validateAvatar(TeacherRequestDto request) {
         String key = request.getAvatar();
         if (key != null && !fileStorage.existsInCategory(key, AVATAR_CATEGORY)) {
-            throw new InvalidFileException("Файл аватара не найден: " + key);
+            throw new FieldValidationException("avatar", "Файл аватара не найден: " + key);
         }
+    }
+
+    private Page<Teacher> findByArchived(Boolean archived, Pageable pageable) {
+        if (archived == null) {
+            return teacherRepository.findAll(pageable);
+        }
+
+        return archived
+                ? teacherRepository.findByArchivedAtIsNotNull(pageable)
+                : teacherRepository.findByArchivedAtIsNull(pageable);
+    }
+
+    private NotFoundException teacherNotFound(Long id) {
+        return new NotFoundException("Преподаватель id=" + id + " не найден");
     }
 }

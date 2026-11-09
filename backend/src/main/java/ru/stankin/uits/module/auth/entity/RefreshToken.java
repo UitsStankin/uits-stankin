@@ -30,6 +30,12 @@ public class RefreshToken {
     @Column(name = "family_id", nullable = false, updatable = false)
     private UUID familyId;
 
+    @Column(name = "parent_id", updatable = false)
+    private Long parentId;
+
+    @Column(name = "family_created_at", nullable = false, updatable = false)
+    private OffsetDateTime familyCreatedAt;
+
     @Column(name = "issued_at", nullable = false, updatable = false)
     private OffsetDateTime issuedAt;
 

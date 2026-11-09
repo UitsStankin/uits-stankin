@@ -2,7 +2,9 @@ package ru.stankin.uits.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
@@ -69,6 +71,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Конфликт данных.");
     }
 
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ProblemDetail handleConcurrencyFailure(ConcurrencyFailureException ex) {
+        log.warn("Конкурентное изменение данных: {}", ex.getMessage());
+
+        return problemDetail(HttpStatus.CONFLICT, "Данные изменены другим запросом. Повторите попытку.");
+    }
+
     @ExceptionHandler({BadCredentialsException.class, AccountStatusException.class})
     public ProblemDetail handleAuthenticationFailure(AuthenticationException ex) {
         log.warn("Отказ в аутентификации: {}", ex.getClass().getSimpleName());
@@ -89,6 +98,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Неизвестное поле сортировки: " + ex.getPropertyName() + ".");
     }
 
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ProblemDetail handleInvalidDataAccessApiUsage(InvalidDataAccessApiUsageException ex) {
+        String message = ex.getMessage();
+        if (message != null && message.startsWith("Sort expression")) {
+            return problemDetail(HttpStatus.BAD_REQUEST, "Недопустимое поле сортировки.");
+        }
+        return handleUnexpected(ex);
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {
         log.error("Необработанное исключение", ex);
@@ -99,6 +117,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InvalidFileException.class)
     public ProblemDetail handleInvalidFile(InvalidFileException ex) {
         return problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(ScheduleServiceUnavailableException.class)
+    public ProblemDetail handleScheduleServiceUnavailable(ScheduleServiceUnavailableException ex) {
+        return problemDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    @ExceptionHandler(ScholarUnavailableException.class)
+    public ProblemDetail handleScholarUnavailableException(ScholarUnavailableException ex) {
+        return problemDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    @ExceptionHandler(ResourceInUseException.class)
+    public ProblemDetail handleResourceInUse(ResourceInUseException ex) {
+        return problemDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(FieldValidationException.class)
+    public ProblemDetail handleFieldValidation(FieldValidationException ex) {
+        ProblemDetail problem = problemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setProperty("errors", Map.of(ex.getField(), List.of(ex.getMessage())));
+
+        return problem;
     }
 
     @ExceptionHandler(InvalidRequestException.class)

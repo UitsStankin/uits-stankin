@@ -44,5 +44,12 @@ export function useAuth() {
     isLoading: isRestoring || isLoading,
     /** Модератор или суперпользователь: управление новостями и файлами. */
     canEdit: profile !== null && (profile.moderator || profile.superuser),
+    /**
+     * Суперпользователь. Отличается от `canEdit` ровно одним разделом
+     * админки: учётными записями (`/api/users`) распоряжается только он,
+     * модератор получает там `403` (docs/API.md, «Роли»). Календарь
+     * событий — второе такое место, но он приедет в Фазе 3.
+     */
+    isAdmin: profile !== null && profile.superuser,
   };
 }

@@ -3,6 +3,7 @@ package ru.stankin.uits.module.staff;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,14 +17,23 @@ import ru.stankin.uits.common.PageResponseDto;
 import ru.stankin.uits.module.staff.dto.SubjectDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.entity.Subject;
+import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.repository.SubjectRepository;
+import ru.stankin.uits.module.staff.repository.TeacherRepository;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class SubjectIntegrationTest extends AbstractIntegrationTest {
+class SubjectIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private SubjectRepository subjectRepository;
+
+    @Autowired
+    private TeacherRepository teacherRepository;
 
     private HttpHeaders authJson(String token) {
         HttpHeaders headers = new HttpHeaders();
@@ -37,6 +47,129 @@ public class SubjectIntegrationTest extends AbstractIntegrationTest {
         createUser("moder", TestRole.MODERATOR);
 
         return login("moder");
+    }
+
+    private Subject subject(String name) {
+        return subjectRepository.save(Subject.builder().name(name).build());
+    }
+
+    private void assignToTeacher(Subject subject) {
+        Teacher teacher = teacherRepository.save(Teacher.builder()
+                .lastName("Иванова")
+                .firstName("Мария")
+                .position("доцент")
+                .build());
+        teacher.getSubjects().add(subject);
+        teacherRepository.save(teacher);
+    }
+
+    private ResponseEntity<ProblemDetail> deleteSubject(Long id, String token) {
+        return restTemplate.exchange(
+                "/api/subjects/" + id,
+                HttpMethod.DELETE,
+                new HttpEntity<>(authJson(token)),
+                ProblemDetail.class
+        );
+    }
+
+    @Test
+    void updateSubject_ChangesNameAndDescription() {
+        Subject stored = subject("Базы даных");
+
+        ResponseEntity<SubjectDto> response = restTemplate.exchange(
+                "/api/subjects/" + stored.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(SubjectRequestDto.builder()
+                        .name("Базы данных")
+                        .description("Реляционная модель, SQL")
+                        .build(), authJson(moderatorToken())),
+                SubjectDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(stored.getId());
+        assertThat(response.getBody().getDescription()).isEqualTo("Реляционная модель, SQL");
+        Subject saved = subjectRepository.findById(stored.getId()).orElseThrow();
+        assertThat(saved.getName()).isEqualTo("Базы данных");
+        assertThat(saved.getDescription()).isEqualTo("Реляционная модель, SQL");
+    }
+
+    @Test
+    void updateSubject_WhenRenamedToOwnNameInOtherCase_Returns200() {
+        Subject stored = subject("Базы данных");
+
+        ResponseEntity<SubjectDto> response = restTemplate.exchange(
+                "/api/subjects/" + stored.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(SubjectRequestDto.builder().name("БАЗЫ ДАННЫХ").build(), authJson(moderatorToken())),
+                SubjectDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(subjectRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("БАЗЫ ДАННЫХ");
+    }
+
+    @Test
+    void updateSubject_WhenNameTakenByAnother_Returns400() {
+        subject("Базы данных");
+        Subject stored = subject("Проектирование ИС");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/subjects/" + stored.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(SubjectRequestDto.builder().name("Базы данных").build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("Базы данных", "уже существует");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("name", List.of(response.getBody().getDetail())));
+        assertThat(subjectRepository.findById(stored.getId()).orElseThrow().getName()).isEqualTo("Проектирование ИС");
+    }
+
+    @Test
+    void updateSubject_WhenUnknownId_Returns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/subjects/999999",
+                HttpMethod.PUT,
+                new HttpEntity<>(SubjectRequestDto.builder().name("Базы данных").build(), authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteSubject_WhenNotAssigned_Returns204() {
+        Subject stored = subject("Базы данных");
+
+        assertThat(deleteSubject(stored.getId(), moderatorToken()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(subjectRepository.findById(stored.getId())).isEmpty();
+    }
+
+    @Test
+    void deleteSubject_WhenAssignedToTeacher_Returns409AndKeepsSubject() {
+        Subject stored = subject("Базы данных");
+        assignToTeacher(stored);
+
+        ResponseEntity<ProblemDetail> response = deleteSubject(stored.getId(), moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail())
+                .as("отказ обязан объяснять причину: без явной проверки тот же 409 "
+                        + "прилетел бы от внешнего ключа с текстом «Конфликт данных.»")
+                .contains("назначена преподавателям");
+        assertThat(subjectRepository.findById(stored.getId())).isPresent();
+    }
+
+    @Test
+    void deleteSubject_WhenUnknownId_Returns404() {
+        assertThat(deleteSubject(999999L, moderatorToken()).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
@@ -75,7 +208,41 @@ public class SubjectIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void createSubject_WhenNameAlreadyExists_Returns409() {
+    void createSubject_StoresAndReturnsDescription() {
+        ResponseEntity<SubjectDto> response = restTemplate.exchange(
+                "/api/subjects",
+                HttpMethod.POST,
+                new HttpEntity<>(SubjectRequestDto.builder()
+                        .name("Базы данных")
+                        .description("Реляционная модель, SQL, транзакции")
+                        .build(), authJson(moderatorToken())),
+                SubjectDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDescription()).isEqualTo("Реляционная модель, SQL, транзакции");
+        assertThat(subjectRepository.findById(response.getBody().getId()).orElseThrow().getDescription())
+                .isEqualTo("Реляционная модель, SQL, транзакции");
+    }
+
+    @Test
+    void createSubject_WithoutDescription_KeepsItNull() {
+        ResponseEntity<SubjectDto> response = restTemplate.exchange(
+                "/api/subjects",
+                HttpMethod.POST,
+                new HttpEntity<>(SubjectRequestDto.builder().name("Алгоритмы").build(),
+                        authJson(moderatorToken())),
+                SubjectDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDescription()).isNull();
+    }
+
+    @Test
+    void createSubject_WhenNameAlreadyExists_Returns400() {
         subjectRepository.save(Subject.builder().name("Базы данных").build());
 
         ResponseEntity<ProblemDetail> response = restTemplate.exchange(
@@ -86,6 +253,43 @@ public class SubjectIntegrationTest extends AbstractIntegrationTest {
                 ProblemDetail.class
         );
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).contains("Базы данных", "уже существует");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("errors", Map.of("name", List.of(response.getBody().getDetail())));
+        assertThat(subjectRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void createSubject_WhenNameExistsInOtherCase_Returns400() {
+        subject("Базы данных");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/subjects",
+                HttpMethod.POST,
+                new HttpEntity<>(SubjectRequestDto.builder().name("БАЗЫ ДАННЫХ").build(),
+                        authJson(moderatorToken())),
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(subjectRepository.count()).isEqualTo(1);
+    }
+
+    /**
+     * Гонка двух одновременных POST проходит проверку existsByNameIgnoreCase до вставки
+     * друг друга, поэтому дубль обязан отбить сама база — индексом uq_subject_name_lower.
+     * Вставка идёт через репозиторий в обход сервисной проверки: через ручку тот же
+     * отказ отдал бы код, и тест не отличил бы отказ кода от отказа схемы.
+     */
+    @Test
+    void duplicateNameIgnoringCaseIsRejectedByDatabase() {
+        subjectRepository.saveAndFlush(Subject.builder().name("Базы данных").build());
+
+        Subject duplicate = Subject.builder().name("БАЗЫ ДАННЫХ").build();
+        assertThatThrownBy(() -> subjectRepository.saveAndFlush(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uq_subject_name_lower");
     }
 }

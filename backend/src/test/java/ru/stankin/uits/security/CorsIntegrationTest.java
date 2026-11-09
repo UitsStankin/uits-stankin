@@ -16,7 +16,7 @@ import ru.stankin.uits.module.news.dto.NewsRequestDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CorsIntegrationTest extends AbstractIntegrationTest {
+class CorsIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private TestRestTemplate restTemplate;

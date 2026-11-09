@@ -5,10 +5,12 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import ru.stankin.uits.common.storage.FileStorage;
 
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 /**
@@ -94,13 +96,22 @@ class ArchitectureTest {
                             // FK-связи: у новости есть автор, у преподавателя — учётная запись
                             "..module.news.entity..",
                             "..module.staff.entity..",
+                            // событие календаря принадлежит владельцу и назначено участникам
+                            "..module.events.entity..",
                             // мапперы собирают authorName и ФИО преподавателя из полей User
                             // (зависимость появляется в сгенерированных MapStruct-реализациях)
                             "..module.news.mapper..",
                             "..module.staff.mapper..",
+                            "..module.events.mapper..",
                             // NewsService достаёт текущего пользователя из SecurityContext,
                             // чтобы проставить автора создаваемой новости
                             "..module.news.service..",
+                            // карточка ППС связывается с учётной записью через форму
+                            // модератора: TeacherService проверяет учётку и проставляет
+                            // Teacher.user (T-56b)
+                            "..module.staff.service..",
+                            // владелец и назначенные приезжают в сервис календаря учётными записями
+                            "..module.events.service..",
                             // логин достаёт id пользователя для обновления last_login
                             "..module.auth.controller..",
                             // сессия принадлежит пользователю: FK refresh_token.user_id
@@ -149,6 +160,15 @@ class ArchitectureTest {
                             "..module.achievements.entity..",
                             "..module.achievements.mapper..",
                             "..module.achievements.service..",
+                            "..module.schedule.entity..",
+                            "..module.schedule.mapper..",
+                            "..module.schedule.service..",
+                            "..module.students.entity..",
+                            "..module.students.mapper..",
+                            "..module.students.service..",
+                            "..module.gradesheets.entity..",
+                            "..module.gradesheets.mapper..",
+                            "..module.gradesheets.service..",
                             "..config.."
                     )
                     .because("Teacher — внутренняя модель модуля staff, "
@@ -211,6 +231,28 @@ class ArchitectureTest {
      *   <li>achievements → staff.entity и staff.service: достижение привязано
      *       к преподавателю. Сущность — ради FK и ФИО в ответе, сервис — потому
      *       что публичная граница модуля staff одна, и это он, а не репозиторий.</li>
+     *   <li>schedule → staff.entity и staff.enums: расписание принадлежит преподавателю
+     *       (FK на employee_teacher), связь того же рода, что у достижений; enum
+     *       ExamScheduleType описывает поля карточки ППС и потому живёт в staff,
+     *       а ручка расписания экзаменов принимает его параметром запроса.</li>
+     *   <li>student → staff.entity и staff.service: запись аспирантуры связывает
+     *       студента с руководителем (FK на employee_teacher), ФИО руководителя
+     *       едет в ответ, а существование преподавателя проверяется через
+     *       TeacherService — как у достижений и расписания.</li>
+     *   <li>events → user.service: назначенные на событие приходят списком id,
+     *       и существование учёток проверяется через UserService — как модуль
+     *       достижений проверяет преподавателя через TeacherService.</li>
+     *   <li>staff → user.service: связь карточки ППС с учётной записью приходит
+     *       идентификатором в теле запроса, и учётка достаётся через UserService —
+     *       тем же путём, что назначенные на событие.</li>
+     *   <li>gradesheets → staff.entity: ведомость привязана к преподавателю
+     *       из шапки файла (FK на employee_teacher) и к дисциплине из справочника
+     *       (FK на subject_subject) — обе связи того же рода, что у расписания.</li>
+     *   <li>staff.service → gradesheets.service: обратная сторона той же связи.
+     *       Сопоставление ФИО из ведомости со справочниками идёт через порты
+     *       {@code TeacherByNameLookup} и {@code SubjectByNameLookup}: интерфейсы
+     *       объявлены у потребителя, реализация — у владельца данных, как
+     *       {@code TeacherCardLookup} у модулей user и staff.</li>
      * </ul>
      */
     @ArchTest
@@ -221,6 +263,12 @@ class ArchitectureTest {
                             resideInAPackage("..module.auth.."),
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
+                            resideInAPackage("..module.events.service.."),
+                            resideInAPackage("..module.user.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.staff.service.."),
+                            resideInAPackage("..module.user.service.."))
+                    .ignoreDependency(
                             DescribedPredicate.alwaysTrue(),
                             resideInAPackage("..module.user.entity.."))
                     .ignoreDependency(
@@ -229,6 +277,62 @@ class ArchitectureTest {
                     .ignoreDependency(
                             resideInAPackage("..module.achievements.service.."),
                             resideInAPackage("..module.staff.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.schedule.."),
+                            resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.schedule.."),
+                            resideInAPackage("..module.staff.enums.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.schedule.service.."),
+                            resideInAPackage("..module.staff.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.students.."),
+                            resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.students.service.."),
+                            resideInAPackage("..module.staff.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.gradesheets.."),
+                            resideInAPackage("..module.staff.entity.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.staff.service.."),
+                            resideInAPackage("..module.gradesheets.service.."))
                     .because("границы модулей — сервисы и DTO; прямой доступ к чужим "
                             + "внутренностям превращает модули обратно в один клубок");
+
+    /**
+     * Правило 7. Секреты учётной записи не попадают в DTO ответов.
+     *
+     * <p>Пароль, код привязки Telegram, хеш refresh-токена и граница живых сессий
+     * наружу не отдаются ни в каком виде. Проверка глазами работает ровно до
+     * следующего модуля: поля Telegram появятся вместе с модулем 20, и вспомнить
+     * про них будет некому. Request-DTO исключены: пароль как раз принимают форма
+     * создания учётной записи и смена пароля (T-54c).
+     */
+    @ArchTest
+    static final ArchRule dtosDoNotCarryAccountSecrets =
+            noFields().that().areDeclaredInClassesThat().resideInAPackage("..dto..")
+                    .and().areDeclaredInClassesThat().haveSimpleNameNotEndingWith("Request")
+                    .and().areDeclaredInClassesThat().haveSimpleNameNotEndingWith("RequestDto")
+                    .should().haveNameMatching("password|telegramCode|tokenHash|tokensNotBefore")
+                    .because("это секреты учётной записи: в ответ они не уходят, "
+                            + "а правило ловит это на сборке, а не на ревью новой ручки");
+
+    /**
+     * Правило 8. Файлы удаляются только через common.storage.
+     *
+     * <p>Диск транзакцию не откатывает: файл, стёртый до коммита, оставляет живую
+     * запись со ссылкой в никуда. Поэтому уборка идёт через
+     * {@code FileCleanup.deleteAfterCommit}, а прямой {@code FileStorage.delete}
+     * остаётся внутри пакета хранилища — там его зовут сама уборка и ночной
+     * сборщик сирот. Тест на откат есть у новостей, но он один, а сервисов
+     * с файлами пять (T-54e).
+     */
+    @ArchTest
+    static final ArchRule fileDeletionGoesThroughCleanup =
+            noClasses().that().resideOutsideOfPackage("..common.storage..")
+                    .should().callMethod(FileStorage.class, "delete", String.class)
+                    .because("удаление до коммита не откатывается вместе с транзакцией — "
+                            + "файлы убирает FileCleanup после успешного коммита");
 }

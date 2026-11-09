@@ -23,6 +23,17 @@ public interface FileStorage {
      */
     String store(InputStream data, String extension, String category);
 
+    /**
+     * Второй файл рядом с уже сохранённым: тот же каталог и то же имя
+     * с добавленным суффиксом. Ключ выводится из базового, а не генерируется
+     * заново, чтобы связь основного файла и его миниатюры не пришлось
+     * хранить отдельно.
+     */
+    String storeVariant(String baseKey, String suffix, InputStream data);
+
+    /** Ключ варианта для базового ключа — без обращения к диску. */
+    String variantKey(String baseKey, String suffix);
+
     /** Удаляет файл. Отсутствие файла ошибкой не считается — цель вызова достигнута. */
     void delete(String key);
 

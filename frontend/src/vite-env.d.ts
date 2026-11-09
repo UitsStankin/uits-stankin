@@ -18,6 +18,15 @@ interface ImportMetaEnv {
    * об этом спорит компилятор, а не браузер в рантайме.
    */
   readonly VITE_API_BASE_URL: string | undefined;
+  /**
+   * `'true'` — поднять моки MSW поверх запросов в браузере. Строка, а не
+   * булево: Vite подставляет значения из `.env` литералами как есть,
+   * и `VITE_ENABLE_MOCKS=false` в булевом типе оказался бы истиной.
+   *
+   * Действует только в dev-сборке: на проде условие статически ложно
+   * и вырезается вместе с импортом msw.
+   */
+  readonly VITE_ENABLE_MOCKS: string | undefined;
 }
 
 interface ImportMeta {

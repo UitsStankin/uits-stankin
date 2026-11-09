@@ -1,7 +1,6 @@
 package ru.stankin.uits.common.storage;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
@@ -24,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * по возвращённому адресу. Каталог хранилища подменяется на временный, чтобы тесты
  * не писали в рабочую папку проекта.
  */
-public class FileUploadIntegrationTest extends AbstractIntegrationTest {
+class FileUploadIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void upload_WhenAdmin_Returns201AndWritesFile() throws IOException {
@@ -135,9 +134,88 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    /** Адрес из ответа должен работать без токена: картинки открывают посетители сайта. */
     @Test
-    void uploadedFile_IsServedByReturnedUrlWithoutToken() throws IOException {
+    void upload_WhenModeratorUploadsToStaff_Returns201() throws IOException {
+        createUser("moderator_staff", TestRole.MODERATOR);
+        String token = login("moderator_staff");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(400, 400), "diploma.jpg", "staff", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().key()).startsWith("staff/");
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key())).exists();
+    }
+
+    @Test
+    void upload_WhenModeratorUploadsToPages_Returns201() throws IOException {
+        createUser("moderator_pages", TestRole.MODERATOR);
+        String token = login("moderator_pages");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(400, 400), "scheme.jpg", "pages", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().key()).startsWith("pages/");
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key())).exists();
+    }
+
+    @Test
+    void upload_WhenTeacherUploadsToStaff_Returns403() throws IOException {
+        createUser("teacher_staff", TestRole.TEACHER);
+        String token = login("teacher_staff");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(300, 300), "diploma.jpg", "staff", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void upload_WhenFileIsEmpty_Returns400() {
+        createUser("admin_empty", TestRole.ADMIN);
+        String token = login("admin_empty");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(new byte[0], "photo.jpg", "news", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Файл не передан");
+    }
+
+    /**
+     * Ответ обязан доехать телом ProblemDetail, а не обрывом соединения:
+     * Tomcat дочитывает отклонённое тело только в пределах max-swallow-size.
+     */
+    @Test
+    void upload_WhenFileExceedsSizeLimit_Returns413WithProblemDetail() {
+        createUser("admin_large", TestRole.ADMIN);
+        String token = login("admin_large");
+        byte[] oversized = new byte[16 * 1024 * 1024];
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(oversized, "photo.jpg", "news", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Файл превышает допустимый размер.");
+    }
+
+    /**
+     * Адрес из ответа должен указывать на реально существующий файл. В проде его
+     * отдаёт nginx, а раздача в самом приложении включается только свойством
+     * serve-media для разработки (T-88) — в тестовом профиле она выключена.
+     */
+    @Test
+    void uploadedFile_LandsInStorageUnderReturnedUrl() throws IOException {
         createUser("admin", TestRole.ADMIN);
         String token = login("admin");
         ResponseEntity<FileUploadResponseDto> upload = restTemplate.postForEntity(
@@ -145,11 +223,134 @@ public class FileUploadIntegrationTest extends AbstractIntegrationTest {
                 FileUploadResponseDto.class);
         assertThat(upload.getBody()).isNotNull();
 
-        ResponseEntity<byte[]> served = restTemplate.getForEntity(upload.getBody().url(), byte[].class);
+        String url = upload.getBody().url();
+        assertThat(url).startsWith("/media/");
 
-        assertThat(served.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(served.getBody()).isNotEmpty();
-        assertThat(ImageIO.read(new java.io.ByteArrayInputStream(served.getBody()))).isNotNull();
+        Path stored = STORAGE_ROOT.resolve(url.substring("/media/".length()));
+        assertThat(Files.exists(stored)).isTrue();
+        assertThat(ImageIO.read(stored.toFile())).isNotNull();
+
+        assertThat(restTemplate.getForEntity(url, byte[].class).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void upload_WhenPdfGoesToPublications_Returns201() {
+        createUser("moderator_pdf", TestRole.MODERATOR);
+        String token = login("moderator_pdf");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(pdf(), "article.pdf", "publications", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        String key = response.getBody().key();
+        assertThat(key).startsWith("publications/").endsWith(".pdf");
+        assertThat(STORAGE_ROOT.resolve(key)).exists();
+    }
+
+    @Test
+    void upload_WhenFileInPublicationsIsNotPdf_Returns400() throws IOException {
+        createUser("moderator_img", TestRole.MODERATOR);
+        String token = login("moderator_img");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(300, 300), "photo.jpg", "publications", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void upload_WhenPdfExtensionButNotPdfContent_Returns400() {
+        createUser("moderator_fake", TestRole.MODERATOR);
+        String token = login("moderator_fake");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart("совсем не pdf".getBytes(StandardCharsets.UTF_8),
+                        "article.pdf", "publications", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void upload_WhenPdfGoesToNews_Returns400() {
+        createUser("moderator_news", TestRole.MODERATOR);
+        String token = login("moderator_news");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(pdf(), "article.pdf", "news", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void upload_WhenPlainUserUploadsPdf_Returns403() {
+        createUser("plain_pdf", TestRole.USER);
+        String token = login("plain_pdf");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
+                "/api/files", multipart(pdf(), "article.pdf", "publications", token),
+                ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void upload_WhenImageGoesToNews_AlsoWritesThumbnail() throws IOException {
+        createUser("moderator_thumb", TestRole.MODERATOR);
+        String token = login("moderator_thumb");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(1200, 900), "photo.jpg", "news", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        String key = response.getBody().key();
+        Path thumbnail = STORAGE_ROOT.resolve(key.replace(".jpg", "_thumb.jpg"));
+
+        assertThat(thumbnail).exists();
+        assertThat(Files.size(thumbnail)).isLessThan(Files.size(STORAGE_ROOT.resolve(key)));
+    }
+
+    @Test
+    void upload_WhenAvatar_HasNoThumbnail() throws IOException {
+        createUser("user_thumb", TestRole.USER);
+        String token = login("user_thumb");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(600, 600), "photo.jpg", "avatars", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key().replace(".jpg", "_thumb.jpg")))
+                .doesNotExist();
+    }
+
+    @Test
+    void upload_WhenStaff_HasNoThumbnail() throws IOException {
+        createUser("moderator_staff_thumb", TestRole.MODERATOR);
+        String token = login("moderator_staff_thumb");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(image(1200, 900), "diploma.jpg", "staff", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(STORAGE_ROOT.resolve(response.getBody().key().replace(".jpg", "_thumb.jpg")))
+                .doesNotExist();
+    }
+
+    private byte[] pdf() {
+        return "%PDF-1.4 test document".getBytes(StandardCharsets.US_ASCII);
     }
 
     private HttpEntity<MultiValueMap<String, Object>> multipart(byte[] content,

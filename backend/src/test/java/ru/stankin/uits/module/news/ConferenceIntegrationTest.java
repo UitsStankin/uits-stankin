@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * санитизация rich-text. Уборка файлов обложки живёт отдельно
  * в {@code ConferencePreviewImageIntegrationTest}.
  */
-public class ConferenceIntegrationTest extends AbstractIntegrationTest {
+class ConferenceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ConferenceRepository conferenceRepository;
@@ -269,8 +269,7 @@ public class ConferenceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String stored = conferenceRepository.findAll().getFirst().getContent();
-        assertThat(stored).contains("Приглашаем");
-        assertThat(stored).doesNotContain("script");
+        assertThat(stored).contains("Приглашаем").doesNotContain("script");
     }
 
     /**
@@ -291,8 +290,7 @@ public class ConferenceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         String stored = conferenceRepository.findById(saved.getId()).orElseThrow().getContent();
-        assertThat(stored).contains("Обновлено");
-        assertThat(stored).doesNotContain("onerror");
+        assertThat(stored).contains("Обновлено").doesNotContain("onerror");
     }
 
     /** Тело, вычищенное до пустоты, не должно давать второе представление пустого поля. */

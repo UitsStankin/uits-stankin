@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { refreshAccessToken } from '@shared/api';
+import { clearSession, refreshAccessToken } from '@shared/api';
 
 import { authKeys } from '../api/profileQuery';
 import { useAccessToken, useHasSession } from './useSession';
@@ -30,6 +30,16 @@ export function useRestoreSession(): boolean {
     queryKey: authKeys.session,
     queryFn: async () => {
       const result = await refreshAccessToken();
+
+      // Cookie не сработала — признак сессии врёт, и его надо снять здесь.
+      // Обмен этого не делает намеренно: он только сообщает, чем кончилось,
+      // а решают вызывающие, и решают по-разному (`shared/api/client.ts`).
+      // Здесь решение — забыть признак и НЕ уводить на форму входа:
+      // на старте вкладки это значит «пришли гостем», а не «вас выкинуло».
+      // Без этой строки признак пережил бы запуск, и шапка ждала бы профиль,
+      // которого не будет.
+      if (result.status === 'expired') clearSession();
+
       // Токен запрос кладёт в сессию сам; здесь он нужен лишь как значение
       // кэша — `queryFn` обязана что-то вернуть, а `undefined` в TanStack
       // Query запрещён. `null` читается как «сессии не оказалось».

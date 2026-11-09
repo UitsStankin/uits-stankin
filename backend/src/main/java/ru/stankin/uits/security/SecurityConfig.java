@@ -15,8 +15,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -36,23 +36,30 @@ public class SecurityConfig {
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthFilter,
             LoginRateLimitFilter loginRateLimitFilter,
+            UploadRateLimitFilter uploadRateLimitFilter,
             AuthenticationProvider authenticationProvider,
             JwtAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler,
+            @Value("${application.storage.serve-media}") boolean serveMedia,
             @Value("${application.storage.public-base-url}") String mediaBaseUrl
     ) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/auth/**").permitAll()
-                        .requestMatchers("/error").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, mediaBaseUrl + "/**").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        .anyRequest().authenticated()
-                ).exceptionHandling(
+                .authorizeHttpRequests(auth -> {
+                    auth
+                            .requestMatchers("/api/users/auth/**").permitAll()
+                            .requestMatchers("/error").permitAll()
+                            .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                            .requestMatchers("/api/public/**").permitAll()
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+
+                    if (serveMedia) {
+                        auth.requestMatchers(HttpMethod.GET, mediaBaseUrl + "/**").permitAll();
+                    }
+
+                    auth.anyRequest().authenticated();
+                }).exceptionHandling(
                         ex -> ex.authenticationEntryPoint(authenticationEntryPoint)
                                 .accessDeniedHandler(accessDeniedHandler)
                 )
@@ -63,7 +70,9 @@ public class SecurityConfig {
 
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
-                .addFilterBefore(loginRateLimitFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(loginRateLimitFilter, JwtAuthenticationFilter.class)
+
+                .addFilterAfter(uploadRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -87,10 +96,12 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            UserDetailsPasswordService userDetailsPasswordService
     ) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder);
+        authProvider.setUserDetailsPasswordService(userDetailsPasswordService);
         return authProvider;
     }
 
@@ -101,6 +112,6 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new DjangoAwarePasswordEncoder();
     }
 }

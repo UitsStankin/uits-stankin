@@ -1,11 +1,9 @@
+import { TELEGRAM_CHAT_URL } from '@shared/config/contacts';
 import { cn } from '@shared/lib/cn';
 
 interface FooterProps {
   className?: string;
 }
-
-/** Чат кафедры. Ссылка из footer.component.html оригинала. */
-const TELEGRAM_URL = 'https://t.me/+WQVM050GSEFmZWUy';
 
 /**
  * Подвал — перенос footer из оригинала.
@@ -32,7 +30,7 @@ export default function Footer({ className }: FooterProps) {
         </p>
 
         <a
-          href={TELEGRAM_URL}
+          href={TELEGRAM_CHAT_URL}
           target="_blank"
           rel="noreferrer"
           aria-label="Телеграм-чат кафедры"
@@ -42,7 +40,7 @@ export default function Footer({ className }: FooterProps) {
         >
           {/* Логотип бренда, а не абстрактная иконка: в lucide телеграма нет,
               а подменять его самолётиком Send — терять узнаваемость. */}
-          <img src="/assets/images/telegram.png" alt="" className="h-8.75 w-8.75" aria-hidden />
+          <img src="/img/telegram.png" alt="" className="h-8.75 w-8.75" aria-hidden />
         </a>
       </div>
     </footer>

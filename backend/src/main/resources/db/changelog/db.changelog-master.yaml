@@ -37,3 +37,31 @@ databaseChangeLog:
       file: db/changelog/changesets/018-add-refresh-token-indexes.yml
   - include:
       file: db/changelog/changesets/019-add-user-tokens-not-before.yml
+  - include:
+      file: db/changelog/changesets/020-create-schedule-tables.yml
+  - include:
+      file: db/changelog/changesets/021-create-student-tables.yml
+  - include:
+      file: db/changelog/changesets/022-add-student-indexes.yml
+  - include:
+      file: db/changelog/changesets/023-create-publication-tables.yml
+  - include:
+      file: db/changelog/changesets/024-add-news-preview-thumbnail.yml
+  - include:
+      file: db/changelog/changesets/025-create-event-tables.yml
+  - include:
+      file: db/changelog/changesets/026-create-exam-tables.yml
+  - include:
+      file: db/changelog/changesets/027-refresh-token-lineage.yml
+  - include:
+      file: db/changelog/changesets/028-tag-name-lower-unique.yml
+  - include:
+      file: db/changelog/changesets/029-create-gradesheet-tables.yml
+  - include:
+      file: db/changelog/changesets/030-create-gradesheet-blocks.yml
+  - include:
+      file: db/changelog/changesets/031-create-scholar-cache.yml
+  - include:
+      file: db/changelog/changesets/032-subject-name-lower-unique.yml
+  - include:
+      file: db/changelog/changesets/033-teacher-archived-at.yml

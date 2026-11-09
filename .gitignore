@@ -7,3 +7,9 @@ postman/
 
 /media/
 backend/media/
+
+schedule-service/.venv/
+__pycache__/
+.pytest_cache/
+.coverage
+coverage.xml

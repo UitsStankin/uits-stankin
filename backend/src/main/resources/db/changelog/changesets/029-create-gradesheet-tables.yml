@@ -1,0 +1,216 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-create-gradesheet-tables
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: gradesheet_gradesheet
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: discipline_name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_id
+                  type: BIGINT
+              - column:
+                  name: group
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: semester
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: direction
+                  type: VARCHAR(256)
+              - column:
+                  name: department
+                  type: VARCHAR(128)
+              - column:
+                  name: teacher_id
+                  type: BIGINT
+              - column:
+                  name: imported_teachers
+                  type: VARCHAR(256)
+              - column:
+                  name: imported_file_name
+                  type: VARCHAR(256)
+              - column:
+                  name: imported_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: gradesheet_gradesheet
+            baseColumnNames: subject_id
+            constraintName: fk_gradesheet_subject
+            referencedTableName: subject_subject
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: gradesheet_gradesheet
+            baseColumnNames: teacher_id
+            constraintName: fk_gradesheet_teacher
+            referencedTableName: employee_teacher
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - createIndex:
+            tableName: gradesheet_gradesheet
+            indexName: uq_gradesheet_discipline_group_semester
+            unique: true
+            columns:
+              - column:
+                  name: discipline_name
+              - column:
+                  name: group
+              - column:
+                  name: semester
+        - createIndex:
+            tableName: gradesheet_gradesheet
+            indexName: idx_gradesheet_teacher_id
+            columns:
+              - column:
+                  name: teacher_id
+        - createIndex:
+            tableName: gradesheet_gradesheet
+            indexName: idx_gradesheet_group
+            columns:
+              - column:
+                  name: group
+
+        - createTable:
+            tableName: gradesheet_student
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: gradesheet_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_number
+                  type: INTEGER
+              - column:
+                  name: last_name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(50)
+              - column:
+                  name: patronymic
+                  type: VARCHAR(50)
+        - addForeignKeyConstraint:
+            baseTableName: gradesheet_student
+            baseColumnNames: gradesheet_id
+            constraintName: fk_gradesheet_student_gradesheet
+            referencedTableName: gradesheet_gradesheet
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: gradesheet_student
+            indexName: idx_gradesheet_student_gradesheet_id
+            columns:
+              - column:
+                  name: gradesheet_id
+
+        - createTable:
+            tableName: gradesheet_mark
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: student_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: block
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: score
+                  type: NUMERIC(5, 2)
+              - column:
+                  name: mark_text
+                  type: VARCHAR(128)
+              - column:
+                  name: grade
+                  type: VARCHAR(128)
+              - column:
+                  name: mark_date
+                  type: DATE
+              - column:
+                  name: teacher_name
+                  type: VARCHAR(128)
+        - addForeignKeyConstraint:
+            baseTableName: gradesheet_mark
+            baseColumnNames: student_id
+            constraintName: fk_gradesheet_mark_student
+            referencedTableName: gradesheet_student
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: gradesheet_mark
+            indexName: idx_gradesheet_mark_student_id
+            columns:
+              - column:
+                  name: student_id
+        - sql:
+            comment: >-
+              В колонке балла ведомости встречается и число, и текст
+              («не допущен»), но никогда оба сразу: разбор кладёт число
+              в score, строку — в mark_text.
+            sql: >-
+              ALTER TABLE gradesheet_mark
+              ADD CONSTRAINT ck_gradesheet_mark_score_or_text
+              CHECK (score IS NULL OR mark_text IS NULL)
+        - sql:
+            comment: >-
+              Оценка без единого заполненного поля означала бы, что в ведомости
+              по этому блоку ничего нет. Такие блоки не сохраняются вовсе.
+            sql: >-
+              ALTER TABLE gradesheet_mark
+              ADD CONSTRAINT ck_gradesheet_mark_not_empty
+              CHECK (
+                score IS NOT NULL
+                OR mark_text IS NOT NULL
+                OR grade IS NOT NULL
+                OR mark_date IS NOT NULL
+                OR teacher_name IS NOT NULL
+              )
+      # Откат пишется руками по той же причине, что и в 026: произвольный SQL
+      # Liquibase отменить сам не умеет, а явный rollback замещает
+      # автогенерируемый целиком.
+      rollback:
+        - sql:
+            sql: ALTER TABLE gradesheet_mark DROP CONSTRAINT ck_gradesheet_mark_not_empty
+        - sql:
+            sql: ALTER TABLE gradesheet_mark DROP CONSTRAINT ck_gradesheet_mark_score_or_text
+        - dropTable:
+            tableName: gradesheet_mark
+        - dropTable:
+            tableName: gradesheet_student
+        - dropTable:
+            tableName: gradesheet_gradesheet

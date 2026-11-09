@@ -18,6 +18,19 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  schedule-service:
+    build: ../schedule-service
+    container_name: uits_schedule_service
+    ports:
+      - "${SCHEDULE_SERVICE_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     name: uits_postgres_data

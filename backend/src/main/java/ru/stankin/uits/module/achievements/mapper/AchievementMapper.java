@@ -5,14 +5,12 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.stankin.uits.common.FullName;
 import ru.stankin.uits.common.storage.FileStorage;
 import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.achievements.dto.AchievementResponseDto;
 import ru.stankin.uits.module.achievements.entity.Achievement;
 import ru.stankin.uits.module.staff.entity.Teacher;
-
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Mapper(componentModel = "spring")
 public abstract class AchievementMapper {
@@ -40,9 +38,7 @@ public abstract class AchievementMapper {
         if (teacher == null) {
             return null;
         } else {
-            return Stream.of(teacher.getLastName(), teacher.getFirstName(), teacher.getPatronymic())
-                    .filter(part -> part != null && !part.isBlank())
-                    .collect(Collectors.joining(" "));
+            return FullName.of(teacher.getLastName(), teacher.getFirstName(), teacher.getPatronymic());
         }
     }
 

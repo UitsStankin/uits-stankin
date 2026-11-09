@@ -15,6 +15,9 @@ public class StaffFileUsageProbe implements FileUsageProbe {
 
     @Override
     public boolean uses(String key) {
-        return teacherRepository.existsByAvatar(key) || helpersEmployeeRepository.existsByAvatar(key);
+        return teacherRepository.existsByAvatar(key)
+                || helpersEmployeeRepository.existsByAvatar(key)
+                || teacherRepository.existsByEducationContaining(key)
+                || teacherRepository.existsByQualificationContaining(key);
     }
 }

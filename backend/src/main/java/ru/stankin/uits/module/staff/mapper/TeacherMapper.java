@@ -31,16 +31,19 @@ public abstract class TeacherMapper {
 
     @Mapping(target = "avatarUrl", source = "avatar", qualifiedByName = "avatarUrl")
     @Mapping(target = "subjects", source = "subjects", qualifiedByName = "sortedSubjects")
+    @Mapping(target = "userId", source = "user.id")
     public abstract TeacherDetailsResponseDto toDetailsDto(Teacher teacher);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "subjects", ignore = true)
+    @Mapping(target = "archivedAt", ignore = true)
     public abstract Teacher toEntity(TeacherRequestDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "subjects", ignore = true)
+    @Mapping(target = "archivedAt", ignore = true)
     public abstract void updateEntity(@MappingTarget Teacher teacher, TeacherRequestDto dto);
 
     @Named("avatarUrl")

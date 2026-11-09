@@ -20,7 +20,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class NewsIntegrationTest extends AbstractIntegrationTest {
+class NewsIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private NewsRepository newsRepository;
 
@@ -306,6 +306,37 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void publicNews_WhenPageSizeAboveLimit_CapsAtHundred() {
+        ResponseEntity<PageResponseDto<NewsResponseDto>> response = restTemplate.exchange(
+                "/api/public/news?size=500", HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().size()).isEqualTo(100);
+    }
+
+    @Test
+    void createNews_WhenShortDescriptionContainsMarkup_KeepsItVerbatim() {
+        String token = createAdminAndLogin();
+
+        NewsRequestDto request = NewsRequestDto.builder()
+                .title("Test News Title")
+                .shortDescription("Защиты <b>ВКР</b> и 5 < 7")
+                .postType("news")
+                .content("<p>Текст</p>")
+                .display(true)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.postForEntity(
+                "/api/news", withToken(request, token), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(newsRepository.findAll().getFirst().getShortDescription())
+                .isEqualTo("Защиты <b>ВКР</b> и 5 < 7");
+    }
+
+    @Test
     void createNews_WhenContentHasRelativeImage_KeepsImage() {
         String token = createAdminAndLogin();
 
@@ -337,6 +368,17 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getDetail()).contains("abc");
+    }
+
+    @Test
+    void getNews_WhenSortFieldHasQuotes_Returns400() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/news?sort=\"abc\"",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
     }
 
     @Test
@@ -682,10 +724,11 @@ public class NewsIntegrationTest extends AbstractIntegrationTest {
             collected.add(response.getBody().content().getFirst().getId());
         }
 
-        assertThat(collected).doesNotHaveDuplicates();
-        assertThat(collected).containsExactlyInAnyOrderElementsOf(
-                newsRepository.findAll().stream().map(NewsPost::getId).toList());
-        assertThat(collected).isSortedAccordingTo(java.util.Comparator.reverseOrder());
+        assertThat(collected)
+                .doesNotHaveDuplicates()
+                .containsExactlyInAnyOrderElementsOf(
+                        newsRepository.findAll().stream().map(NewsPost::getId).toList())
+                .isSortedAccordingTo(java.util.Comparator.reverseOrder());
     }
 
     @Test

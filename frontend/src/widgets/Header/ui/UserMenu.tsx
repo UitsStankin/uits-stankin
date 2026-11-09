@@ -108,19 +108,6 @@ export function UserMenu({
                       <Icon size={18} className="shrink-0" aria-hidden />
                       {item.title}
                     </button>
-                  ) : item.external ? (
-                    // Админка живёт вне SPA, поэтому обычная ссылка в новую
-                    // вкладку, а не переход роутером.
-                    <a
-                      href={item.path}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={onNavigate}
-                      className={itemClass}
-                    >
-                      <Icon size={18} className="shrink-0" aria-hidden />
-                      {item.title}
-                    </a>
                   ) : (
                     <Link to={item.path} onClick={onNavigate} className={itemClass}>
                       <Icon size={18} className="shrink-0" aria-hidden />

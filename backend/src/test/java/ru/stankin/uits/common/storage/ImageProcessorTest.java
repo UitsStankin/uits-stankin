@@ -8,7 +8,9 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -86,6 +88,45 @@ class ImageProcessorTest {
         assertThatThrownBy(() -> processor.process(oversized))
                 .isInstanceOf(InvalidFileException.class)
                 .hasMessageContaining("превышает");
+    }
+
+    @Test
+    void process_WhenImageHasTooManyPixels_ThrowsWithoutDecoding() {
+        byte[] header = pngHeader(20000, 20000);
+
+        assertThatThrownBy(() -> processor.process(header))
+                .isInstanceOf(InvalidFileException.class)
+                .hasMessageContaining("мегапикселей");
+    }
+
+    @Test
+    void process_WhenImageIsWithinPixelLimit_Passes() throws IOException {
+        ProcessedImage result = processor.process(image(1000, 1000, "png"));
+
+        assertThat(result.extension()).isEqualTo("png");
+    }
+
+    private byte[] pngHeader(int width, int height) {
+        ByteBuffer ihdr = ByteBuffer.allocate(17);
+        ihdr.put("IHDR".getBytes(StandardCharsets.US_ASCII));
+        ihdr.putInt(width);
+        ihdr.putInt(height);
+        ihdr.put((byte) 8);
+        ihdr.put((byte) 2);
+        ihdr.put((byte) 0);
+        ihdr.put((byte) 0);
+        ihdr.put((byte) 0);
+
+        CRC32 crc = new CRC32();
+        crc.update(ihdr.array());
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.writeBytes(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A});
+        out.writeBytes(ByteBuffer.allocate(4).putInt(13).array());
+        out.writeBytes(ihdr.array());
+        out.writeBytes(ByteBuffer.allocate(4).putInt((int) crc.getValue()).array());
+
+        return out.toByteArray();
     }
 
     private byte[] image(int width, int height, String format) throws IOException {

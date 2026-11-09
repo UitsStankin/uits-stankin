@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-create-scholar-cache
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: scholar_search_cache
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: query
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: page
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fetched_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: scholar_search_cache
+            columnNames: query, page
+            constraintName: uq_scholar_cache_query_page

@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * переставшего быть обложкой. Правила те же, что у новости (T-23), с одной
  * разницей: обложка обязательна, поэтому снять её правкой нельзя.
  */
-public class AchievementPreviewImageIntegrationTest extends AbstractIntegrationTest {
+class AchievementPreviewImageIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private AchievementRepository achievementRepository;

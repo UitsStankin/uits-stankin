@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ни одному реальному запуску, и проверять в нём нечего.
  */
 @ActiveProfiles(value = "prod", inheritProfiles = false)
-public class ProdProfileIntegrationTest extends AbstractIntegrationTest {
+class ProdProfileIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private TestRestTemplate restTemplate;

@@ -32,6 +32,9 @@ public class NewsPost {
     @Column(name = "preview_image", length = 100)
     private String previewImage;
 
+    @Column(name = "preview_thumbnail", length = 100)
+    private String previewThumbnail;
+
     @Column(name = "preview_image_description", length = 256)
     private String previewImageDescription;
 

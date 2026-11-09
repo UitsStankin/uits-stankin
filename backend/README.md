@@ -1,6 +1,6 @@
 # UITS Backend
 
-Бэкенд портала УИТС: Spring Boot 4, Java 21, PostgreSQL 15.
+Бэкенд портала УИТС: Spring Boot 4, Java 21, PostgreSQL 17.
 Схема базы — миграции Liquibase, аутентификация — JWT.
 
 Фронтенд лежит в соседней папке `frontend/` и поднимается отдельно.
@@ -49,13 +49,15 @@ openssl rand -base64 32
 
 Остальные переменные можно оставить как есть.
 
-### 2. База данных
+### 2. База данных и микросервис расписаний
 
 ```powershell
 docker compose up -d --wait
 ```
 
 `--wait` не отдаёт управление, пока healthcheck контейнера не подтвердит, что база принимает подключения по TCP. Без него можно попасть в момент, когда PostgreSQL ещё инициализируется, и получить `connection refused` на ровном месте.
+
+Кроме базы поднимается `schedule-service` — Python-микросервис разбора PDF-расписаний (`../schedule-service`, документация — в его README). Первый запуск собирает его образ, дальше берётся готовый. Порт на хост-машине задаёт `SCHEDULE_SERVICE_HOST_PORT` (по умолчанию 8000): бэкенд из IDE ходит в него через localhost. Поднять только базу, без микросервиса: `docker compose up -d --wait postgres`.
 
 ### 3. Приложение
 
@@ -121,6 +123,8 @@ Invoke-RestMethod http://localhost:8080/api/public/news
 | Swagger UI и `/v3/api-docs` | доступны | отключены, дают `404` |
 | `DevDataSeeder` | наполняет пустую базу | не запускается |
 | `/actuator/health` и `/health/readiness` | доступны без токена | доступны без токена |
+| Раздача `/media` приложением (`serve-media`) | включена: nginx в разработке нет | выключена, файлы отдаёт nginx |
+| Флаг `Secure` у refresh-cookie | снят: иначе cookie не приедет по http | стоит |
 
 Swagger в проде отключён свойствами springdoc, а не правилом в `SecurityConfig`:
 при выключенной библиотеке этих обработчиков в приложении просто нет, поэтому
@@ -139,18 +143,39 @@ $env:SPRING_PROFILES_ACTIVE = "prod"; .\gradlew.bat bootRun
 
 ## Прод-контур локально
 
-`docker-compose.prod.yml` описывает боевой стек: база без проброшенного наружу порта
-и приложение из образа `ghcr.io/uitsstankin/uits-backend`, который собирает CI.
-Все секреты и тег образа заданы через `${VAR:?...}` — без переменной compose
-не стартует и пишет, чего не хватает.
+`docker-compose.prod.yml` описывает боевой стек из четырёх сервисов: postgres, backend,
+schedule-service и nginx с запечённым фронтендом (пятый сервис, `certbot`, лежит под
+профилем `tools` и сам не стартует). Образы `uits-backend`, `uits-schedule-service`
+и `uits-frontend` из `ghcr.io/uitsstankin` собирает CI под общим тегом. Наружу опубликованы
+только порты nginx — 80 (редирект на https) и 443; база, приложение и микросервис живут
+во внутренней сети. Тот же файл работает на боевом стенде; порядок выкатки, секреты, TLS
+и бэкапы — в [`docs/DEPLOY.md`](../docs/DEPLOY.md). Секреты и тег образа заданы через `${VAR:?...}` — без переменной
+compose не стартует и пишет, чего не хватает; мягкий дефолт только у `SERPER_API_KEY`:
+без ключа не работает один поиск публикаций, а не весь портал.
 
-Собрать образ локально и проверить, что рантайм работает не под root
-(имя с тем же префиксом, тег произвольный — на стенде он равен sha коммита):
+Собрать все три образа локально и проверить, что рантайм бэкенда работает не под root
+(имена с тем же префиксом, тег произвольный — на стенде он равен sha коммита):
 
 ```powershell
 docker build -t ghcr.io/uitsstankin/uits-backend:local .
+docker build -t ghcr.io/uitsstankin/uits-schedule-service:local ../schedule-service
+docker build -t ghcr.io/uitsstankin/uits-frontend:local ../frontend
 docker run --rm --entrypoint id ghcr.io/uitsstankin/uits-backend:local
 ```
+
+Нужны все три: образ, которого нет локально, compose пойдёт тянуть из GHCR, а тега
+`local` там нет.
+
+nginx прод-образа слушает https и без файла сертификата не стартует, поэтому до подъёма
+стека в том `uits_letsencrypt` нужно положить самоподписанный сертификат — по пути
+`live/uits/`, который ждёт `nginx.conf`:
+
+```powershell
+docker run --rm -v uits_letsencrypt:/etc/letsencrypt alpine:3.20 sh -c "apk add --no-cache openssl >/dev/null && mkdir -p /etc/letsencrypt/live/uits && openssl req -x509 -newkey rsa:2048 -nodes -days 30 -subj /CN=localhost -keyout /etc/letsencrypt/live/uits/privkey.pem -out /etc/letsencrypt/live/uits/fullchain.pem && chmod -R a+rX /etc/letsencrypt"
+```
+
+Права `a+rX` обязательны: nginx в контейнере работает не под root и закрытый ключ,
+созданный root, иначе не прочитает.
 
 Поднять стек целиком (у прод- и локального compose одинаковые имена контейнера
 и тома, поэтому локальную базу нужно сначала остановить):
@@ -158,22 +183,42 @@ docker run --rm --entrypoint id ghcr.io/uitsstankin/uits-backend:local
 ```powershell
 docker stop uits_postgres
 $env:IMAGE_TAG = "local"
-$env:CORS_ALLOWED_ORIGINS = "https://uits.example.test"
+$env:CORS_ALLOWED_ORIGINS = "https://localhost"
 docker compose --env-file .env -f docker-compose.prod.yml up -d
 ```
 
 Приложение стартует только после того, как база пройдёт healthcheck
 (`depends_on.condition: service_healthy`), иначе Liquibase упрётся в неподнятый
-кластер. Проверка: `/actuator/health` отдаёт `UP`, `/swagger-ui/index.html` — `404`.
+кластер. Проверка: `docker compose -f docker-compose.prod.yml ps` показывает четыре
+сервиса `healthy`; `http://localhost/` отвечает `301` на `https://localhost/`, который
+открывает фронтенд (браузер предупредит о самоподписанном сертификате);
+`https://localhost/api/public/news` отвечает JSON через прокси. `curl` самоподписанному
+сертификату не доверяет, поэтому нужен ключ `-k`:
 
-Вернуть локальное окружение:
+```powershell
+curl.exe -k https://localhost/api/public/news
+```
+
+Порт бэкенда наружу не опубликован, поэтому сам он проверяется изнутри контейнера:
+
+```powershell
+docker exec uits_backend curl -s localhost:8080/actuator/health
+docker exec uits_backend curl -s -o /dev/null -w "%{http_code}" localhost:8080/swagger-ui/index.html
+```
+
+Первая команда отдаёт `UP`, вторая — `404`.
+
+Вернуть локальное окружение — в той же сессии PowerShell: без `IMAGE_TAG`
+и `CORS_ALLOWED_ORIGINS` compose не разберёт файл даже для `down`:
 
 ```powershell
 docker compose -f docker-compose.prod.yml down
+docker volume rm uits_letsencrypt
 docker compose up -d
 ```
 
-Без `-v` том с данными сохраняется.
+Без `-v` том с данными сохраняется. Том `uits_letsencrypt` в нём лежит только самоподписанный
+сертификат, поэтому его удаляют отдельной командой.
 
 ---
 
@@ -184,10 +229,13 @@ docker compose up -d
 | `POSTGRES_DB` | имя базы | нет, по умолчанию `uits_db` | `uits_db` |
 | `POSTGRES_USER` | пользователь базы | да | `uits_stankin_db` |
 | `POSTGRES_PASSWORD` | его пароль | да | `localdevpass123` |
-| `POSTGRES_HOST_PORT` | порт на хост-машине | да; в шаблоне `.env.example` уже стоит `5433` | `5433` |
+| `POSTGRES_HOST_PORT` | порт на хост-машине | нет, по умолчанию `5433` | `5433` |
+| `SCHEDULE_SERVICE_HOST_PORT` | порт микросервиса расписаний на хост-машине | нет, по умолчанию `8000` | `8000` |
+| `SCHEDULE_SERVICE_URL` | адрес микросервиса расписаний для бэкенда | нет, по умолчанию `http://localhost:8000`; в докере — `http://schedule-service:8000` | `http://localhost:8000` |
 | `JWT_SECRET_KEY` | ключ подписи access-токенов, Base64 ≥ 32 байт | да | `nZ8s...=` |
 | `JWT_EXPIRATION` | время жизни access-токена в миллисекундах | нет, по умолчанию 15 минут | `900000` |
 | `CORS_ALLOWED_ORIGINS` | origin'ы фронтенда через запятую | локально нет, по умолчанию `http://localhost:5173`; в `docker-compose.prod.yml` да | `https://uits.example` |
+| `SERPER_API_KEY` | ключ Serper.dev для поиска публикаций в Google Scholar | нет; без него `GET /api/publications/scholar` отвечает `503`, остальной портал работает | — |
 
 Внутри контейнера PostgreSQL всегда слушает порт 5432. `POSTGRES_HOST_PORT` — это порт снаружи, на хост-машине. Значение 5433 выбрано, чтобы не конфликтовать с PostgreSQL, установленным в систему напрямую.
 
@@ -198,6 +246,7 @@ Refresh-сессии (T-30):
 | `REFRESH_EXPIRATION` | время жизни refresh-токена | нет, по умолчанию 14 дней | `1209600000` |
 | `REFRESH_GRACE_PERIOD` | окно, в котором повторный обмен одним токеном считается гонкой вкладок, а не кражей | нет, по умолчанию минута | `60000` |
 | `REFRESH_COOKIE_SECURE` | флаг `Secure` на cookie | нет, по умолчанию `true`; профиль `dev` ставит `false`, иначе cookie не приедет по http | `true` |
+| `REFRESH_MAX_SESSION` | потолок жизни сессии целиком: цепочка перевыпущенных refresh-токенов не продлевается дольше этого срока | нет, по умолчанию 60 дней | `5184000000` |
 | `REFRESH_CLEANUP_CRON` | когда удалять просроченные строки `refresh_token` | нет, по умолчанию 03:15 | `0 15 3 * * *` |
 
 Ограничение попыток входа:
@@ -205,8 +254,17 @@ Refresh-сессии (T-30):
 | Переменная | Что это | Обязательна | Пример |
 |---|---|---|---|
 | `LOGIN_RATE_LIMIT_ATTEMPTS` | попыток входа с одного адреса за период | нет, по умолчанию 5 | `5` |
+| `LOGIN_RATE_LIMIT_USERNAME_ATTEMPTS` | попыток входа в одну учётную запись за период — второе ведро, не зависящее от адреса | нет, по умолчанию 10 | `10` |
 | `LOGIN_RATE_LIMIT_PERIOD` | длина периода в миллисекундах | нет, по умолчанию минута | `60000` |
 | `LOGIN_RATE_LIMIT_EVICTION_CRON` | когда выбрасывать счётчики простаивающих адресов | нет, по умолчанию каждые 10 минут | `0 */10 * * * *` |
+
+Ограничение загрузки файлов:
+
+| Переменная | Что это | Обязательна | Пример |
+|---|---|---|---|
+| `UPLOAD_RATE_LIMIT_ATTEMPTS` | загрузок через `POST /api/files` от одного пользователя за период | нет, по умолчанию 30 | `30` |
+| `UPLOAD_RATE_LIMIT_PERIOD` | длина периода в миллисекундах | нет, по умолчанию минута | `60000` |
+| `UPLOAD_RATE_LIMIT_EVICTION_CRON` | когда выбрасывать счётчики простаивающих пользователей | нет, по умолчанию каждые 10 минут | `0 */10 * * * *` |
 
 Файловое хранилище и уборка сирот:
 
@@ -216,11 +274,15 @@ Refresh-сессии (T-30):
 | `STORAGE_PUBLIC_BASE_URL` | префикс публичных адресов файлов | нет, по умолчанию `/media` | `/media` |
 | `ORPHAN_CLEANUP_CRON` | когда искать файлы без ссылок | нет, по умолчанию 03:45 | `0 45 3 * * *` |
 | `ORPHAN_CLEANUP_MIN_AGE` | возраст, начиная с которого файл без ссылок считается сиротой | нет, по умолчанию сутки | `86400000` |
-| `ORPHAN_CLEANUP_CATEGORIES` | разделы хранилища, которые подметает уборка | нет, по умолчанию `news,avatars,achievements` | `news,avatars` |
+| `ORPHAN_CLEANUP_CATEGORIES` | разделы хранилища, которые подметает уборка | нет, по умолчанию `news,avatars,achievements,publications,staff,pages` | `news,avatars` |
 
 Раздел, которого нет в `ORPHAN_CLEANUP_CATEGORIES`, уборка не трогает вовсе.
-Список закрыт намеренно: занятость файла спрашивается у модулей, и раздел без
-такого модуля удалять не у кого спросить — сейчас это `publications`.
+Список закрыт намеренно: занятость файла спрашивается у модулей (реализации
+`FileUsageProbe`), и раздел без такой пробы добавлять в список нельзя — его
+файлы удалять не у кого спросить. Сейчас пробы есть у всех шести разделов
+загрузки: картинки внутри `education` и `qualification` карточки ППС (`staff`)
+ищет проба модуля `staff`, ссылки из текста редактируемых разделов (`pages`) —
+проба модуля `pages` (T-58, T-79).
 
 ### Кто читает `.env`
 
@@ -234,7 +296,7 @@ Refresh-сессии (T-30):
 * путь `file:.env` относительный, поэтому **`gradlew` нужно запускать из папки `backend`** — иначе Spring файл не найдёт;
 * Spring разбирает `.env` по правилам `.properties`. Значит `#` начинает комментарий, `\` экранирует следующий символ, `${...}` разворачивается как подстановка, а кавычки не снимаются и попадают внутрь значения. Поэтому пароль — простой, без спецсимволов.
 
-Префикс `optional:` означает «файла может не быть». Это обязательно: в CI и на проде `.env` отсутствует, настройки приходят туда переменными окружения (`SPRING_DATASOURCE_URL` и прочие), которые у Spring приоритетнее любых файлов.
+Префикс `optional:` означает «файла может не быть». Это обязательно: в CI и внутри прод-контейнера `.env` нет (на сервере его читает только compose), настройки приходят туда переменными окружения (`SPRING_DATASOURCE_URL` и прочие), которые у Spring приоритетнее любых файлов.
 
 ---
 
@@ -267,6 +329,7 @@ docker compose up -d --wait
 | `port is already allocated` | Порт 5433 занят. Изменить `POSTGRES_HOST_PORT` в `.env` и пересоздать контейнер. |
 | `DecodingException` или `WeakKeyException` при логине | `JWT_SECRET_KEY` не является Base64 или короче 32 байт. Сгенерировать заново. |
 | `Cannot connect to the Docker daemon` | Docker Desktop не запущен. |
+| `cannot load certificate "/etc/letsencrypt/live/uits/fullchain.pem"` в логе nginx | Прод-стек поднят без сертификата. Создать самоподписанный по инструкции в разделе «Прод-контур локально». |
 
 Посмотреть, что происходит с базой:
 
@@ -290,8 +353,10 @@ docker inspect --format "{{json .State.Health}}" uits_postgres
 
 Интеграционные тесты поднимают **собственный** контейнер PostgreSQL через Testcontainers и подставляют свои настройки. Локальная база и `.env` им не нужны — но Docker должен быть запущен. Тесты работают в профиле `test`, поэтому сидер dev-данных в них не участвует.
 
-Прогон занимает около двух минут и поднимает контейнер один раз на всю иерархию
-интеграционных тестов. Если прогон падает с `Could not find a valid Docker
+Сейчас в наборе **1104 теста**: юнит-тесты, интеграционные на живой базе, матрица
+доступа «роль × ручка» и двенадцать архитектурных правил, проверяющих границы слоёв
+и модулей. Прогон занимает около трёх минут и поднимает контейнер один раз на всю
+иерархию интеграционных тестов. Если прогон падает с `Could not find a valid Docker
 environment` — дело не в коде: Docker не запущен либо его движок отвалился.
 
 ---

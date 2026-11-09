@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * и санитизация rich-text. Уборка файлов обложки живёт отдельно
  * в {@code AchievementPreviewImageIntegrationTest}.
  */
-public class AchievementIntegrationTest extends AbstractIntegrationTest {
+class AchievementIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private AchievementRepository achievementRepository;
@@ -359,8 +359,7 @@ public class AchievementIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String stored = achievementRepository.findAll().getFirst().getContent();
-        assertThat(stored).contains("Награда кафедры");
-        assertThat(stored).doesNotContain("script");
+        assertThat(stored).contains("Награда кафедры").doesNotContain("script");
     }
 
     /**
@@ -381,8 +380,7 @@ public class AchievementIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         String stored = achievementRepository.findById(saved.getId()).orElseThrow().getContent();
-        assertThat(stored).contains("Обновлено");
-        assertThat(stored).doesNotContain("onerror");
+        assertThat(stored).contains("Обновлено").doesNotContain("onerror");
     }
 
     /**

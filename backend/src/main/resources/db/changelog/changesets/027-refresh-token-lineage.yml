@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-refresh-token-lineage
+      author: eeffeecct
+      changes:
+        - addColumn:
+            tableName: refresh_token
+            columns:
+              - column:
+                  name: parent_id
+                  type: BIGINT
+              - column:
+                  name: family_created_at
+                  type: TIMESTAMP WITH TIME ZONE
+        - addForeignKeyConstraint:
+            baseTableName: refresh_token
+            baseColumnNames: parent_id
+            constraintName: fk_refresh_token_parent
+            referencedTableName: refresh_token
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - createIndex:
+            tableName: refresh_token
+            indexName: idx_refresh_token_parent_id
+            columns:
+              - column:
+                  name: parent_id
+        # Точный возраст старых семейств не восстановить: ранние строки уже
+        # удалены уборкой. issued_at — ближайшая известная замена.
+        - sql:
+            sql: |
+              UPDATE refresh_token SET family_created_at = issued_at
+              WHERE family_created_at IS NULL;
+        - addNotNullConstraint:
+            tableName: refresh_token
+            columnName: family_created_at
+            columnDataType: TIMESTAMP WITH TIME ZONE
+      rollback:
+        - dropIndex:
+            tableName: refresh_token
+            indexName: idx_refresh_token_parent_id
+        - dropForeignKeyConstraint:
+            baseTableName: refresh_token
+            constraintName: fk_refresh_token_parent
+        - dropColumn:
+            tableName: refresh_token
+            columnName: family_created_at
+        - dropColumn:
+            tableName: refresh_token
+            columnName: parent_id

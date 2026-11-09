@@ -32,4 +32,18 @@ public class SubjectController {
     public ResponseEntity<SubjectDto> createSubject(@Valid @RequestBody SubjectRequestDto request) {
         return ResponseEntity.status(201).body(subjectService.createSubject(request));
     }
+
+    @PutMapping("/subjects/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public SubjectDto updateSubject(@PathVariable Long id, @Valid @RequestBody SubjectRequestDto request) {
+        return subjectService.updateSubject(id, request);
+    }
+
+    @DeleteMapping("/subjects/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public ResponseEntity<Void> deleteSubject(@PathVariable Long id) {
+        subjectService.deleteSubject(id);
+
+        return ResponseEntity.noContent().build();
+    }
 }

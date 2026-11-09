@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -54,6 +55,30 @@ public class LocalFileStorage implements FileStorage {
         }
 
         return key;
+    }
+
+    @Override
+    public String storeVariant(String baseKey, String suffix, InputStream data) {
+        String key = variantKey(baseKey, suffix);
+        Path target = resolveAndVerify(key);
+
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(data, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new IllegalStateException("Не удалось сохранить файл: " + key, e);
+        }
+
+        return key;
+    }
+
+    @Override
+    public String variantKey(String baseKey, String suffix) {
+        int dot = baseKey.lastIndexOf('.');
+
+        return dot < 0
+                ? baseKey + suffix
+                : baseKey.substring(0, dot) + suffix + baseKey.substring(dot);
     }
 
     @Override

@@ -20,7 +20,7 @@ import java.time.OffsetDateTime;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 
-public class UserIntegrationTest extends AbstractIntegrationTest {
+class UserIntegrationTest extends AbstractIntegrationTest {
 
     private static final String OLD_PASSWORD = "super_password";
     private static final String NEW_PASSWORD = "new_super_password";

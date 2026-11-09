@@ -23,6 +23,9 @@ import ru.stankin.uits.TestRole;
 import ru.stankin.uits.module.achievements.dto.AchievementRequestDto;
 import ru.stankin.uits.module.auth.controller.AuthController;
 import ru.stankin.uits.module.auth.service.RefreshCookieFactory;
+import ru.stankin.uits.module.events.dto.UserEventRequestDto;
+import ru.stankin.uits.module.events.enums.EventStatus;
+import ru.stankin.uits.module.events.enums.NotificationFrequency;
 import ru.stankin.uits.module.news.dto.ConferenceRequestDto;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 import ru.stankin.uits.module.news.entity.NewsPost;
@@ -31,7 +34,15 @@ import ru.stankin.uits.module.pages.dto.EditablePageRequestDto;
 import ru.stankin.uits.module.staff.dto.HelpersEmployeeRequestDto;
 import ru.stankin.uits.module.staff.dto.SubjectRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
+import ru.stankin.uits.module.publications.dto.PublicationRequestDto;
+import ru.stankin.uits.module.publications.dto.TagRequestDto;
+import ru.stankin.uits.module.students.dto.PostgraduateRequestDto;
+import ru.stankin.uits.module.students.dto.StudentRequestDto;
+import ru.stankin.uits.module.students.enums.EducationLevel;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
+import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
+import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
+import ru.stankin.uits.module.user.dto.UserCreateRequestDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
 
@@ -40,9 +51,11 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -69,7 +82,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * без строки в таблице роняет сборку, и решение о её доступности приходится
  * принимать явно.
  */
-public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
+class EndpointAccessMatrixTest extends AbstractIntegrationTest {
 
     @Autowired
     private NewsRepository newsRepository;
@@ -108,9 +121,10 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         /** Метод контроллера — попадает в RequestMappingHandlerMapping и проверяется сторожем. */
         CONTROLLER,
         /**
-         * Раздача статики ({@code /media}) и actuator: их обслуживают другие
-         * handler mapping, в списке контроллерных ручек их нет. В матрице они
-         * нужны — доступ у них тоже есть, — но сторож их не ищет.
+         * Actuator: его обслуживает другой handler mapping, в списке
+         * контроллерных ручек его нет. В матрице он нужен — доступ у него тоже
+         * есть, — но сторож его не ищет. Раздача {@code /media} была здесь же,
+         * пока её не забрал nginx (T-85).
          */
         INFRASTRUCTURE
     }
@@ -132,6 +146,10 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             EnumSet.of(Actor.USER, Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> EDITORS = EnumSet.of(Actor.MODERATOR, Actor.ADMIN);
     private static final Set<Actor> TEACHERS = EnumSet.of(Actor.TEACHER);
+    private static final Set<Actor> TEACHERS_AND_ADMINS = EnumSet.of(Actor.TEACHER, Actor.ADMIN);
+    private static final Set<Actor> EDITORS_AND_TEACHERS =
+            EnumSet.of(Actor.TEACHER, Actor.MODERATOR, Actor.ADMIN);
+    private static final Set<Actor> ADMINS = EnumSet.of(Actor.ADMIN);
 
     /**
      * Кто и куда имеет право. Третья колонка — те, кого ручка обязана пропустить
@@ -145,20 +163,45 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.GET, "/api/public/news/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/teachers/{id}/exams", ANYONE),
+            controller(HttpMethod.GET, "/api/public/exams", ANYONE),
             controller(HttpMethod.GET, "/api/public/helpers", ANYONE),
+            controller(HttpMethod.GET, "/api/public/helpers/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/pages/{slug}", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences", ANYONE),
             controller(HttpMethod.GET, "/api/public/conferences/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/achievements", ANYONE),
             controller(HttpMethod.GET, "/api/public/achievements/{id}", ANYONE),
             controller(HttpMethod.GET, "/api/public/teachers/{teacherId}/achievements", ANYONE),
+            controller(HttpMethod.GET, "/api/public/teachers/{id}/schedule", ANYONE),
+            controller(HttpMethod.GET, "/api/public/schedule", ANYONE),
+            controller(HttpMethod.GET, "/api/public/exams/files", ANYONE),
+            controller(HttpMethod.GET, "/api/public/postgraduates", ANYONE),
+            controller(HttpMethod.GET, "/api/public/tags", ANYONE),
+            controller(HttpMethod.GET, "/api/public/publications", ANYONE),
+            controller(HttpMethod.GET, "/api/public/publications/{id}", ANYONE),
+            controller(HttpMethod.GET, "/api/public/publications/authors", ANYONE),
 
             controller(HttpMethod.GET, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.PUT, "/api/users/profile", AUTHENTICATED),
             controller(HttpMethod.POST, "/api/users/change-password", AUTHENTICATED),
 
+            controller(HttpMethod.GET, "/api/users", ADMINS),
+            controller(HttpMethod.GET, "/api/users/{id}", ADMINS),
+            controller(HttpMethod.POST, "/api/users", ADMINS),
+            controller(HttpMethod.PUT, "/api/users/{id}", ADMINS),
+            controller(HttpMethod.POST, "/api/users/{id}/reset-password", ADMINS),
+            controller(HttpMethod.POST, "/api/users/{id}/logout", ADMINS),
+            controller(HttpMethod.GET, "/api/users/directory", EDITORS_AND_TEACHERS),
+
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
+
+            controller(HttpMethod.GET, "/api/events", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.GET, "/api/events/{id}", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.POST, "/api/events", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.PUT, "/api/events/{id}", TEACHERS_AND_ADMINS),
+            controller(HttpMethod.DELETE, "/api/events/{id}", TEACHERS_AND_ADMINS),
 
             controller(HttpMethod.GET, "/api/news", EDITORS),
             controller(HttpMethod.GET, "/api/news/{id}", EDITORS),
@@ -175,29 +218,52 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.POST, "/api/achievements", EDITORS),
             controller(HttpMethod.PUT, "/api/achievements/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/achievements/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/postgraduates/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/postgraduates", EDITORS),
+            controller(HttpMethod.PUT, "/api/postgraduates/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/postgraduates/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/tags", EDITORS),
+            controller(HttpMethod.PUT, "/api/tags/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/tags/{id}", EDITORS),
+            controller(HttpMethod.POST, "/api/publications", EDITORS),
+            controller(HttpMethod.PUT, "/api/publications/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/publications/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/publications/scholar", EDITORS),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
             controller(HttpMethod.POST, "/api/teachers", EDITORS),
             controller(HttpMethod.PUT, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/teachers/{id}", EDITORS),
+            controller(HttpMethod.GET, "/api/teachers", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/{id}/archive", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/{id}/unarchive", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/{id}/schedule/import", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/{id}/exams/import", EDITORS),
+            controller(HttpMethod.POST, "/api/gradesheets/import", EDITORS),
+            controller(HttpMethod.GET, "/api/gradesheets", EDITORS),
+            controller(HttpMethod.GET, "/api/gradesheets/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/subjects", EDITORS),
             controller(HttpMethod.POST, "/api/subjects", EDITORS),
+            controller(HttpMethod.PUT, "/api/subjects/{id}", EDITORS),
+            controller(HttpMethod.DELETE, "/api/subjects/{id}", EDITORS),
             controller(HttpMethod.POST, "/api/helpers", EDITORS),
             controller(HttpMethod.PUT, "/api/helpers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/helpers/{id}", EDITORS),
 
-            infrastructure(HttpMethod.GET, "/media/{key}", ANYONE),
             infrastructure(HttpMethod.GET, "/actuator/health", ANYONE)
     );
 
     /**
      * Ручки, чьи правила доступа задаёт не проект: {@code /error} — резервный
-     * обработчик Spring Boot, {@code /v3/api-docs} и {@code /swagger-ui} —
-     * springdoc. Все три открыты в {@link SecurityConfig} осознанно, springdoc
-     * вдобавок выключен целиком в прод-профиле (ProdProfileIntegrationTest).
+     * обработчик Spring Boot, остальные — springdoc. Все они открыты
+     * в {@link SecurityConfig} осознанно, springdoc вдобавок выключен целиком
+     * в прод-профиле (ProdProfileIntegrationTest). Сравнение — по границе
+     * сегмента пути, а не подстрокой: иначе будущая ручка вида
+     * {@code GET /api/errors} молча выпадала бы из сторожа.
      */
-    private static final List<String> NOT_OUR_ENDPOINTS = List.of("/error", "/v3/api-docs", "/swagger-ui");
+    private static final List<String> NOT_OUR_ENDPOINTS =
+            List.of("/error", "/v3/api-docs", "/v3/api-docs.yaml", "/swagger-ui", "/swagger-ui.html");
 
     private static final String MEDIA_KEY = "matrix/probe.txt";
     private static final String TEACHER_ID = "1";
@@ -255,7 +321,12 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     private Set<String> registeredEndpoints() {
         return handlerMapping.getHandlerMethods().keySet().stream()
                 .flatMap(EndpointAccessMatrixTest::keysOf)
-                .filter(key -> NOT_OUR_ENDPOINTS.stream().noneMatch(key::contains))
+                .filter(key -> {
+                    String path = key.substring(key.indexOf(' ') + 1);
+
+                    return NOT_OUR_ENDPOINTS.stream()
+                            .noneMatch(excluded -> path.equals(excluded) || path.startsWith(excluded + "/"));
+                })
                 .collect(Collectors.toSet());
     }
 
@@ -313,8 +384,8 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         String path = endpoint.path()
                 .replace("{id}", String.valueOf(fixture.newsId()))
                 .replace("{teacherId}", TEACHER_ID)
-                .replace("{key}", MEDIA_KEY)
-                .replace("{slug}", PAGE_SLUG);
+                .replace("{slug}", PAGE_SLUG)
+                + query(endpoint);
 
         HttpHeaders headers = new HttpHeaders();
 
@@ -333,6 +404,14 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
      * с 400 на отсутствующем multipart, так и не дойдя до проверки роли,
      * и клетка «обычный пользователь → 403» стала бы зелёной по ошибке.
      */
+    private String query(Endpoint endpoint) {
+        return switch (endpoint.key()) {
+            case "GET /api/publications/scholar" ->
+                    "?q=" + URLEncoder.encode("Чеканин", StandardCharsets.UTF_8);
+            default -> "";
+        };
+    }
+
     private HttpEntity<?> request(Endpoint endpoint, Fixture fixture, HttpHeaders headers) {
         return switch (endpoint.key()) {
             case "POST /api/users/auth/login" ->
@@ -343,18 +422,58 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 yield new HttpEntity<>(null, headers);
             }
             case "PUT /api/users/profile" -> json(headers, profileRequest());
+            case "POST /api/users" -> json(headers, createUserRequest());
+            case "PUT /api/users/{id}" -> json(headers, adminUpdateRequest());
+            case "POST /api/users/{id}/reset-password" -> json(headers, passwordResetRequest());
             case "POST /api/users/change-password" -> json(headers, changePasswordRequest());
             case "POST /api/news", "PUT /api/news/{id}" -> json(headers, newsRequest());
             case "POST /api/conferences", "PUT /api/conferences/{id}" -> json(headers, conferenceRequest());
             case "POST /api/achievements", "PUT /api/achievements/{id}" -> json(headers, achievementRequest());
+            case "POST /api/postgraduates", "PUT /api/postgraduates/{id}" ->
+                    json(headers, postgraduateRequest());
+            case "POST /api/events", "PUT /api/events/{id}" -> json(headers, eventRequest());
+            case "POST /api/tags", "PUT /api/tags/{id}" -> json(headers, tagRequest());
+            case "POST /api/publications", "PUT /api/publications/{id}" ->
+                    json(headers, publicationRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
-            case "POST /api/subjects" -> json(headers, subjectRequest());
+            case "POST /api/subjects", "PUT /api/subjects/{id}" -> json(headers, subjectRequest());
             case "POST /api/helpers", "PUT /api/helpers/{id}" -> json(headers, helperRequest());
             case "POST /api/files" -> multipart(headers);
+            case "POST /api/teachers/{id}/schedule/import",
+                 "POST /api/teachers/{id}/exams/import" -> schedulePdf(headers);
+            case "POST /api/gradesheets/import" -> gradeSheetWorkbook(headers);
             default -> new HttpEntity<>(headers);
         };
+    }
+
+    private HttpEntity<?> schedulePdf(HttpHeaders headers) {
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource("%PDF-1.4 matrix".getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            @Override
+            public String getFilename() {
+                return "matrix.pdf";
+            }
+        });
+
+        return new HttpEntity<>(body, headers);
+    }
+
+    private HttpEntity<?> gradeSheetWorkbook(HttpHeaders headers) {
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource("PK matrix".getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            @Override
+            public String getFilename() {
+                return "matrix.xlsx";
+            }
+        });
+
+        return new HttpEntity<>(body, headers);
     }
 
     private HttpEntity<?> json(HttpHeaders headers, Object body) {
@@ -382,6 +501,31 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         UserUpdateRequestDto request = new UserUpdateRequestDto();
         request.setFirstName("Матрица");
         request.setLastName("Доступа");
+
+        return request;
+    }
+
+    private PasswordResetRequestDto passwordResetRequest() {
+        PasswordResetRequestDto request = new PasswordResetRequestDto();
+        request.setNewPassword("matrix_password");
+
+        return request;
+    }
+
+    private UserCreateRequestDto createUserRequest() {
+        UserCreateRequestDto request = new UserCreateRequestDto();
+        request.setUsername("matrix_new_user");
+        request.setPassword("matrix_password");
+
+        return request;
+    }
+
+    private UserAdminUpdateRequestDto adminUpdateRequest() {
+        UserAdminUpdateRequestDto request = new UserAdminUpdateRequestDto();
+        request.setSuperuser(true);
+        request.setModerator(false);
+        request.setTeacher(false);
+        request.setActive(true);
 
         return request;
     }
@@ -419,6 +563,44 @@ public class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .previewImage(MEDIA_KEY)
                 .display(true)
                 .build();
+    }
+
+    private PostgraduateRequestDto postgraduateRequest() {
+        return PostgraduateRequestDto.builder()
+                .student(StudentRequestDto.builder()
+                        .lastName("Аспирантов")
+                        .firstName("Пётр")
+                        .group("ИДМ-24-01")
+                        .educationLevel(EducationLevel.POSTGRADUATE)
+                        .admissionYear(2024)
+                        .build())
+                .build();
+    }
+
+    private PublicationRequestDto publicationRequest() {
+        return PublicationRequestDto.builder()
+                .name("Публикация из матрицы")
+                .authors(java.util.List.of("Тестов Т.Т."))
+                .description("Описание")
+                .source("Сборник")
+                .year(2025)
+                .build();
+    }
+
+    private UserEventRequestDto eventRequest() {
+        return UserEventRequestDto.builder()
+                .name("Событие из матрицы")
+                .startedAt(OffsetDateTime.parse("2026-09-01T10:00:00+03:00"))
+                .endedAt(OffsetDateTime.parse("2026-09-01T11:00:00+03:00"))
+                .allDay(false)
+                .color("#3F51B5")
+                .status(EventStatus.NOT_STARTED)
+                .notificationFrequency(NotificationFrequency.NONE)
+                .build();
+    }
+
+    private TagRequestDto tagRequest() {
+        return TagRequestDto.builder().name("Тег из матрицы").build();
     }
 
     private EditablePageRequestDto pageRequest() {

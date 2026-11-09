@@ -7,7 +7,7 @@
  * **не реэкспортируются намеренно** — импорт оттуда должен оставаться
  * заметным, поэтому пишется полным путём:
  *
- *   import type { Achievement } from '@shared/types/planned.types';
+ *   import type { Schedule } from '@shared/types/planned.types';
  */
 
 // Транспорт
@@ -15,17 +15,50 @@ export type { Page, PageParams, FileCategory, FileUploadResponse } from './api.t
 
 // Аутентификация и профиль
 export type {
+  AdminAccess,
   Profile,
   LoginRequest,
   AccessTokenResponse,
   ChangePasswordRequest,
+  ProfileUpdateRequest,
+  UserDirectoryEntry,
 } from './auth.types';
 
 // Новости и объявления
-export type { News, NewsRequest, NewsPage, PostType } from './news.types';
+export type { News, NewsRequest, NewsPage, NewsListParams, PostType } from './news.types';
 
-// Преподаватели
-export type { Teacher, TeacherPage } from './staff.types';
+// Конференции
+export type { Conference, ConferenceRequest, ConferencePage } from './conference.types';
+
+// Достижения кафедры
+export type { Achievement, AchievementRequest, AchievementPage } from './achievement.types';
+
+// Редактируемые разделы
+export type { EditablePage, EditablePageSlug } from './pages.types';
+
+// Преподаватели и УВП
+export type {
+  Teacher,
+  TeacherListItem,
+  TeacherPage,
+  TeacherDegree,
+  TeacherRank,
+  TeacherUpsertRequest,
+  TeacherAdminRequest,
+  Subject,
+  SubjectPage,
+  SubjectRequest,
+  Helper,
+  HelperPage,
+  HelperRequest,
+} from './staff.types';
+
+// Аспирантура
+export type {
+  Postgraduate,
+  PostgraduatePage,
+  PostgraduateListParams,
+} from './students.types';
 
 // Навигация
 export type { NavItem } from './nav.types';

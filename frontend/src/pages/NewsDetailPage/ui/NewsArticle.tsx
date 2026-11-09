@@ -1,5 +1,6 @@
 import { authorLabel, postTypeLabel } from '@entities/news';
 import { formatDateTime } from '@shared/lib';
+import { RichText } from '@shared/ui/RichText';
 import type { News } from '@shared/types';
 
 interface NewsArticleProps {
@@ -9,39 +10,9 @@ interface NewsArticleProps {
 /**
  * Статья целиком. Чистая: получает запись и рисует её.
  *
- * ### Почему здесь `dangerouslySetInnerHTML`
- *
- * `content` — это HTML из rich-text-редактора, и другого способа показать
- * его разметкой не существует. Опасность у приёма ровно одна: чужой
- * исполняемый код в тексте. Границей, на которой он отсекается, выбран
- * **бэкенд**, а не браузер:
- *
- * * `NewsService` прогоняет `content` через `HtmlSanitizer.sanitize` — и на
- *   создании, и на правке (T-21, вынесено в общий класс в T-35). Внутри
- *   `Jsoup.clean` по белому списку `Safelist.relaxed()`. Взят белый список,
- *   а не вырезание `<script>`: код прячется в атрибутах (`onerror`) и в схеме
- *   `javascript:` внутри `href`, поэтому перечень опасного неполон
- *   по определению, а перечень нужного новости — конечен;
- * * пустой после чистки текст бэкенд не сохраняет вовсе — отвечает `400`
- *   со словарём `errors` по полю `content`. То есть новость с пустым
- *   `content` в выдаче появиться не может, и ветки под неё здесь нет;
- * * это покрыто интеграционными тестами: скрипт при создании и при
- *   обновлении, `onerror` в теге без слова `script`, относительная картинка.
- *
- * Второй санитайзер на клиенте не ставится сознательно. Он стал бы вторым
- * источником правды о допустимых тегах, и в момент, когда его список
- * окажется строже jsoup'ового, у модератора молча пропадёт форматирование —
- * причём только у части читателей, что ловится месяцами.
- *
- * Условие, при котором решение перестаёт быть верным, ровно одно и записано
- * в ARCHITECTURE §7: перенос старой базы, где Quill-HTML никогда не чистился.
- * Дамп пойдёт в таблицу мимо `NewsService`, то есть мимо санитайзера. Импорт
- * обязан чистить сам; если этого не сделают — сюда придёт `dompurify`,
- * и это осознанный размен, а не забытая дыра.
- *
- * Для `text` редактируемых страниц (F-23) приём **не годится**: там в базе
- * лежит исходник Markdown, который бэкенд не санитизирует вовсе, — его
- * рендерит `react-markdown` без `rehype-raw` (docs/API.md).
+ * `content` — HTML из rich-text-редактора, и показывает его общий
+ * `shared/ui/RichText`: там же разобрано, почему границей, отсекающей
+ * чужой исполняемый код, выбран бэкенд, а не браузер.
  */
 export function NewsArticle({ news }: NewsArticleProps) {
   const date = formatDateTime(news.createdAt);
@@ -78,14 +49,7 @@ export function NewsArticle({ news }: NewsArticleProps) {
         />
       )}
 
-      {/* prose из @tailwindcss/typography: у пришедшего HTML своих классов
-          нет, а сброс Tailwind снимает стили с h2, ul и blockquote —
-          без него статья выглядит одним сплошным абзацем.
-          max-w-none: ширину держит карточка, а не типографика. */}
-      <div
-        className="prose prose-sm mt-6 max-w-none prose-headings:text-text-heading prose-a:text-primary prose-img:rounded"
-        dangerouslySetInnerHTML={{ __html: news.content }}
-      />
+      <RichText html={news.content} className="mt-6" />
     </article>
   );
 }

@@ -25,17 +25,20 @@ public abstract class NewsMapper {
     protected FileStorage fileStorage;
 
     @Mapping(target = "previewImageUrl", source = "previewImage", qualifiedByName = "previewImageUrl")
+    @Mapping(target = "previewThumbnailUrl", source = "previewThumbnail", qualifiedByName = "previewImageUrl")
     @Mapping(target = "authorName", source = "author", qualifiedByName = "authorName")
     public abstract NewsResponseDto toDto(NewsPost entity);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "author", ignore = true)
+    @Mapping(target = "previewThumbnail", ignore = true)
     public abstract NewsPost toEntity(NewsRequestDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "author", ignore = true)
+    @Mapping(target = "previewThumbnail", ignore = true)
     public abstract void updateEntity(@MappingTarget NewsPost entity, NewsRequestDto dto);
 
     @Named("authorName")

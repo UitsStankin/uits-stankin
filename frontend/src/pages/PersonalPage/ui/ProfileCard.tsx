@@ -1,5 +1,7 @@
-import { cn } from '@shared/lib';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
+import { cn } from '@shared/lib';
+
+import { DefinitionField, definitionLabelClass } from './DefinitionField';
 
 interface ProfileCardProps {
   /** Логин — единственное поле имени, которое гарантированно непустое. */
@@ -11,18 +13,29 @@ interface ProfileCardProps {
   avatarUrl: string | null;
   /** Подписи ролей: их может быть несколько. */
   roles: readonly string[];
+  /** Показать форму вместо карточки. */
+  onEdit: () => void;
 }
 
 /**
- * Карточка учётной записи. Чистая: ничего не помнит и не запрашивает,
- * всё приходит пропсами из сборки страницы.
+ * Карточка учётной записи — режим чтения. Чистая: ничего не помнит
+ * и не запрашивает, данные и обработчик приходят пропсами из сборки
+ * страницы.
  *
- * Только чтение — и это не упрощение, а состояние контракта: ручки правки
- * профиля нет, аватар записывать некуда (матрица паритета, п. 21). Кнопку
- * «Редактировать» из оригинала не переношу: она открывала бы форму,
- * которой некуда отправлять.
+ * Кнопка «Редактировать» из оригинала вернулась вместе с ручкой правки
+ * (T-33, F-27): до неё форме некуда было отправлять, и кнопки здесь
+ * не было вовсе. Правятся не все показанные поля — логин, почта и роли
+ * остаются за администратором, — и об этом говорит сама форма,
+ * а не карточка: пока на кнопку не нажали, ограничение ни при чём.
  */
-export function ProfileCard({ username, fullName, email, avatarUrl, roles }: ProfileCardProps) {
+export function ProfileCard({
+  username,
+  fullName,
+  email,
+  avatarUrl,
+  roles,
+  onEdit,
+}: ProfileCardProps) {
   return (
     <section className="rounded bg-white p-6 shadow-sm">
       <header className="border-b border-default pb-4">
@@ -45,12 +58,12 @@ export function ProfileCard({ username, fullName, email, avatarUrl, roles }: Pro
         {/* Список определений, а не таблица: это пары «подпись — значение»,
             и диктор прочитает их парами. */}
         <dl className="flex min-w-0 flex-1 flex-col gap-4">
-          <Field label="Имя пользователя" value={username} />
-          <Field label="Фамилия Имя" value={fullName} />
-          <Field label="Электронная почта" value={email} />
+          <DefinitionField label="Имя пользователя" value={username} />
+          <DefinitionField label="Фамилия Имя" value={fullName} />
+          <DefinitionField label="Электронная почта" value={email} />
 
           <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
-            <dt className={labelClass}>Уровень доступа</dt>
+            <dt className={definitionLabelClass}>Уровень доступа</dt>
             <dd className="flex flex-wrap gap-1.5">
               {roles.map((role) => (
                 <span
@@ -64,23 +77,22 @@ export function ProfileCard({ username, fullName, email, avatarUrl, roles }: Pro
           </div>
         </dl>
       </div>
+
+      {/* Кнопка внизу и первичным стилем — как у карточки преподавателя
+          ниже по странице: две соседние карточки с одинаковым действием,
+          разложенным по-разному, читаются как два разных действия. */}
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={onEdit}
+          className={cn(
+            'rounded bg-primary px-4 py-2.5 text-base font-bold text-white transition',
+            'hover:brightness-95',
+          )}
+        >
+          Редактировать
+        </button>
+      </div>
     </section>
-  );
-}
-
-const labelClass = 'shrink-0 text-sm text-text-muted sm:w-44';
-
-/**
- * Одна пара «подпись — значение». Пустое значение показывается прочерком:
- * пропущенная строка выглядела бы как отсутствие такого поля вовсе.
- */
-function Field({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
-      <dt className={labelClass}>{label}</dt>
-      <dd className={cn('min-w-0 break-words text-base', value ? 'text-text-heading' : 'text-text-muted')}>
-        {value || '—'}
-      </dd>
-    </div>
   );
 }

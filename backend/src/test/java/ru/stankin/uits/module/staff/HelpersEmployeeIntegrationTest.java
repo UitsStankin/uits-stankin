@@ -22,7 +22,7 @@ import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
+class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private HelpersEmployeeRepository helpersEmployeeRepository;
@@ -66,6 +66,32 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.totalElements()).isEqualTo(2);
         assertThat(body.content().getFirst().getLastName()).isEqualTo("Белова");
         assertThat(body.content().getLast().getLastName()).isEqualTo("Яшина");
+    }
+
+    @Test
+    void getHelper_ReturnsOneCard() {
+        createHelper("Яковлев", "Иван");
+        HelpersEmployee stored = createHelper("Абрамова", "Анна");
+
+        ResponseEntity<HelpersEmployeeResponseDto> response = restTemplate.getForEntity(
+                "/api/public/helpers/" + stored.getId(),
+                HelpersEmployeeResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getId()).isEqualTo(stored.getId());
+        assertThat(response.getBody().getLastName()).isEqualTo("Абрамова");
+    }
+
+    @Test
+    void getHelper_WhenUnknownId_Returns404() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/helpers/999999",
+                ProblemDetail.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
@@ -183,6 +209,44 @@ public class HelpersEmployeeIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getBody().getAvatarUrl()).isNull();
         assertThat(helpersEmployeeRepository.findById(helper.getId()).orElseThrow().getAvatar()).isNull();
         assertThat(STORAGE_ROOT.resolve(key)).doesNotExist();
+    }
+
+    @Test
+    void updateHelper_WhenAvatarKeyResubmitted_KeepsPhotoAndFile() throws IOException {
+        HelpersEmployee helper = createHelper("Белова", "Ирина");
+        String key = storeFile("avatars");
+        helper.setAvatar(key);
+        helpersEmployeeRepository.save(helper);
+
+        ResponseEntity<PageResponseDto<HelpersEmployeeResponseDto>> listed = restTemplate.exchange(
+                "/api/public/helpers",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {});
+
+        assertThat(listed.getBody()).isNotNull();
+        assertThat(listed.getBody().content().getFirst().getAvatar()).isEqualTo(key);
+
+        HelpersEmployeeRequestDto request = HelpersEmployeeRequestDto.builder()
+                .lastName("Белова")
+                .firstName("Ирина")
+                .position("ведущий инженер")
+                .avatar(listed.getBody().content().getFirst().getAvatar())
+                .build();
+
+        ResponseEntity<HelpersEmployeeResponseDto> response = restTemplate.exchange(
+                "/api/helpers/" + helper.getId(),
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                HelpersEmployeeResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getAvatar()).isEqualTo(key);
+        assertThat(response.getBody().getPosition()).isEqualTo("ведущий инженер");
+        assertThat(helpersEmployeeRepository.findById(helper.getId()).orElseThrow().getAvatar()).isEqualTo(key);
+        assertThat(STORAGE_ROOT.resolve(key)).exists();
     }
 
     @Test
