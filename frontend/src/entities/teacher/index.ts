@@ -30,3 +30,4 @@ export {
 export { formatYears, teacherCredentials, teacherFullName } from './lib/teacherPresenters';
 export { TeacherCard } from './ui/TeacherCard';
 export { TeacherCardSkeleton } from './ui/TeacherCardSkeleton';
+export { TeacherSelect } from './ui/TeacherSelect';

@@ -1,16 +1,23 @@
-import { teacherFullName } from '@entities/teacher';
 import { cn, errorId, hintId } from '@shared/lib';
 import { FieldShell } from '@shared/ui/FormFields';
 import type { TeacherListItem } from '@shared/types';
 
-interface TeacherFieldProps {
+import { teacherFullName } from '../lib/teacherPresenters';
+
+interface TeacherSelectProps {
+  id: string;
+  label: string;
+  /** Подпись пустого выбора: «Кафедральное, без преподавателя», «Не назначен». */
+  noneLabel: string;
+  /** Что значит пустой выбор для этой записи — строка под списком. */
+  hint: string;
   /** Карточки ППС из списочной ручки — короткая проекция, ФИО там есть. */
   teachers: readonly TeacherListItem[];
-  /** Выбранная карточка; `null` — достижение кафедральное. */
+  /** Выбранная карточка; `null` — не выбрано. */
   value: number | null;
   onChange: (teacherId: number | null) => void;
   /**
-   * Имя привязанного преподавателя из самого достижения (`teacherName`).
+   * Имя привязанного преподавателя из самой записи (`teacherName`).
    * Нужно, когда карточки в загруженном списке нет, — иначе выбор показал
    * бы чужой пункт при живой ссылке.
    */
@@ -24,7 +31,12 @@ interface TeacherFieldProps {
 }
 
 /**
- * Привязка достижения к преподавателю — выпадающий список карточек ППС.
+ * Привязка записи к преподавателю — выпадающий список карточек ППС.
+ *
+ * Заведён в форме достижения (F-45) и переехал в сущность со вторым
+ * потребителем — научным руководителем в записи аспирантуры (F-47).
+ * В `entities`, а не в `shared/ui`: список знает, как называть
+ * преподавателя (`teacherFullName`), а это предметная область.
  *
  * Чистый: список, значение и состояние загрузки приходят пропсами.
  * Управляемый, а не через `register`, и это главное в нём: варианты
@@ -33,15 +45,19 @@ interface TeacherFieldProps {
  *
  * Пока список едет или не доехал, выбор заперт — как у связи карточки ППС
  * с учётной записью (`features/manage-teachers/ui/AccountField`). Пункт
- * «кафедральное» в это время показывать нельзя: он выглядел бы как ответ,
- * хотя ответа нет, — поэтому пустой пункт объясняет себя сам.
+ * «без преподавателя» в это время показывать нельзя: он выглядел бы как
+ * ответ, хотя ответа нет, — поэтому пустой пункт объясняет себя сам.
  *
  * Если привязанной карточки в списке нет (преподавателей больше сотни,
  * потолка контракта), её пункт добавляется из имени, пришедшего
- * с достижением: без него браузер выбрал бы первый вариант, и на экране
- * стояло бы «кафедральное» при живой ссылке на преподавателя.
+ * с записью: без него браузер выбрал бы первый вариант, и на экране
+ * стояло бы «без преподавателя» при живой ссылке.
  */
-export function TeacherField({
+export function TeacherSelect({
+  id,
+  label,
+  noneLabel,
+  hint,
   teachers,
   value,
   onChange,
@@ -49,8 +65,7 @@ export function TeacherField({
   isLoading,
   hasFailed,
   error,
-}: TeacherFieldProps) {
-  const id = 'achievement-teacher';
+}: TeacherSelectProps) {
   const isMissing =
     value !== null && !isLoading && !teachers.some((teacher) => teacher.id === value);
 
@@ -58,7 +73,7 @@ export function TeacherField({
   const describedBy = [hintId(id), error && errorId(id)].filter(Boolean).join(' ');
 
   return (
-    <FieldShell id={id} label="Преподаватель" error={error}>
+    <FieldShell id={id} label={label} error={error}>
       <select
         id={id}
         className={cn(
@@ -72,7 +87,7 @@ export function TeacherField({
         value={value === null ? '' : String(value)}
         onChange={(event) => onChange(event.target.value === '' ? null : Number(event.target.value))}
       >
-        <option value="">{emptyLabel(isLoading, hasFailed)}</option>
+        <option value="">{emptyLabel(isLoading, hasFailed, noneLabel)}</option>
         {isMissing && <option value={value}>{currentName ?? `Карточка № ${value}`}</option>}
         {teachers.map((teacher) => (
           <option key={teacher.id} value={teacher.id}>
@@ -82,16 +97,15 @@ export function TeacherField({
       </select>
 
       <p id={hintId(id)} className="text-sm text-text-muted">
-        Без преподавателя достижение кафедральное: на сайте оно не подписано ничьим именем и не
-        попадает в карточки ППС.
+        {hint}
       </p>
     </FieldShell>
   );
 }
 
-function emptyLabel(isLoading: boolean, hasFailed: boolean): string {
+function emptyLabel(isLoading: boolean, hasFailed: boolean, noneLabel: string): string {
   if (isLoading) return 'Загружаем преподавателей…';
   if (hasFailed) return 'Список преподавателей не доехал';
 
-  return 'Кафедральное, без преподавателя';
+  return noneLabel;
 }
