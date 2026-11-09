@@ -263,3 +263,9 @@ export function adminTeacherRoute(id: number | 'new'): string {
  * у неё нет.
  */
 export const ADMIN_HELPERS_ROUTE = `${ADMIN_ROUTE}/helpers`;
+
+/**
+ * Учётные записи (F-46) — единственный раздел админки только для админа.
+ * Форма живёт окном: учётка целиком лежит в строке списка.
+ */
+export const ADMIN_USERS_ROUTE = `${ADMIN_ROUTE}/users`;

@@ -21,6 +21,7 @@ import {
   ADMIN_ROUTE,
   ADMIN_SUBJECTS_ROUTE,
   ADMIN_TEACHERS_ROUTE,
+  ADMIN_USERS_ROUTE,
 } from './routes';
 
 export interface AdminSection {
@@ -122,9 +123,8 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'users',
     title: 'Учётные записи',
     icon: Users,
-    path: `${ADMIN_ROUTE}/users`,
+    path: ADMIN_USERS_ROUTE,
     access: 'admin',
-    plannedIn: 'F-46',
   },
 ];
 
