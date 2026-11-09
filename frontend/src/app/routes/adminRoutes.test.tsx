@@ -5,7 +5,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { authKeys } from '@features/auth/api/profileQuery';
 import { clearSession, setAccessToken } from '@shared/api';
-import { makeProfile, profileHandlers, subjectHandlers } from '@shared/api/mocks';
+import {
+  makeProfile,
+  postgraduateHandlers,
+  profileHandlers,
+  subjectHandlers,
+  teacherHandlers,
+} from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { createTestQueryClient } from '@/test/render';
 
@@ -24,7 +30,12 @@ function renderAt(path: string) {
 
   queryClient.setQueryData(authKeys.profile, profile);
   setAccessToken('test-access-token');
-  server.use(...profileHandlers(profile), ...subjectHandlers());
+  server.use(
+    ...profileHandlers(profile),
+    ...subjectHandlers(),
+    ...postgraduateHandlers(),
+    ...teacherHandlers(),
+  );
 
   const router = createMemoryRouter(routes, { initialEntries: [path] });
 
@@ -40,18 +51,25 @@ afterEach(() => {
 });
 
 describe('адреса админки', () => {
-  it('у ненаписанного раздела показывает его тикет, а не «страница не найдена»', async () => {
-    // Аспирантура: эта проверка стояла на новостях до F-43, потом
-    // на конференциях до F-45, и разделы уезжали из-под неё по мере
-    // готовности. Любой ненаписанный раздел годится одинаково, важен
-    // сам факт заглушки с тикетом.
+  /**
+   * Заглушек в меню не осталось: с F-47 сделан последний раздел блока 4.
+   * Проверка стояла здесь на ненаписанном разделе и уехала вместе с ним;
+   * сама заглушка проверяется своим тестом (`PlannedSectionPage`).
+   * Взамен — что раздел аспирантуры и его форма разложены роутером.
+   */
+  it('открывает раздел аспирантуры и форму записи её адресом', async () => {
     renderAt('/admin/postgraduates');
 
-    // Ссылка в меню живая с самого начала: набор разделов — это карта
-    // работ блока 4, и видеть её целиком полезнее, чем меню, растущее
-    // по одному пункту.
-    expect(await screen.findByText('Раздел ещё не сделан')).toBeInTheDocument();
-    expect(screen.getByText(/F-47/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Аспирантура' })).toBeInTheDocument();
+    expect(screen.queryByText('Раздел ещё не сделан')).not.toBeInTheDocument();
+  });
+
+  it('открывает форму новой записи аспирантуры', async () => {
+    renderAt('/admin/postgraduates/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новая запись аспирантуры' }),
+    ).toBeInTheDocument();
   });
 
   it('у несуществующего раздела говорит, что раздела нет', async () => {
