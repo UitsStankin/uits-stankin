@@ -1,10 +1,10 @@
 import EditableSection from '@widgets/EditableSection';
 import Pagination from '@shared/ui/Pagination';
 import StatusBlock from '@shared/ui/StatusBlock';
+import { useUrlSearch } from '@shared/lib';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { usePostgraduateList } from './model/usePostgraduateList';
-import { usePostgraduateSearch } from './model/usePostgraduateSearch';
 import { PostgraduateSearch } from './ui/PostgraduateSearch';
 import { PostgraduateTable } from './ui/PostgraduateTable';
 import { PostgraduateTableSkeleton } from './ui/PostgraduateTableSkeleton';
@@ -51,7 +51,7 @@ export default function PostgraduatePage() {
 
   // Поле и список читают один и тот же `?q=`, но с разной скоростью:
   // список — то, что уже в адресе, поле — то, что набирают прямо сейчас.
-  const { text, setText, clear } = usePostgraduateSearch();
+  const { text, setText, clear } = useUrlSearch();
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-gutter">
