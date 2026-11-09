@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
@@ -34,6 +36,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PostgraduateIntegrationTest extends AbstractIntegrationTest {
 
@@ -48,6 +51,9 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private Teacher chekanin;
     private Teacher razumovskiy;
@@ -556,6 +562,13 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
         assertThat(postgraduateRepository.findById(abramov.getId())).isEmpty();
         assertThat(studentRepository.findById(abramov.getStudent().getId())).isEmpty();
         assertThat(list("")).hasSize(1);
+    }
+
+    @Test
+    void databaseRejectsRecordWithoutStudent() {
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO postgraduate_postgraduate (student_id) VALUES (NULL)"))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test

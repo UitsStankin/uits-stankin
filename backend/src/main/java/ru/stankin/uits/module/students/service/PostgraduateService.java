@@ -80,13 +80,8 @@ public class PostgraduateService {
                 .orElseThrow(() -> notFound(id));
         StudentRequestDto studentRequest = validated(request.getStudent());
         Teacher teacher = resolveTeacher(request.getTeacherId());
-        Student student = postgraduate.getStudent();
 
-        if (student == null) {
-            postgraduate.setStudent(studentRepository.save(postgraduateMapper.toStudent(studentRequest)));
-        } else {
-            postgraduateMapper.updateStudent(student, studentRequest);
-        }
+        postgraduateMapper.updateStudent(postgraduate.getStudent(), studentRequest);
         postgraduate.setTeacher(teacher);
 
         return postgraduateMapper.toDto(postgraduate);
@@ -99,9 +94,7 @@ public class PostgraduateService {
         Student student = postgraduate.getStudent();
 
         postgraduateRepository.delete(postgraduate);
-        if (student != null) {
-            studentRepository.delete(student);
-        }
+        studentRepository.delete(student);
     }
 
     private NotFoundException notFound(Long id) {
