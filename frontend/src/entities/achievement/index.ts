@@ -3,18 +3,22 @@
  * а не из `api/ui/lib` напрямую.
  *
  * Сущность знает только чтение — раздел, одно достижение и достижения
- * одного преподавателя. Создание, правку и удаление принесёт фича админки
- * (F-45); лежать они будут там: `entities` описывает предметную область,
- * действия пользователя — дело `features`.
+ * одного преподавателя, публичные, и модераторский список. Создание,
+ * правку и удаление приносит фича админки (`features/manage-achievements`);
+ * лежат они там: `entities` описывает предметную область, действия
+ * пользователя — дело `features`.
  *
- * `achievementKeys` наружу не выходит по той же причине, что `newsKeys`:
- * инвалидировать кэш сегодня некому — правки нет. Понадобится админке —
- * добавим строку.
+ * `achievementKeys` наружу вышел с F-45 по той же причине, что `newsKeys`
+ * с F-43: после `POST`, `PUT` и `DELETE` фиче админки нужно сбросить кэш
+ * целиком — правка одного достижения меняет и админский список, и раздел
+ * на сайте, и блок на карточке преподавателя, и открытое достижение.
  */
 export {
   achievementListQuery,
   achievementItemQuery,
   teacherAchievementsQuery,
+  allAchievementsListQuery,
+  achievementKeys,
 } from './api/achievementQueries';
 export { findCachedAchievement } from './lib/cachedAchievement';
 export { AchievementCard } from './ui/AchievementCard';

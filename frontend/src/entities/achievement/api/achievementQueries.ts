@@ -5,12 +5,13 @@ import type { PageParams } from '@shared/types';
 import {
   fetchAchievementItem,
   fetchAchievementPage,
+  fetchAllAchievementPage,
   fetchTeacherAchievementPage,
 } from './achievementApi';
 
 /**
  * Ключи кэша достижений — та же иерархия, что у новостей
- * (`entities/news/api/newsQueries.ts`), с одним отличием: списков
+ * (`entities/news/api/newsQueries.ts`), с одним отличием: публичных списков
  * у достижений **два вида** — раздел целиком и достижения одного
  * преподавателя.
  *
@@ -27,6 +28,16 @@ export const achievementKeys = {
   list: (params: PageParams) => [...achievementKeys.lists(), 'all', params] as const,
   teacherList: (teacherId: number, params: PageParams) =>
     [...achievementKeys.lists(), 'teacher', teacherId, params] as const,
+  /**
+   * Модераторские списки — своя ветка, и здесь это правило обратное
+   * тому, что выше: админская выдача обязана **не** попадать под `lists()`.
+   * `findCachedAchievement` подсаживает запись из любого списка под этим
+   * префиксом в детальную страницу, и черновик, увиденный модератором
+   * в админке, открылся бы у него по публичному адресу — там, где контракт
+   * отвечает `404`. Тот же разбор у `newsKeys.adminLists`.
+   */
+  adminLists: () => [...achievementKeys.all, 'admin-list'] as const,
+  adminList: (params: PageParams) => [...achievementKeys.adminLists(), params] as const,
   items: () => [...achievementKeys.all, 'item'] as const,
   item: (id: number) => [...achievementKeys.items(), id] as const,
 };
@@ -63,4 +74,15 @@ export const teacherAchievementsQuery = (teacherId: number, params: PageParams =
   queryOptions({
     queryKey: achievementKeys.teacherList(teacherId, params),
     queryFn: ({ signal }) => fetchTeacherAchievementPage(teacherId, params, signal),
+  });
+
+/**
+ * Описание запроса страницы **всех** достижений, включая скрытые, — для
+ * раздела админки. `keepPreviousData` — по той же причине, что у раздела.
+ */
+export const allAchievementsListQuery = (params: PageParams) =>
+  queryOptions({
+    queryKey: achievementKeys.adminList(params),
+    queryFn: ({ signal }) => fetchAllAchievementPage(params, signal),
+    placeholderData: keepPreviousData,
   });

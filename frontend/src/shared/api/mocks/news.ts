@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 
 import type { News, NewsRequest, PostType } from '@shared/types';
 
-import { pageFromUrl, pageResponse, numberParam, DEFAULT_PAGE_SIZE } from './page';
+import { pageFromUrl, pageResponse, numberParam, sortByCreatedAt, DEFAULT_PAGE_SIZE } from './page';
 import { problemResponse } from './problemResponse';
 
 /**
@@ -263,24 +263,6 @@ function filterByType(items: readonly News[], url: URL): readonly News[] {
   const postType = url.searchParams.get('postType');
 
   return isPostType(postType) ? items.filter((item) => item.postType === postType) : items;
-}
-
-/**
- * Порядок по дате: новые сверху, если параметра нет, — как `@PageableDefault`
- * у контракта. Другие поля сюда не приходят: единственная сортируемая
- * колонка админского списка — дата (`useNewsAdmin`), а публичные ленты
- * порядка не выбирают вовсе и зовут эту функцию с `null`.
- */
-function sortByCreatedAt(items: readonly News[], sort: string | null): readonly News[] {
-  const asc = sort === 'createdAt,asc';
-
-  // Сравниваются моменты, а не строки. Строкой сравнивать нельзя: даты
-  // в фикстуре со смещением `+03:00`, а созданная запись получает
-  // `toISOString()` с `Z`, и лексикографически «10:15+03:00» больше,
-  // чем «09:00Z», хотя произошло раньше.
-  return [...items].sort(
-    (a, b) => (asc ? 1 : -1) * (Date.parse(a.createdAt) - Date.parse(b.createdAt)),
-  );
 }
 
 /**

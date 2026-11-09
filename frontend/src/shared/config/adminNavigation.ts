@@ -13,8 +13,11 @@ import {
 import type { AdminAccess } from '@shared/types';
 
 import {
+  ADMIN_ACHIEVEMENTS_ROUTE,
+  ADMIN_CONFERENCES_ROUTE,
   ADMIN_HELPERS_ROUTE,
   ADMIN_NEWS_ROUTE,
+  ADMIN_PAGES_ROUTE,
   ADMIN_ROUTE,
   ADMIN_SUBJECTS_ROUTE,
   ADMIN_TEACHERS_ROUTE,
@@ -69,17 +72,15 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'conferences',
     title: 'Конференции',
     icon: Mic,
-    path: `${ADMIN_ROUTE}/conferences`,
+    path: ADMIN_CONFERENCES_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-45',
   },
   {
     key: 'achievements',
     title: 'Достижения кафедры',
     icon: Award,
-    path: `${ADMIN_ROUTE}/achievements`,
+    path: ADMIN_ACHIEVEMENTS_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-45',
   },
   {
     key: 'teachers',
@@ -114,9 +115,8 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     key: 'pages',
     title: 'Разделы сайта',
     icon: FileText,
-    path: `${ADMIN_ROUTE}/pages`,
+    path: ADMIN_PAGES_ROUTE,
     access: 'moderator',
-    plannedIn: 'F-45',
   },
   {
     key: 'users',
