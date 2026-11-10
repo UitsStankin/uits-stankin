@@ -2,6 +2,10 @@ spring:
   application:
     name: uits-backend
 
+  web:
+    locale: ru
+    locale-resolver: fixed
+
   # Профиль по умолчанию, если явно не задан другой (SPRING_PROFILES_ACTIVE).
   # Локальный запуск получает dev (включает DevDataSeeder), тесты задают
   # профиль test, прод обязан задавать prod — иначе в базу попадут тестовые данные.

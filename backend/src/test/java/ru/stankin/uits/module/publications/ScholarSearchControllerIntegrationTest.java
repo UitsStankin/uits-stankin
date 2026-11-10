@@ -148,4 +148,19 @@ class ScholarSearchControllerIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getBody()).contains("Слишком много поисков в Google Scholar");
         then(serperScholarClient).should(never()).search(anyString(), anyInt());
     }
+
+    @Test
+    void missingQueryDetailIsInRussian() {
+        ResponseEntity<String> response = search("/api/publications/scholar", moderatorToken());
+
+        assertThat(response.getBody()).contains("Не передан обязательный параметр «q».");
+    }
+
+    @Test
+    void nonNumericPageDetailIsInRussian() {
+        ResponseEntity<String> response = search("/api/publications/scholar?q=Чеканин&page=abc", moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("Параметр «page» имеет неверное значение.");
+    }
 }
