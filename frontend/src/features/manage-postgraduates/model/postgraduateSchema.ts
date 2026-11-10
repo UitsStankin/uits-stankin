@@ -80,17 +80,11 @@ export const POSTGRADUATE_FIELDS = [
   'teacherId',
 ] as const;
 
-/**
- * Запись → значения формы; `null` — новая запись.
- *
- * `student` бывает `null` у записи, перенесённой со старого портала
- * (разбор у `PostgraduateDetails`), — такая открывается пустой формой,
- * а сохранение заведёт ей студента заново.
- */
+/** Запись → значения формы; `null` — новая запись. */
 export function postgraduateToFormValues(
   postgraduate: PostgraduateDetails | null,
 ): PostgraduateFormValues {
-  const student = postgraduate?.student ?? null;
+  const student = postgraduate?.student;
 
   return {
     student: {

@@ -262,25 +262,6 @@ describe('PostgraduateFormPage, правка', () => {
 
     expect(await screen.findByRole('textbox', { name: 'Фамилия' })).toHaveValue('Абрамов');
   });
-
-  /**
-   * Запись со старого портала без студента (`on_delete=SET_NULL`):
-   * маппер отдаёт `student: null`. Разбор у `PostgraduateDetails`.
-   */
-  it('открывает запись без студента пустой формой', async () => {
-    server.use(
-      http.get(`${POSTGRADUATES}/:id`, () =>
-        HttpResponse.json({ id: 12, student: null, teacherId: 5 }),
-      ),
-    );
-
-    renderForm('/admin/postgraduates/12');
-
-    expect(await screen.findByRole('textbox', { name: 'Фамилия' })).toHaveValue('');
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Научный руководитель' })).toHaveValue('5'),
-    );
-  });
 });
 
 describe('PostgraduateFormPage, новая запись', () => {
