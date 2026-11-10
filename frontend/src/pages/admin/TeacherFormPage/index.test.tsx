@@ -597,3 +597,57 @@ describe('TeacherFormPage, картинки в rich-text полях', () => {
     );
   });
 });
+
+describe('TeacherFormPage, архив', () => {
+  it('отправляет карточку в архив с формы', async () => {
+    renderForm('/admin/teachers/3');
+
+    expect(await screen.findByText(/Карточка действующая/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    expect(await screen.findByText('Карточка «Андреева Ольга» в архиве')).toBeInTheDocument();
+    expect(await screen.findByText(/Карточка в архиве: в списках на сайте её нет/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
+  });
+
+  /**
+   * Архив срабатывает мимо «Сохранить», и свежий ответ карточки после
+   * него не должен пересоздать форму: набранное, но не сохранённое
+   * осталось бы на экране только до первой перерисовки.
+   */
+  it('не теряет набранное, когда карточку отправили в архив', async () => {
+    renderForm('/admin/teachers/3');
+
+    const position = await screen.findByDisplayValue('профессор кафедры');
+    fireEvent.change(position, { target: { value: 'заведующий кафедрой' } });
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('заведующий кафедрой')).toBeInTheDocument();
+  });
+
+  /**
+   * Архивная открывается по прямой ссылке и правится как обычно:
+   * `PUT` архив не снимает, вернуть её можно только своей ручкой.
+   */
+  it('возвращает архивную карточку из архива', async () => {
+    server.use(...teacherHandlers([{ ...card(), archived: true }]));
+
+    renderForm('/admin/teachers/3');
+
+    expect(await screen.findByText(/Карточка в архиве/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Вернуть из архива' }));
+
+    expect(
+      await screen.findByText('Карточка «Андреева Ольга» возвращена из архива'),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'В архив' })).toBeInTheDocument();
+  });
+
+  it('не показывает архив у новой карточки', async () => {
+    renderForm('/admin/teachers/new');
+
+    expect(await screen.findByRole('button', { name: 'Создать' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'В архив' })).not.toBeInTheDocument();
+  });
+});

@@ -2,6 +2,7 @@ import type { FormEventHandler } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 
+import { TeacherSelect } from '@entities/teacher';
 import { cn } from '@shared/lib';
 import type { TeacherListItem } from '@shared/types';
 import { CheckboxField, TextAreaField, TextField } from '@shared/ui/FormFields';
@@ -9,7 +10,6 @@ import { ImagePicker } from '@shared/ui/ImagePicker';
 import { RichTextEditor } from '@shared/ui/RichTextEditor';
 
 import type { AchievementFormValues } from '../model/achievementSchema';
-import { TeacherField } from './TeacherField';
 
 interface AchievementFormProps {
   register: UseFormRegister<AchievementFormValues>;
@@ -86,7 +86,11 @@ export function AchievementForm({
         name="teacherId"
         control={control}
         render={({ field }) => (
-          <TeacherField
+          <TeacherSelect
+            id="achievement-teacher"
+            label="Преподаватель"
+            noneLabel="Кафедральное, без преподавателя"
+            hint="Без преподавателя достижение кафедральное: на сайте оно не подписано ничьим именем и не попадает в карточки ППС."
             teachers={teachers}
             value={field.value}
             onChange={field.onChange}

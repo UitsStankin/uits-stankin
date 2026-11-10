@@ -28,6 +28,11 @@ interface TeacherProfileProps {
  * загрузки и свой сбой, а этот компонент обязан оставаться чистым —
  * карточка на входе, разметка на выходе.
  *
+ * ### Архив
+ *
+ * Архивная карточка из публичного списка пропадает, но по прямой ссылке
+ * открывается (docs/API.md, «Архив») — с пометкой под регалиями.
+ *
  * ### Пустые поля
  *
  * Не показываются вовсе — в отличие от личного кабинета, где на их месте
@@ -62,6 +67,17 @@ export function TeacherProfile({ teacher }: TeacherProfileProps) {
           <p className="text-lg leading-normal text-text-default">
             {teacherCredentials(teacher)}
           </p>
+
+          {/* Архивная карточка открывается по прямой ссылке — из поиска,
+              из закладки, из достижения, — и без пометки читатель принял
+              бы ушедшего преподавателя за действующего: должность и
+              контакты на ней те, что были. В оригинале архива не было,
+              пометка — наша (F-53). */}
+          {teacher.archived && (
+            <p className="w-fit rounded bg-gray-300 px-2 py-1 text-sm text-text-default">
+              Преподаватель больше не работает на кафедре
+            </p>
+          )}
 
           {(teacher.email || teacher.phoneNumber || teacher.messenger) && (
             <ul className="mt-2 flex flex-col items-center gap-2 sm:items-start">

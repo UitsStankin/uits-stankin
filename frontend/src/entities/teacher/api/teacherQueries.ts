@@ -1,8 +1,13 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 
-import type { PageParams } from '@shared/types';
+import type { PageParams, TeacherAdminListParams } from '@shared/types';
 
-import { fetchMyTeacherCard, fetchTeacher, fetchTeachersPage } from './teacherApi';
+import {
+  fetchAdminTeachersPage,
+  fetchMyTeacherCard,
+  fetchTeacher,
+  fetchTeachersPage,
+} from './teacherApi';
 
 /**
  * Ключи кэша преподавателей.
@@ -22,6 +27,13 @@ export const teacherKeys = {
   me: () => [...teacherKeys.all, 'me'] as const,
   lists: () => [...teacherKeys.all, 'list'] as const,
   list: (params: PageParams) => [...teacherKeys.lists(), params] as const,
+  /**
+   * Защищённый список — под `lists()`, чтобы архивация и правка сбрасывали
+   * его тем же движением, что и публичный; `'admin'` отделяет его от
+   * публичного с теми же параметрами страницы — ответы у них разные.
+   */
+  adminList: (params: TeacherAdminListParams) =>
+    [...teacherKeys.lists(), 'admin', params] as const,
   items: () => [...teacherKeys.all, 'item'] as const,
   item: (id: number) => [...teacherKeys.items(), id] as const,
 };
@@ -51,6 +63,18 @@ export const teachersListQuery = (params: PageParams) =>
   queryOptions({
     queryKey: teacherKeys.list(params),
     queryFn: ({ signal }) => fetchTeachersPage(params, signal),
+    placeholderData: keepPreviousData,
+  });
+
+/**
+ * Описание запроса защищённого списка — для админки и выбора
+ * преподавателя в формах: только он видит архивные карточки.
+ * `keepPreviousData` — по той же причине, что у публичного.
+ */
+export const adminTeachersListQuery = (params: TeacherAdminListParams) =>
+  queryOptions({
+    queryKey: teacherKeys.adminList(params),
+    queryFn: ({ signal }) => fetchAdminTeachersPage(params, signal),
     placeholderData: keepPreviousData,
   });
 

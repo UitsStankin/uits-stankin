@@ -2,10 +2,10 @@ import EditableSection from '@widgets/EditableSection';
 import Pagination from '@shared/ui/Pagination';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { useUrlSearch } from '@shared/lib';
+import { SearchField } from '@shared/ui/SearchField';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { usePostgraduateList } from './model/usePostgraduateList';
-import { PostgraduateSearch } from './ui/PostgraduateSearch';
 import { PostgraduateTable } from './ui/PostgraduateTable';
 import { PostgraduateTableSkeleton } from './ui/PostgraduateTableSkeleton';
 
@@ -72,11 +72,14 @@ export default function PostgraduatePage() {
             целиком. При сбое и обрыве связи оно остаётся: набранное
             переживёт «Повторить», а не потеряется вместе с ошибкой. */}
         {!isEmpty && (
-          <PostgraduateSearch
+          <SearchField
+            id="postgraduate-search"
+            label="Поиск по таблице аспирантов"
+            placeholder="Фамилия, тема, специальность, год, руководитель"
             value={text}
             onChange={setText}
             onClear={clear}
-            foundCount={foundCount}
+            foundText={foundCount === null ? null : `Найдено аспирантов: ${foundCount}`}
           />
         )}
 

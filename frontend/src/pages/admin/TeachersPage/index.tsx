@@ -8,11 +8,35 @@ import Pagination from '@shared/ui/Pagination';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
-import { useTeachersAdmin } from './model/useTeachersAdmin';
+import { type ArchiveView, useTeachersAdmin } from './model/useTeachersAdmin';
+import { ArchiveFilter } from './ui/ArchiveFilter';
 import { teacherColumns } from './ui/teacherColumns';
 
 /**
- * Карточки ППС в админке: список, удаление и дорога к форме.
+ * Пустой список — про то, что отобрано, а не про раздел вообще:
+ * `totalElements` контракт считает с учётом отбора, и «карточек пока нет»
+ * на пустом архиве было бы неправдой.
+ */
+const EMPTY_TEXT: Record<ArchiveView, { title: string; description: string }> = {
+  active: {
+    title: 'Действующих карточек нет',
+    description:
+      'Заведите новую карточку или верните преподавателя из архива — она появится в разделе «Преподаватели» на сайте.',
+  },
+  archived: {
+    title: 'В архиве пусто',
+    description:
+      'Сюда попадают карточки ушедших преподавателей: на сайте их нет в списках, но по прямой ссылке они открываются.',
+  },
+  all: {
+    title: 'Карточек преподавателей пока нет',
+    description: 'Заведите первую — она появится в разделе «Преподаватели» на сайте.',
+  },
+};
+
+/**
+ * Карточки ППС в админке: список с отбором по архиву, архив, удаление
+ * и дорога к форме.
  *
  * От разделов новостей и дисциплин отличается одним: формы правки
  * здесь нет. Она живёт своей страницей, потому что списочная ручка
@@ -29,6 +53,7 @@ export default function TeachersPage() {
     page,
     totalPages,
     sorting,
+    view,
     isLoading,
     isOffline,
     isSwitching,
@@ -38,12 +63,16 @@ export default function TeachersPage() {
     isEmpty,
     isOutOfRange,
     hrefForPage,
+    hrefForView,
     onSortingChange,
     deleting,
     askDelete,
     cancelDelete,
     confirmDelete,
+    archiveInsteadOfDelete,
     isDeleting,
+    archive,
+    unarchive,
   } = useTeachersAdmin();
 
   return (
@@ -61,6 +90,8 @@ export default function TeachersPage() {
           Добавить
         </Link>
       </div>
+
+      <ArchiveFilter current={view} hrefForView={hrefForView} />
 
       {isOffline && (
         <StatusBlock
@@ -80,10 +111,7 @@ export default function TeachersPage() {
       )}
 
       {isEmpty && (
-        <StatusBlock
-          title="Карточек преподавателей пока нет"
-          description="Заведите первую — она появится в разделе «Преподаватели» на сайте."
-        />
+        <StatusBlock title={EMPTY_TEXT[view].title} description={EMPTY_TEXT[view].description} />
       )}
 
       {/* Страница за пределами данных — не ошибка: контракт отвечает на неё
@@ -100,7 +128,11 @@ export default function TeachersPage() {
       {(isLoading || teachers.length > 0) && (
         <>
           <DataTable
-            columns={teacherColumns({ onDelete: askDelete })}
+            columns={teacherColumns({
+              onDelete: askDelete,
+              onArchive: archive,
+              onUnarchive: unarchive,
+            })}
             data={teachers}
             getRowId={(teacher) => String(teacher.id)}
             label="Преподаватели"
@@ -115,29 +147,30 @@ export default function TeachersPage() {
       )}
 
       {/*
-        Текст подтверждения перечисляет последствия поимённо, и это
-        не многословие: удаление карточки ППС тянет за собой пять таблиц,
-        и ведут они себя по-разному. Расписание занятий и экзаменов уходит
-        каскадом (`fk_schedule_teacher`, `fk_exam_schedule_teacher`,
-        `onDelete: CASCADE`), а достижения, ведомости и аспиранты остаются
-        с обнулённой связью (`onDelete: SET NULL`) — то есть достижение
-        становится кафедральным, а у аспиранта пропадает руководитель.
-        Модератор, убирающий уволившегося, должен знать про второе:
-        «исчезнет карточка» звучит безобиднее, чем есть на самом деле.
+        Текст подтверждения перечисляет последствия поимённо — по таблице
+        «Что уносит с собой удаление карточки» в docs/API.md (заявка B-8,
+        закрыта T-82). Источник — контракт, а не changeset'ы бэкенда:
+        поменяется поведение — поменяется таблица, и сверять текст надо
+        с ней (F-51).
 
-        В контракте этого нет — docs/API.md говорит только про учётную
-        запись, — и выяснено чтением changeset'ов. Заявка B-8 просит
-        записать последствия в контракт: они принадлежат бэкенду
-        и могут измениться, а обещание здесь останется прежним.
+        Невосстановимо из перечисленного только расписание: ручек правки
+        у него нет, лишь повторный импорт PDF. Остальное теряет одну ссылку
+        на преподавателя. Поэтому окно и предлагает архив: для ушедшего
+        преподавателя это штатный путь, а удаление — для ошибочно
+        заведённой карточки (docs/API.md, «Архив»). Уже архивной карточке
+        предлагать архив незачем.
       */}
       {deleting && (
         <ConfirmDialog
           title="Удалить карточку преподавателя?"
-          description={`Карточка «${deleting.lastName} ${deleting.firstName}» и её фотография исчезнут с сайта вместе с расписанием занятий и экзаменов. Достижения и аспиранты останутся, но потеряют преподавателя: достижения станут кафедральными, аспиранты — без руководителя. Учётная запись, если она была привязана, продолжит работать.`}
+          description={`Карточка «${deleting.lastName} ${deleting.firstName}» и её фотография исчезнут с сайта вместе с расписанием занятий и экзаменов — вернуть расписание можно только повторным импортом. Достижения, записи аспирантуры и ведомости останутся, но потеряют преподавателя. Учётная запись, если она была привязана, продолжит работать.${deleting.archived ? '' : ' Если преподаватель ушёл с кафедры, отправьте карточку в архив: она пропадёт из списков на сайте, а всё связанное с ней сохранится.'}`}
           confirmLabel="Удалить"
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
           isPending={isDeleting}
+          alternative={
+            deleting.archived ? undefined : { label: 'В архив', onClick: archiveInsteadOfDelete }
+          }
         />
       )}
     </div>

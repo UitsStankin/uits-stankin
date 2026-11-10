@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Pencil, Trash2 } from 'lucide-react';
 
 import { teacherCredentials, teacherFullName } from '@entities/teacher';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
@@ -34,8 +34,21 @@ const column = adminColumns<TeacherListItem>();
  * «Править» — **ссылка**, а не кнопка: форма живёт своим адресом,
  * и ссылку можно открыть в новой вкладке или переслать. Кнопка,
  * зовущая `navigate`, отняла бы и то и другое, ничего не дав взамен.
+ *
+ * Архив (F-53) — плашкой у ФИО, а не своей колонкой: в отборе
+ * «Действующие» колонка была бы пустой целиком, а плашка появляется ровно
+ * там, где есть что сказать. Действие в строке одно из двух — «В архив»
+ * или «Вернуть из архива», по состоянию карточки.
  */
-export function teacherColumns({ onDelete }: { onDelete: (teacher: TeacherListItem) => void }) {
+export function teacherColumns({
+  onDelete,
+  onArchive,
+  onUnarchive,
+}: {
+  onDelete: (teacher: TeacherListItem) => void;
+  onArchive: (teacher: TeacherListItem) => void;
+  onUnarchive: (teacher: TeacherListItem) => void;
+}) {
   return column.columns([
     column.accessor('lastName', {
       // «ФИО», а не «Фамилия», хотя сортирует колонка по `lastName`:
@@ -53,6 +66,14 @@ export function teacherColumns({ onDelete }: { onDelete: (teacher: TeacherListIt
             className="size-9 shrink-0 rounded-full object-cover"
           />
           <span className="font-medium text-text-heading">{teacherFullName(row.original)}</span>
+          {row.original.archived && (
+            // Словами, а не цветом строки: «в архиве» — это то, почему
+            // карточки нет на сайте, и угадывать это по оттенку модератор
+            // не должен (тот же довод у `PublicationStatus`).
+            <span className="whitespace-nowrap rounded bg-gray-300 px-2 py-1 text-sm text-text-default">
+              В архиве
+            </span>
+          )}
         </div>
       ),
     }),
@@ -82,6 +103,20 @@ export function teacherColumns({ onDelete }: { onDelete: (teacher: TeacherListIt
           >
             <Pencil aria-hidden="true" className="size-4" />
           </Link>
+
+          {row.original.archived ? (
+            <RowAction
+              label={`Вернуть из архива карточку «${teacherFullName(row.original)}»`}
+              onClick={() => onUnarchive(row.original)}
+              icon={<ArchiveRestore aria-hidden="true" className="size-4" />}
+            />
+          ) : (
+            <RowAction
+              label={`Отправить в архив карточку «${teacherFullName(row.original)}»`}
+              onClick={() => onArchive(row.original)}
+              icon={<Archive aria-hidden="true" className="size-4" />}
+            />
+          )}
 
           <RowAction
             label={`Удалить карточку «${teacherFullName(row.original)}»`}

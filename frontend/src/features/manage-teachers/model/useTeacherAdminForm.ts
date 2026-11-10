@@ -63,6 +63,7 @@ const BLANK_CARD: Teacher = {
   examScheduleGraduation: null,
   examScheduleNonGraduation: null,
   subjects: [],
+  archived: false,
 };
 
 /**

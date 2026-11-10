@@ -9,6 +9,7 @@ import Loader from '@shared/ui/Loader';
 import {
   ACHIEVEMENTS_ROUTE,
   ADMIN_PAGES_ROUTE,
+  ADMIN_POSTGRADUATES_ROUTE,
   ADMIN_ROUTE,
   ADMIN_TEACHERS_ROUTE,
   ANNOUNCEMENTS_ROUTE,
@@ -55,6 +56,8 @@ import AdminAchievementsPage from '@pages/admin/AchievementsPage';
 import AdminEditablePagesPage from '@pages/admin/EditablePagesPage';
 import EditablePageFormPage from '@pages/admin/EditablePageFormPage';
 import UsersPage from '@pages/admin/UsersPage';
+import AdminPostgraduatesPage from '@pages/admin/PostgraduatesPage';
+import PostgraduateFormPage from '@pages/admin/PostgraduateFormPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
@@ -166,6 +169,11 @@ function adminSectionScreen(section: AdminSection) {
       return <AdminTeachersPage />;
     case 'helpers':
       return <AdminHelpersPage />;
+    case 'postgraduates':
+      // Имя импорта отличается от имени файла по той же причине, что
+      // и у новостей: публичная страница аспирантуры — `PostgraduatePage`,
+      // и разница в одной букве `s` в одном модуле читалась бы как опечатка.
+      return <AdminPostgraduatesPage />;
     case 'subjects':
       return <SubjectsPage />;
     case 'pages':
@@ -432,6 +440,19 @@ export const routes: RouteObject[] = [
           {
             path: `${adminChildPath(ADMIN_TEACHERS_ROUTE)}/:id`,
             element: <TeacherFormPage />,
+            errorElement: <RouteError />,
+          },
+          // Форма записи аспирантуры — тем же устройством и по тому же
+          // доводу, что у карточки ППС: форме нужен свой запрос (разбор
+          // у `adminPostgraduateRoute`).
+          {
+            path: `${adminChildPath(ADMIN_POSTGRADUATES_ROUTE)}/new`,
+            element: <PostgraduateFormPage />,
+            errorElement: <RouteError />,
+          },
+          {
+            path: `${adminChildPath(ADMIN_POSTGRADUATES_ROUTE)}/:id`,
+            element: <PostgraduateFormPage />,
             errorElement: <RouteError />,
           },
           // Форма раздела сайта — тоже своим адресом и тоже плоской записью,

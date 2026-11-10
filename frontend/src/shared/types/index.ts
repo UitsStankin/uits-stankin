@@ -53,6 +53,7 @@ export type {
   Teacher,
   TeacherListItem,
   TeacherPage,
+  TeacherAdminListParams,
   TeacherDegree,
   TeacherRank,
   TeacherUpsertRequest,
@@ -67,9 +68,13 @@ export type {
 
 // Аспирантура
 export type {
+  EducationLevel,
   Postgraduate,
+  PostgraduateDetails,
   PostgraduatePage,
   PostgraduateListParams,
+  PostgraduateRequest,
+  PostgraduateStudent,
 } from './students.types';
 
 // Навигация

@@ -2,10 +2,10 @@
  * Публичный вход в сущность: снаружи берут отсюда, а не из `api`
  * напрямую.
  *
- * Сущность знает только чтение публичного списка. Модераторский CRUD
- * приедет с блоком 4 и ляжет в `features`, как у преподавателей:
- * `entities` описывает предметную область, действия пользователя — дело
- * `features`.
+ * Сущность знает только чтение: публичный список и одну запись для формы
+ * правки (F-47). Модераторская запись лежит в `features/manage-postgraduates`,
+ * как у преподавателей: `entities` описывает предметную область, действия
+ * пользователя — дело `features`.
  *
  * Своего `ui` у сущности нет, и это отличает её от ППС и УВП: там
  * человек показывается карточкой, и карточка одинакова в списке
@@ -14,5 +14,9 @@
  * без своей таблицы никуда не переставляется, поэтому и живёт
  * в `pages/PostgraduatePage/ui`.
  */
-export { fetchPostgraduatesPage } from './api/postgraduateApi';
-export { postgraduateKeys, postgraduatesListQuery } from './api/postgraduateQueries';
+export { fetchPostgraduate, fetchPostgraduatesPage } from './api/postgraduateApi';
+export {
+  postgraduateKeys,
+  postgraduateQuery,
+  postgraduatesListQuery,
+} from './api/postgraduateQueries';

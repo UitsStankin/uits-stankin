@@ -11,7 +11,11 @@ import { renderWithProviders } from '@/test/render';
 
 import AdminTeachersPage from './index';
 
-const PUBLIC_TEACHERS = '*/api/public/teachers';
+/**
+ * Защищённый список: с F-53 раздел читает его, а не публичный — публичный
+ * архивных не отдаёт.
+ */
+const TEACHERS = '*/api/teachers';
 
 /**
  * Раздел преподавателей админки.
@@ -152,7 +156,7 @@ describe('AdminTeachersPage, список', () => {
     // Хендлер без ответа пропускает запрос дальше по набору: смотрим
     // адрес, не подменяя выдачу.
     server.use(
-      http.get(PUBLIC_TEACHERS, ({ request }) => {
+      http.get(TEACHERS, ({ request }) => {
         requested = request.url;
       }),
     );
@@ -166,7 +170,7 @@ describe('AdminTeachersPage, список', () => {
   it('отправляет порядок, отличный от умолчания', async () => {
     let requested: string | null = null;
     server.use(
-      http.get(PUBLIC_TEACHERS, ({ request }) => {
+      http.get(TEACHERS, ({ request }) => {
         requested = request.url;
       }),
     );
@@ -185,10 +189,18 @@ describe('AdminTeachersPage, список', () => {
     expect(await screen.findByRole('cell', { name: 'Фёдоров Максим Эдуардович' })).toBeInTheDocument();
   });
 
-  it('говорит, что карточек нет вовсе', async () => {
+  it('говорит, что действующих карточек нет', async () => {
     server.use(...teacherHandlers([]));
 
     renderTeachers();
+
+    expect(await screen.findByText('Действующих карточек нет')).toBeInTheDocument();
+  });
+
+  it('говорит, что карточек нет вовсе, в отборе «Все»', async () => {
+    server.use(...teacherHandlers([]));
+
+    renderTeachers('/admin/teachers?archived=all');
 
     expect(await screen.findByText('Карточек преподавателей пока нет')).toBeInTheDocument();
   });
@@ -203,11 +215,11 @@ describe('AdminTeachersPage, список', () => {
 
   it('показывает сбой и повторяет запрос', async () => {
     server.use(
-      http.get(PUBLIC_TEACHERS, () =>
+      http.get(TEACHERS, () =>
         problemResponse(500, {
           title: 'Internal Server Error',
           detail: 'Внутренняя ошибка сервера.',
-          instance: '/api/public/teachers',
+          instance: '/api/teachers',
         }),
       ),
     );
@@ -264,17 +276,14 @@ describe('AdminTeachersPage, удаление', () => {
   });
 
   /**
-   * Удаление карточки ППС тянет за собой пять таблиц, и ведут они себя
-   * по-разному: расписание уходит каскадом, а достижения, ведомости
-   * и аспиранты остаются с обнулённой связью. Модератор, убирающий
-   * уволившегося, должен знать про второе — «исчезнет карточка» звучит
-   * безобиднее, чем есть.
-   *
-   * Проверка сторожит именно текст: он выясняется чтением changeset'ов
-   * бэкенда, в контракте его нет (заявка B-8), и потерять его при первой
-   * же правке подписи легче лёгкого.
+   * Текст окна сверен с таблицей «Что уносит с собой удаление карточки»
+   * в docs/API.md (F-51): расписание уходит, достижения, записи
+   * аспирантуры и ведомости теряют преподавателя, учётка живёт. Ведомостей
+   * в тексте до F-51 не было — он писался по changeset'ам, а не по
+   * контракту. Проверка сторожит именно текст: потерять его при правке
+   * подписи легче лёгкого.
    */
-  it('перечисляет последствия удаления поимённо', async () => {
+  it('перечисляет последствия удаления по контракту', async () => {
     renderTeachers();
 
     await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' });
@@ -287,9 +296,69 @@ describe('AdminTeachersPage, удаление', () => {
     const dialog = within(screen.getByRole('dialog', { name: 'Удалить карточку преподавателя?' }));
 
     expect(dialog.getByText(/вместе с расписанием занятий и экзаменов/)).toBeInTheDocument();
-    expect(dialog.getByText(/достижения станут кафедральными/)).toBeInTheDocument();
-    expect(dialog.getByText(/аспиранты — без руководителя/)).toBeInTheDocument();
+    expect(
+      dialog.getByText(/Достижения, записи аспирантуры и ведомости останутся/),
+    ).toBeInTheDocument();
     expect(dialog.getByText(/Учётная запись.*продолжит работать/)).toBeInTheDocument();
+  });
+
+  /**
+   * Для ушедшего преподавателя штатный путь — архив, удаление — для
+   * ошибочно заведённой карточки (docs/API.md, «Архив»). Окно, куда
+   * модератор пришёл удалять уволившегося, обязано этот путь предложить.
+   */
+  it('предлагает архив вместо удаления', async () => {
+    let deleted = false;
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'DELETE') deleted = true;
+    });
+
+    renderTeachers();
+
+    await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' });
+    fireEvent.click(
+      rowOf('Абрамов Никита Сергеевич').getByRole('button', {
+        name: 'Удалить карточку «Абрамов Никита Сергеевич»',
+      }),
+    );
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Удалить карточку преподавателя?' }));
+    expect(dialog.getByText(/отправьте карточку в архив/)).toBeInTheDocument();
+    fireEvent.click(dialog.getByRole('button', { name: 'В архив' }));
+
+    expect(await screen.findByText('Карточка «Абрамов Никита» в архиве')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('cell', { name: 'Абрамов Никита Сергеевич' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(deleted).toBe(false);
+  });
+
+  it('не предлагает архив уже архивной карточке', async () => {
+    server.use(
+      ...teacherHandlers([
+        makeTeacher({
+          id: 1,
+          lastName: 'Абрамов',
+          firstName: 'Никита',
+          patronymic: 'Сергеевич',
+          archived: true,
+        }),
+      ]),
+    );
+
+    renderTeachers('/admin/teachers?archived=true');
+
+    await screen.findByRole('cell', { name: /^Абрамов Никита Сергеевич/ });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Удалить карточку «Абрамов Никита Сергеевич»' }),
+    );
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Удалить карточку преподавателя?' }));
+    expect(dialog.queryByRole('button', { name: 'В архив' })).not.toBeInTheDocument();
+    expect(dialog.queryByText(/отправьте карточку в архив/)).not.toBeInTheDocument();
   });
 
   it('не удаляет по «Отмене»', async () => {
@@ -340,6 +409,179 @@ describe('AdminTeachersPage, удаление', () => {
         'button',
         { name: 'Удалить' },
       ),
+    );
+
+    expect(await screen.findByText('Преподаватель не найден')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
+  });
+});
+
+describe('AdminTeachersPage, архив', () => {
+  /**
+   * Две действующие и одна архивная. Порядок по фамилии сохраняется
+   * внутри каждого отбора — его держит мок так же, как Spring.
+   */
+  beforeEach(() => {
+    server.use(
+      ...teacherHandlers([
+        makeTeacher({ id: 1, lastName: 'Абрамов', firstName: 'Никита', patronymic: 'Сергеевич' }),
+        makeTeacher({
+          id: 2,
+          lastName: 'Белова',
+          firstName: 'Екатерина',
+          patronymic: 'Андреевна',
+          archived: true,
+        }),
+        makeTeacher({ id: 3, lastName: 'Волков', firstName: 'Артём', patronymic: 'Дмитриевич' }),
+      ]),
+    );
+  });
+
+  /** Ловит адрес запроса защищённого списка, не подменяя выдачу. */
+  function captureListRequests() {
+    const urls: URL[] = [];
+    server.use(
+      http.get(TEACHERS, ({ request }) => {
+        urls.push(new URL(request.url));
+      }),
+    );
+    return urls;
+  }
+
+  /**
+   * По умолчанию — действующие, и это `archived=false` в запросе, а не
+   * отсутствие параметра: без него контракт отдал бы и архив.
+   */
+  it('показывает по умолчанию только действующих', async () => {
+    const urls = captureListRequests();
+
+    renderTeachers();
+
+    expect(await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: /Белова/ })).not.toBeInTheDocument();
+    expect(urls.at(-1)?.searchParams.get('archived')).toBe('false');
+    expect(screen.getByRole('link', { name: 'Действующие' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('открывает архив из адреса — с плашкой и возвратом', async () => {
+    const urls = captureListRequests();
+
+    renderTeachers('/admin/teachers?archived=true');
+
+    const cell = await screen.findByRole('cell', { name: /^Белова Екатерина Андреевна/ });
+    expect(within(cell).getByText('В архиве')).toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: /Абрамов/ })).not.toBeInTheDocument();
+    expect(urls.at(-1)?.searchParams.get('archived')).toBe('true');
+    expect(
+      screen.getByRole('button', {
+        name: 'Вернуть из архива карточку «Белова Екатерина Андреевна»',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Отправить в архив/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** «Все» — отсутствие параметра в запросе: так контракт отдаёт всех. */
+  it('показывает всех без параметра в запросе, плашка — только у архивной', async () => {
+    const urls = captureListRequests();
+
+    renderTeachers('/admin/teachers?archived=all');
+
+    expect(await screen.findByRole('cell', { name: /^Белова Екатерина Андреевна/ })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
+    expect(screen.getAllByText('В архиве', { selector: 'span' })).toHaveLength(1);
+    expect(urls.at(-1)?.searchParams.has('archived')).toBe(false);
+  });
+
+  it('говорит, что архив пуст', async () => {
+    server.use(...teacherHandlers([makeTeacher({ id: 1 })]));
+
+    renderTeachers('/admin/teachers?archived=true');
+
+    expect(await screen.findByText('В архиве пусто')).toBeInTheDocument();
+  });
+
+  /** Битое значение в адресе — обычный вид раздела, а не `400` от Spring. */
+  it('открывает действующих на незнакомом значении отбора', async () => {
+    const urls = captureListRequests();
+
+    renderTeachers('/admin/teachers?archived=yes');
+
+    expect(await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
+    expect(urls.at(-1)?.searchParams.get('archived')).toBe('false');
+  });
+
+  /**
+   * Отбор — ссылками, и смена его сбрасывает страницу, но не порядок:
+   * третья страница действующих к архиву отношения не имеет.
+   */
+  it('держит порядок в ссылках отбора и сбрасывает страницу', async () => {
+    renderTeachers('/admin/teachers?page=2&sort=position,asc');
+
+    const archiveLink = await screen.findByRole('link', { name: 'В архиве' });
+
+    expect(archiveLink).toHaveAttribute('href', '/admin/teachers?sort=position,asc&archived=true');
+    expect(screen.getByRole('link', { name: 'Действующие' })).toHaveAttribute(
+      'href',
+      '/admin/teachers?sort=position,asc',
+    );
+  });
+
+  it('отправляет карточку в архив из строки', async () => {
+    renderTeachers();
+
+    await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Отправить в архив карточку «Абрамов Никита Сергеевич»',
+      }),
+    );
+
+    expect(await screen.findByText('Карточка «Абрамов Никита» в архиве')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('cell', { name: 'Абрамов Никита Сергеевич' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('cell', { name: 'Волков Артём Дмитриевич' })).toBeInTheDocument();
+  });
+
+  it('возвращает карточку из архива', async () => {
+    renderTeachers('/admin/teachers?archived=true');
+
+    await screen.findByRole('cell', { name: /^Белова Екатерина Андреевна/ });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Вернуть из архива карточку «Белова Екатерина Андреевна»',
+      }),
+    );
+
+    expect(
+      await screen.findByText('Карточка «Белова Екатерина» возвращена из архива'),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('В архиве пусто')).toBeInTheDocument();
+  });
+
+  /** Карточку удалили в соседней вкладке: `404` — словами сервера. */
+  it('говорит словами сервера, если карточки для архива уже нет', async () => {
+    server.use(
+      http.post('*/api/teachers/:id/archive', () =>
+        problemResponse(404, {
+          title: 'Not Found',
+          detail: 'Преподаватель не найден',
+          instance: '/api/teachers/1/archive',
+        }),
+      ),
+    );
+
+    renderTeachers();
+
+    await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Отправить в архив карточку «Абрамов Никита Сергеевич»',
+      }),
     );
 
     expect(await screen.findByText('Преподаватель не найден')).toBeInTheDocument();
