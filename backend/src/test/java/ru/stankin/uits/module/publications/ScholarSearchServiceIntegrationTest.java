@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -160,8 +161,12 @@ class ScholarSearchServiceIntegrationTest extends AbstractIntegrationTest {
         try {
             Future<List<SerperScholarItem>> first = pool.submit(() -> scholarSearchService.search("Чеканин", 0));
             assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
-            Future<List<SerperScholarItem>> second = pool.submit(() -> scholarSearchService.search("  ЧЕКАНИН ", 0));
-            Thread.sleep(300);
+            AtomicReference<Thread> secondThread = new AtomicReference<>();
+            Future<List<SerperScholarItem>> second = pool.submit(() -> {
+                secondThread.set(Thread.currentThread());
+                return scholarSearchService.search("  ЧЕКАНИН ", 0);
+            });
+            awaitParked(secondThread);
             release.countDown();
 
             assertThat(first.get(5, TimeUnit.SECONDS)).hasSize(1);
@@ -188,8 +193,12 @@ class ScholarSearchServiceIntegrationTest extends AbstractIntegrationTest {
         try {
             Future<List<SerperScholarItem>> first = pool.submit(() -> scholarSearchService.search("Чеканин", 0));
             assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
-            Future<List<SerperScholarItem>> second = pool.submit(() -> scholarSearchService.search("Чеканин", 0));
-            Thread.sleep(300);
+            AtomicReference<Thread> secondThread = new AtomicReference<>();
+            Future<List<SerperScholarItem>> second = pool.submit(() -> {
+                secondThread.set(Thread.currentThread());
+                return scholarSearchService.search("Чеканин", 0);
+            });
+            awaitParked(secondThread);
             release.countDown();
 
             assertThatThrownBy(() -> first.get(5, TimeUnit.SECONDS))
@@ -201,6 +210,19 @@ class ScholarSearchServiceIntegrationTest extends AbstractIntegrationTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    private void awaitParked(AtomicReference<Thread> thread) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < deadline) {
+            Thread candidate = thread.get();
+            if (candidate != null && candidate.getState() == Thread.State.WAITING) {
+                return;
+            }
+            Thread.onSpinWait();
+        }
+
+        throw new AssertionError("Второй поток не дошёл до ожидания результата первого");
     }
 
     @Test
