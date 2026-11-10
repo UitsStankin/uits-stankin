@@ -320,6 +320,48 @@ class FileUploadIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void upload_WhenPhotoPngGoesToNews_StoresJpegWithJpegThumbnail() throws IOException {
+        createUser("moderator_png_photo", TestRole.MODERATOR);
+        String token = login("moderator_png_photo");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(TestImages.photoPng(800, 600, false), "cover.png", "news", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        String key = response.getBody().key();
+        Path thumbnail = STORAGE_ROOT.resolve(key.replace(".jpg", "_thumb.jpg"));
+
+        assertThat(key).endsWith(".jpg");
+        assertThat(TestImages.formatOf(Files.readAllBytes(STORAGE_ROOT.resolve(key)))).isEqualTo("jpeg");
+        assertThat(thumbnail).exists();
+        assertThat(TestImages.formatOf(Files.readAllBytes(thumbnail))).isEqualTo("jpeg");
+    }
+
+    @Test
+    void upload_WhenPngWithTransparencyGoesToNews_KeepsPngWithPngThumbnail() throws IOException {
+        createUser("moderator_png_alpha", TestRole.MODERATOR);
+        String token = login("moderator_png_alpha");
+
+        ResponseEntity<FileUploadResponseDto> response = restTemplate.postForEntity(
+                "/api/files", multipart(TestImages.photoPng(800, 600, true), "cover.png", "news", token),
+                FileUploadResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+
+        String key = response.getBody().key();
+        Path thumbnail = STORAGE_ROOT.resolve(key.replace(".png", "_thumb.png"));
+
+        assertThat(key).endsWith(".png");
+        assertThat(TestImages.formatOf(Files.readAllBytes(STORAGE_ROOT.resolve(key)))).isEqualTo("png");
+        assertThat(thumbnail).exists();
+        assertThat(TestImages.formatOf(Files.readAllBytes(thumbnail))).isEqualTo("png");
+    }
+
+    @Test
     void upload_WhenAvatar_HasNoThumbnail() throws IOException {
         createUser("user_thumb", TestRole.USER);
         String token = login("user_thumb");

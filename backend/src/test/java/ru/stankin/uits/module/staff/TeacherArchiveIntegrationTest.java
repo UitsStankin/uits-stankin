@@ -112,6 +112,29 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getMyCard_WhenTeacherIsArchived_ReturnsArchivedFlagAndLoginStillWorks() {
+        Teacher card = createCard("Иванова", "Мария");
+        linkAccount(card, "teacher_user");
+        archive(card.getId());
+
+        TeacherDetailsResponseDto mine = myCard(login("teacher_user"));
+
+        assertThat(mine.getLastName()).isEqualTo("Иванова");
+        assertThat(mine.isArchived()).isTrue();
+    }
+
+    @Test
+    void getMyCard_AfterUnarchive_ReturnsArchivedFalse() {
+        Teacher card = createCard("Иванова", "Мария");
+        linkAccount(card, "teacher_user");
+        String teacherToken = login("teacher_user");
+        archive(card.getId());
+        unarchive(card.getId());
+
+        assertThat(myCard(teacherToken).isArchived()).isFalse();
+    }
+
+    @Test
     void archive_Twice_KeepsFirstTimestamp() {
         Teacher leaves = createCard("Яковлев", "Пётр");
 
@@ -340,6 +363,24 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
     private TeacherDetailsResponseDto details(Long id) {
         ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.getForEntity(
                 "/api/public/teachers/" + id, TeacherDetailsResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+
+        return response.getBody();
+    }
+
+    private void linkAccount(Teacher card, String username) {
+        card.setUser(createUser(username, TestRole.TEACHER));
+        teacherRepository.save(card);
+    }
+
+    private TeacherDetailsResponseDto myCard(String teacherToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(teacherToken);
+
+        ResponseEntity<TeacherDetailsResponseDto> response = restTemplate.exchange(
+                "/api/teachers/me", HttpMethod.GET, new HttpEntity<>(headers), TeacherDetailsResponseDto.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
