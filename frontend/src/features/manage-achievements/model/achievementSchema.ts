@@ -28,7 +28,7 @@ export const achievementSchema = z.object({
   /**
    * Карточка ППС, к которой привязано достижение; `null` — кафедральное.
    * Число, а не строка выпадающего списка: поле живёт через `Controller`,
-   * и «пустой пункт — это `null`» переводит сам список (`ui/TeacherField`).
+   * и «пустой пункт — это `null`» переводит сам список (`TeacherSelect` из `entities/teacher`).
    */
   teacherId: z.number().nullable(),
 

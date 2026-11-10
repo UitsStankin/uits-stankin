@@ -5,12 +5,12 @@ import type { UserRole } from '@shared/types';
 import ConfirmDialog from '@shared/ui/ConfirmDialog';
 import DataTable from '@shared/ui/DataTable';
 import Pagination from '@shared/ui/Pagination';
+import { SearchField } from '@shared/ui/SearchField';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { useUsersAdmin, type ActiveFilter } from './model/useUsersAdmin';
 import { FilterLinks } from './ui/FilterLinks';
-import { UserSearch } from './ui/UserSearch';
 import { userColumns } from './ui/userColumns';
 
 const ROLE_OPTIONS: readonly { value: UserRole | null; label: string }[] = [
@@ -54,11 +54,16 @@ export default function UsersPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <UserSearch
+        <SearchField
+          id="user-search"
+          label="Поиск учётных записей"
+          placeholder="Логин, имя, фамилия или почта"
           value={model.searchText}
           onChange={model.onSearchChange}
           onClear={model.onSearchClear}
-          foundCount={model.foundCount}
+          foundText={
+            model.foundCount === null ? null : `Найдено учётных записей: ${model.foundCount}`
+          }
         />
 
         <FilterLinks

@@ -2,26 +2,31 @@ import { Search, X } from 'lucide-react';
 
 import { cn } from '@shared/lib';
 
-interface PostgraduateSearchProps {
+interface SearchFieldProps {
+  id: string;
+  /** Имя поля для диктора. Видимой подписи нет — разбор ниже. */
+  label: string;
+  /** Перечень того, по чему ищут: «Фамилия, тема, год…». */
+  placeholder: string;
   /** Набранное в поле — не то же, что ушедшее в адрес: между ними пауза. */
   value: string;
   onChange: (value: string) => void;
   onClear: () => void;
   /**
-   * Сколько записей нашлось. `null` — поиска нет либо ответа ещё не было:
-   * в обоих случаях сообщать нечего.
+   * Строка под полем: «Найдено аспирантов: 3». `null` — поиска нет либо
+   * ответа ещё не было, и сообщать нечего. Готовой строкой, а не числом:
+   * существительное у каждого списка своё.
    */
-  foundCount: number | null;
+  foundText: string | null;
 }
 
 /**
- * Поиск по таблице аспирантов. Чистый: что набрано и что найдено —
- * приходит пропсами, пауза перед запросом живёт в модели.
+ * Поле поиска над списком. Чистое: что набрано и что найдено — приходит
+ * пропсами, пауза перед запросом живёт в `shared/lib/useUrlSearch`.
  *
- * Поле вернулось на страницу вместе с серверным поиском (`?q=`, T-78
- * по заявке B-3). В F-34 его не было намеренно: ручка отдавала двадцать
- * записей из скольких-то, и поле фильтровало бы открытую страницу,
- * называясь при этом поиском по разделу.
+ * Заведено на странице аспирантов (F-34), повторено копией в учётных
+ * записях (F-46) и переехало сюда с третьим потребителем — аспирантурой
+ * в админке (F-47). Копии отличались только подписью и плейсхолдером.
  *
  * ### Подпись
  *
@@ -29,8 +34,8 @@ interface PostgraduateSearchProps {
  * ищут. Это не «плейсхолдер вместо подписи» — имя полю даёт `label`,
  * и диктор его читает; видимой подписи нет потому, что над таблицей
  * она заняла бы строку, ничего не добавив к иконке лупы. Перечисление
- * же добавляет: поиск идёт сразу по пяти колонкам, включая год
- * поступления и руководителя, и догадаться об этом по слову «Поиск»
+ * же добавляет: поиск у аспирантов идёт сразу по пяти колонкам, включая
+ * год поступления и руководителя, и догадаться об этом по слову «Поиск»
  * нельзя.
  *
  * `type="search"` — ради браузера и клавиатуры: на телефоне он даёт
@@ -40,16 +45,19 @@ interface PostgraduateSearchProps {
  * А родной — убран: без этого в WebKit их два подряд, и правый
  * (наш, единственный работающий с клавиатуры) читается как лишний.
  */
-export function PostgraduateSearch({
+export function SearchField({
+  id,
+  label,
+  placeholder,
   value,
   onChange,
   onClear,
-  foundCount,
-}: PostgraduateSearchProps) {
+  foundText,
+}: SearchFieldProps) {
   return (
     <div role="search" className="flex flex-col gap-1.5">
-      <label htmlFor="postgraduate-search" className="sr-only">
-        Поиск по таблице аспирантов
+      <label htmlFor={id} className="sr-only">
+        {label}
       </label>
 
       <div className="relative">
@@ -60,11 +68,11 @@ export function PostgraduateSearch({
         />
 
         <input
-          id="postgraduate-search"
+          id={id}
           type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Фамилия, тема, специальность, год, руководитель"
+          placeholder={placeholder}
           className={cn(
             // pr-10 держит место под свою кнопку очистки, pl-9 — под лупу.
             'w-full rounded border border-gray-300 bg-white py-2 pr-10 pl-9',
@@ -99,7 +107,7 @@ export function PostgraduateSearch({
         подталкивает таблицу вниз под руками у набирающего.
       */}
       <p role="status" className="min-h-5 text-sm text-text-muted">
-        {foundCount !== null && `Найдено аспирантов: ${foundCount}`}
+        {foundText}
       </p>
     </div>
   );

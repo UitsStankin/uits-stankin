@@ -18,7 +18,7 @@ export { pageResponse } from './page';
 export {
   makePostgraduate,
   postgraduatesFixture,
-  publicPostgraduateHandlers,
+  postgraduateHandlers,
 } from './postgraduates';
 export {
   makeTeacher,
