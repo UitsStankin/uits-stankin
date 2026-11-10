@@ -5,11 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import ru.stankin.uits.common.exception.ScholarUnavailableException;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
@@ -19,6 +22,7 @@ public class SerperScholarClient {
 
     private static final String SEARCH_URI = "/scholar";
     private static final String LANGUAGE = "ru";
+    private static final int ERROR_BODY_LIMIT = 200;
 
     private final RestClient serperRestClient;
     private final String apiKey;
@@ -43,7 +47,8 @@ public class SerperScholarClient {
                     .body(new SerperScholarRequest(query, LANGUAGE, page + 1))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, httpResponse) -> {
-                        log.error("Serper ответил {} на поиск публикаций", httpResponse.getStatusCode().value());
+                        log.error("Serper ответил {} на поиск публикаций: {}",
+                                httpResponse.getStatusCode().value(), errorBody(httpResponse));
                         throw new ScholarUnavailableException("Поиск по Google Scholar временно недоступен.");
                     })
                     .body(SerperScholarResponse.class);
@@ -52,5 +57,15 @@ public class SerperScholarClient {
         }
 
         return response == null || response.getOrganic() == null ? List.of() : response.getOrganic();
+    }
+
+    private String errorBody(ClientHttpResponse response) {
+        try {
+            String body = new String(response.getBody().readNBytes(ERROR_BODY_LIMIT), StandardCharsets.UTF_8);
+
+            return body.replaceAll("\\s+", " ").trim();
+        } catch (IOException e) {
+            return "тело ответа не прочитано";
+        }
     }
 }

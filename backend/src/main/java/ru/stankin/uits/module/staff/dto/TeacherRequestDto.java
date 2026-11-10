@@ -2,12 +2,14 @@ package ru.stankin.uits.module.staff.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.stankin.uits.common.validation.PhoneRules;
 import ru.stankin.uits.common.validation.SafeUrl;
 import ru.stankin.uits.module.staff.enums.TeacherDegree;
 import ru.stankin.uits.module.staff.enums.TeacherRank;
@@ -43,7 +45,8 @@ public class TeacherRequestDto {
     @Size(max = 100)
     String avatar;
 
-    @Size(max = 50)
+    @Size(max = 50, message = "Телефон не длиннее 50 символов")
+    @Pattern(regexp = PhoneRules.REGEXP, message = PhoneRules.MESSAGE)
     String phoneNumber;
 
     @Email(message = "Некорректный адрес почты")

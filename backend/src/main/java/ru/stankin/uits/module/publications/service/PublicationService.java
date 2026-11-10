@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.exception.FieldValidationException;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidRequestException;
 import ru.stankin.uits.common.exception.NotFoundException;
@@ -21,6 +22,7 @@ import ru.stankin.uits.module.publications.mapper.PublicationMapper;
 import ru.stankin.uits.module.publications.repository.PublicationRepository;
 import ru.stankin.uits.module.publications.repository.TagRepository;
 
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +77,7 @@ public class PublicationService {
 
     @Transactional
     public PublicationResponseDto createPublication(PublicationRequestDto request) {
+        validateYear(request.getYear());
         validateFile(request.getFile());
         ScientificPublication publication = publicationMapper.toEntity(request);
         publication.setTags(resolveTags(request.getTagIds()));
@@ -86,6 +89,7 @@ public class PublicationService {
     public PublicationResponseDto updatePublication(Long id, PublicationRequestDto request) {
         ScientificPublication publication = publicationRepository.findById(id)
                 .orElseThrow(() -> publicationNotFound(id));
+        validateYear(request.getYear());
         validateFile(request.getFile());
         Set<Tag> tags = resolveTags(request.getTagIds());
 
@@ -133,6 +137,13 @@ public class PublicationService {
         }
 
         return new LinkedHashSet<>(found);
+    }
+
+    private void validateYear(Integer year) {
+        int latestYear = LocalDate.now().getYear() + 1;
+        if (year > latestYear) {
+            throw new FieldValidationException("year", "Год публикации не может быть позже " + latestYear);
+        }
     }
 
     private void validateFile(String key) {

@@ -26,6 +26,7 @@ import ru.stankin.uits.module.publications.repository.PublicationRepository;
 import ru.stankin.uits.module.publications.repository.TagRepository;
 
 import java.util.LinkedHashSet;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -397,5 +398,50 @@ class PublicationIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(page("").content()).hasSize(2);
         assertThat(page("").content().getFirst().getTags()).isEmpty();
+    }
+
+    @Test
+    void createWithYearBeyondNextYearReturns400() {
+        PublicationRequestDto request = request().year(LocalDate.now().getYear() + 2).build();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/publications",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("\"year\"");
+        assertThat(publicationRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void createWithNextYearIsAccepted() {
+        PublicationRequestDto request = request().year(LocalDate.now().getYear() + 1).build();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/publications",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void updateWithYearBeyondNextYearReturns400() {
+        PublicationRequestDto request = request().year(LocalDate.now().getYear() + 2).build();
+        Long id = publicationRepository.findAll().getFirst().getId();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/publications/" + id,
+                HttpMethod.PUT,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }

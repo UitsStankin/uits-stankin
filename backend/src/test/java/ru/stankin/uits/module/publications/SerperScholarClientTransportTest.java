@@ -2,9 +2,13 @@ package ru.stankin.uits.module.publications;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
 import ru.stankin.uits.common.exception.ScholarUnavailableException;
 import ru.stankin.uits.module.publications.client.SerperClientConfig;
@@ -139,5 +143,42 @@ class SerperScholarClientTransportTest {
                 .isInstanceOf(ScholarUnavailableException.class);
 
         assertThat(requestBody.get()).isNull();
+    }
+
+    @Test
+    void errorBodySnippetIsLoggedWithoutApiKey() throws IOException {
+        HttpServer failing = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        failing.createContext("/scholar", exchange -> {
+            byte[] body = ("{\"message\":\"Not enough credits\",\"statusCode\":400}" + " ".repeat(500))
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(400, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        failing.start();
+
+        Logger clientLogger = (Logger) LoggerFactory.getLogger(SerperScholarClient.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        clientLogger.addAppender(appender);
+
+        try {
+            SerperScholarClient client = new SerperScholarClient(
+                    restClient(failing.getAddress().getPort(), Duration.ofSeconds(10)), API_KEY);
+
+            assertThatThrownBy(() -> client.search("Чеканин", 0))
+                    .isInstanceOf(ScholarUnavailableException.class);
+
+            assertThat(appender.list)
+                    .extracting(ILoggingEvent::getFormattedMessage)
+                    .anySatisfy(message -> assertThat(message)
+                            .contains("400")
+                            .contains("Not enough credits")
+                            .doesNotContain(API_KEY));
+        } finally {
+            clientLogger.detachAppender(appender);
+            failing.stop(0);
+        }
     }
 }

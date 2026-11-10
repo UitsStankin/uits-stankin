@@ -2,21 +2,25 @@ package ru.stankin.uits.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.Instant;
@@ -49,6 +53,45 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setProperty("errors", errors);
 
         return ResponseEntity.of(problem).build();
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMissingServletRequestParameter(MissingServletRequestParameterException ex,
+                                                                                    HttpHeaders headers,
+                                                                                    HttpStatusCode status,
+                                                                                    WebRequest request) {
+        return ResponseEntity.of(problemDetail(HttpStatus.BAD_REQUEST,
+                "Не передан обязательный параметр «" + ex.getParameterName() + "».")).build();
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMissingServletRequestPart(MissingServletRequestPartException ex,
+                                                                               HttpHeaders headers,
+                                                                               HttpStatusCode status,
+                                                                               WebRequest request) {
+        return ResponseEntity.of(problemDetail(HttpStatus.BAD_REQUEST,
+                "Не передана обязательная часть запроса «" + ex.getRequestPartName() + "».")).build();
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatusCode status,
+                                                                  WebRequest request) {
+        String detail = ex.getPropertyName() == null
+                ? "Неверное значение параметра запроса."
+                : "Параметр «" + ex.getPropertyName() + "» имеет неверное значение.";
+
+        return ResponseEntity.of(problemDetail(HttpStatus.BAD_REQUEST, detail)).build();
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                                                            HttpHeaders headers,
+                                                                            HttpStatusCode status,
+                                                                            WebRequest request) {
+        return ResponseEntity.of(problemDetail(HttpStatus.BAD_REQUEST,
+                "Тело запроса не удалось прочитать: проверьте формат JSON и допустимые значения полей.")).build();
     }
 
     @ExceptionHandler(InvalidOldPasswordException.class)
@@ -127,6 +170,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ScholarUnavailableException.class)
     public ProblemDetail handleScholarUnavailableException(ScholarUnavailableException ex) {
         return problemDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(problemDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
     }
 
     @ExceptionHandler(ResourceInUseException.class)
