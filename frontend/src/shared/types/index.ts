@@ -53,6 +53,7 @@ export type {
   Teacher,
   TeacherListItem,
   TeacherPage,
+  TeacherAdminListParams,
   TeacherDegree,
   TeacherRank,
   TeacherUpsertRequest,

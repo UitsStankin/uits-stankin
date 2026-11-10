@@ -12,7 +12,7 @@
  * как детальная.
  */
 
-import type { Page } from './api.types';
+import type { Page, PageParams } from './api.types';
 
 /**
  * Учёная степень — код закрытого словаря, а не свободная строка.
@@ -64,7 +64,10 @@ export type SubjectRequest = {
   description: string | null;
 };
 
-/** Короткая карточка — элемент `GET /api/public/teachers`. */
+/**
+ * Короткая карточка — элемент `GET /api/public/teachers` и защищённого
+ * `GET /api/teachers`: состав полей у обоих один.
+ */
 export type TeacherListItem = {
   /** Идентификатор карточки; для ручек учётных записей не годится. */
   id: number;
@@ -77,6 +80,25 @@ export type TeacherListItem = {
   rank: TeacherRank | null;
   /** Готовый адрес для `<img src>`, относительный; без фото — `null`. */
   avatarUrl: string | null;
+  /**
+   * Карточка в архиве — с T-102 (#294, issue #295). Ушедший преподаватель
+   * не удаляется, а прячется из публичных выдач: списка ППС, сводного
+   * расписания и экзаменов. По прямой ссылке карточка открывается как
+   * прежде, и отличить её от действующей можно только по этому полю.
+   *
+   * В публичном списке всегда `false` — архивных там нет; `true` приходит
+   * в защищённом `GET /api/teachers` и в детальной карточке.
+   */
+  archived: boolean;
+};
+
+/**
+ * Параметры защищённого списка `GET /api/teachers` — страница плюс отбор
+ * по архиву. Без `archived` приходят все карточки, `true` — только
+ * архивные, `false` — только действующие (docs/API.md, «Архив»).
+ */
+export type TeacherAdminListParams = PageParams & {
+  archived?: boolean;
 };
 
 /**

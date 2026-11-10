@@ -7,21 +7,23 @@
  * `features/manage-teachers`: `entities` описывает предметную область,
  * действия пользователя — дело `features`.
  *
- * Списочная ручка публичная, и раздел админки (F-44) читает её же —
- * модераторского списка в контракте нет вовсе. Скрытых карточек у ППС
- * не бывает, поэтому и делить чтение надвое, как у новостей, не пришлось.
+ * Списков два, как у новостей: публичный — без архивных карточек,
+ * защищённый (`adminTeachersListQuery`, с T-102) — со всеми; его читают
+ * раздел админки и выбор преподавателя в формах (F-53).
  *
  * `teacherKeys` наружу выходит, в отличие от `newsKeys`: форма правки
  * своей карточки кладёт ответ `PUT` прямо на ключ `me()`, не гоняя
  * повторный `GET`, а обе формы админки сбрасывают ветку целиком.
  */
 export {
+  fetchAdminTeachersPage,
   fetchMyTeacherCard,
   fetchTeacher,
   fetchTeachersPage,
   TEACHERS_ME_PATH,
 } from './api/teacherApi';
 export {
+  adminTeachersListQuery,
   myTeacherCardQuery,
   teacherKeys,
   teacherQuery,
