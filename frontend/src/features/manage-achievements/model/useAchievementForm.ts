@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { achievementKeys } from '@entities/achievement';
-import { teachersListQuery } from '@entities/teacher';
+import { adminTeachersListQuery } from '@entities/teacher';
 import { isApiError, useImageUpload } from '@shared/api';
 import { applyFieldErrors, takeFieldErrors } from '@shared/lib';
 import { toast } from '@shared/store';
@@ -25,8 +25,15 @@ import {
  * просто не нашлась бы. Сотня — потолок контракта (`size` урезается
  * до неё молча); на кафедре карточек втрое меньше. Порядок — умолчание
  * списочной ручки, по фамилии.
+ *
+ * Список **защищённый**, со всеми карточками, а не публичный (F-53):
+ * публичный архивных не отдаёт, и достижение ушедшего преподавателя
+ * открылось бы с владельцем, которого нет среди вариантов. Подпись бы
+ * спасла `teacherName` из записи, но у руководителя аспиранта её нет
+ * вовсе — правило одно на оба выбора. Архивные подписаны в списке
+ * (`TeacherSelect`).
  */
-const TEACHERS_QUERY = teachersListQuery({ size: 100 });
+const TEACHERS_QUERY = adminTeachersListQuery({ size: 100 });
 
 /** Что показывать в рамке и что отправлять в `previewImage`. */
 type Cover = {

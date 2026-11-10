@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { postgraduateKeys } from '@entities/postgraduate';
-import { teachersListQuery } from '@entities/teacher';
+import { adminTeachersListQuery } from '@entities/teacher';
 import { isApiError } from '@shared/api';
 import { applyFieldErrors } from '@shared/lib';
 import { toast } from '@shared/store';
@@ -22,9 +22,11 @@ import {
 /**
  * Список руководителей — одним запросом на сотню, как у формы достижения
  * (разбор там же, в `useAchievementForm`): выпадающий список не листают,
- * и карточка со второй страницы просто не нашлась бы.
+ * и карточка со второй страницы просто не нашлась бы. Список защищённый,
+ * с архивными: подписи руководителя в записи нет, и архивный руководитель
+ * из публичного списка подписывался бы «Карточка № N» (F-53).
  */
-const TEACHERS_QUERY = teachersListQuery({ size: 100 });
+const TEACHERS_QUERY = adminTeachersListQuery({ size: 100 });
 
 /**
  * Форма записи аспирантуры: проверка полей, выбор руководителя, запрос,

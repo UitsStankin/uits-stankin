@@ -14,6 +14,7 @@ import StatusBlock from '@shared/ui/StatusBlock';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { useTeacherFormPage } from './model/useTeacherFormPage';
+import { ArchiveBar } from './ui/ArchiveBar';
 
 /**
  * Форма карточки ППС у модератора — своей страницей, а не окном-панелью.
@@ -28,8 +29,20 @@ import { useTeacherFormPage } from './model/useTeacherFormPage';
  * перезагрузки.
  */
 export default function TeacherFormPage() {
-  const { isNew, card, isLoading, isOffline, isNotFound, isError, errorMessage, refetch, goToList } =
-    useTeacherFormPage();
+  const {
+    isNew,
+    card,
+    isLoading,
+    isOffline,
+    isNotFound,
+    isError,
+    errorMessage,
+    refetch,
+    goToList,
+    archive,
+    unarchive,
+    isArchiving,
+  } = useTeacherFormPage();
 
   return (
     <div className="flex flex-col gap-gutter-sm">
@@ -68,6 +81,15 @@ export default function TeacherFormPage() {
           title="Не удалось загрузить карточку"
           description={errorMessage}
           action={<RetryButton onClick={refetch} />}
+        />
+      )}
+
+      {card && (
+        <ArchiveBar
+          archived={card.archived}
+          onArchive={archive}
+          onUnarchive={unarchive}
+          isPending={isArchiving}
         />
       )}
 

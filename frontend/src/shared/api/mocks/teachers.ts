@@ -44,6 +44,7 @@ export function makeTeacher(overrides: Partial<Teacher> = {}): Teacher {
     examScheduleGraduation: null,
     examScheduleNonGraduation: null,
     subjects: [{ id: 1, name: 'Базы данных', description: 'Реляционная модель, SQL' }],
+    archived: false,
     ...overrides,
   };
 }
@@ -204,6 +205,7 @@ export function teacherListItem(teacher: Teacher): TeacherListItem {
     degree: teacher.degree,
     rank: teacher.rank,
     avatarUrl: teacher.avatarUrl,
+    archived: teacher.archived,
   };
 }
 
@@ -229,6 +231,10 @@ export function teacherListItem(teacher: Teacher): TeacherListItem {
  *   проверка смены порядка, а клиентская сортировка вместо серверной
  *   была бы ровно тем враньём, от которого таблица отказалась
  *   (`manualSorting`);
+ * - архив — да (T-102): публичный список архивных не отдаёт, защищённый
+ *   `GET /api/teachers` отбирает по `?archived=`, детальная открывает
+ *   любую, `archive` и `unarchive` идемпотентны и отвечают `404` на
+ *   неизвестный `id`, а `PUT` отметку архива не трогает;
  * - `400` на неизвестную дисциплину, занятую и безролевую учётку — нет:
  *   заводятся точечно через `server.use`, потому что зависят от данных,
  *   которых у мока карточек нет. Мок, выдумавший свой словарь учёток,
@@ -241,17 +247,42 @@ export function teacherHandlers(items: readonly Teacher[] = teachersFixture) {
   const notFound = (instance: string) =>
     problemResponse(404, { title: 'Not Found', detail: 'Преподаватель не найден', instance });
 
-  return [
-    http.get(PUBLIC_TEACHERS, ({ request }) => {
-      const url = new URL(request.url);
-      const sorted = sortTeachers(current, url.searchParams.get('sort'));
+  /** Обе ручки архива идемпотентны: повтор — тот же `204`, а не ошибка. */
+  const setArchived = (rawId: string | readonly string[] | undefined, archived: boolean) => {
+    const id = Number(rawId);
 
-      return HttpResponse.json(
-        pageResponse(
-          sorted.map(teacherListItem),
-          numberParam(url, 'page', 0),
-          numberParam(url, 'size', DEFAULT_PAGE_SIZE, 1),
-        ),
+    if (!current.some((teacher) => teacher.id === id)) {
+      return notFound(`/api/teachers/${String(rawId)}/${archived ? 'archive' : 'unarchive'}`);
+    }
+
+    current = current.map((teacher) => (teacher.id === id ? { ...teacher, archived } : teacher));
+
+    return new HttpResponse(null, { status: 204 });
+  };
+
+  return [
+    http.get(PUBLIC_TEACHERS, ({ request }) =>
+      listResponse(request, current.filter((teacher) => !teacher.archived)),
+    ),
+
+    http.get(TEACHERS, ({ request }) => {
+      // Как у Spring с `Boolean`: незнакомое значение — не отбор, а `400`.
+      // Фронт шлёт только `true` и `false`, и мок, молча показывающий всё
+      // на `?archived=yes`, спрятал бы опечатку в параметре.
+      const archived = new URL(request.url).searchParams.get('archived');
+
+      if (archived === null) return listResponse(request, current);
+      if (archived !== 'true' && archived !== 'false') {
+        return problemResponse(400, {
+          title: 'Bad Request',
+          detail: 'Некорректный параметр archived',
+          instance: '/api/teachers',
+        });
+      }
+
+      return listResponse(
+        request,
+        current.filter((teacher) => teacher.archived === (archived === 'true')),
       );
     }),
 
@@ -288,6 +319,9 @@ export function teacherHandlers(items: readonly Teacher[] = teachersFixture) {
       return HttpResponse.json(updated);
     }),
 
+    http.post(`${TEACHERS}/:id/archive`, ({ params }) => setArchived(params.id, true)),
+    http.post(`${TEACHERS}/:id/unarchive`, ({ params }) => setArchived(params.id, false)),
+
     http.delete(`${TEACHERS}/:id`, ({ params }) => {
       const id = Number(params.id);
 
@@ -303,7 +337,27 @@ export function teacherHandlers(items: readonly Teacher[] = teachersFixture) {
 }
 
 /**
+ * Страница коротких карточек — общий ответ публичного и защищённого
+ * списков: параметры страницы и порядок у них одни (docs/API.md, «Архив»).
+ */
+function listResponse(request: Request, items: readonly Teacher[]) {
+  const url = new URL(request.url);
+  const sorted = sortTeachers(items, url.searchParams.get('sort'));
+
+  return HttpResponse.json(
+    pageResponse(
+      sorted.map(teacherListItem),
+      numberParam(url, 'page', 0),
+      numberParam(url, 'size', DEFAULT_PAGE_SIZE, 1),
+    ),
+  );
+}
+
+/**
  * Карточка из тела запроса — так же, как её собирает бэкенд.
+ *
+ * Отметка архива переживает правку: `...base` её сохраняет, а в теле
+ * её нет — «правка архив не снимает» (docs/API.md, «Архив»).
  *
  * Три вещи мок делает сам, потому что их делает сервер, а не форма:
  * собирает `avatarUrl` из ключа (префикс `/media`, как в хранилище),

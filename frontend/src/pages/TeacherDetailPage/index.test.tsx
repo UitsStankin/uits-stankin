@@ -58,6 +58,31 @@ describe('TeacherDetailPage', () => {
     expect(screen.queryByText('Загрузка карточки преподавателя')).not.toBeInTheDocument();
   });
 
+  /**
+   * Архивная карточка из публичного списка пропадает, но по прямой ссылке
+   * открывается с `archived: true` (docs/API.md, «Архив»). Без пометки
+   * читатель принял бы ушедшего за действующего.
+   */
+  it('помечает архивную карточку', async () => {
+    server.use(...teacherHandlers([makeTeacher({ id: 1, archived: true })]));
+
+    renderCard(1);
+
+    expect(
+      await screen.findByText('Преподаватель больше не работает на кафедре'),
+    ).toBeInTheDocument();
+  });
+
+  it('не помечает действующую', async () => {
+    renderCard(1);
+
+    await screen.findByRole('heading', { level: 1, name: 'Абрамов Никита Сергеевич' });
+
+    expect(
+      screen.queryByText('Преподаватель больше не работает на кафедре'),
+    ).not.toBeInTheDocument();
+  });
+
   it('показывает контакты ссылками, а мессенджер — текстом', async () => {
     server.use(
       ...teacherHandlers([

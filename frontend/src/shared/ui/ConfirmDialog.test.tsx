@@ -63,4 +63,18 @@ describe('ConfirmDialog', () => {
     fireEvent.click(confirm);
     expect(onConfirm).not.toHaveBeenCalled();
   });
+
+  /** Второй путь — отдельная кнопка: ни подтверждением, ни отменой он не считается. */
+  it('предлагает безопасный путь отдельной кнопкой', () => {
+    const onAlternative = vi.fn();
+    const { onConfirm, onCancel } = renderDialog({
+      alternative: { label: 'В архив', onClick: onAlternative },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    expect(onAlternative).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
 });

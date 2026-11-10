@@ -25,7 +25,8 @@ import AdminAchievementsPage from './index';
 import '@shared/ui/RichTextEditor/Editor';
 
 const ACHIEVEMENTS = '*/api/achievements';
-const TEACHERS = '*/api/public/teachers';
+/** Выбор преподавателя читает защищённый список, с архивными (F-53). */
+const TEACHERS = '*/api/teachers';
 
 /**
  * Раздел достижений админки. Прав здесь не проверяют — за них отвечает
@@ -456,7 +457,7 @@ describe('AdminAchievementsPage, создание', () => {
         problemResponse(500, {
           title: 'Internal Server Error',
           detail: 'Внутренняя ошибка сервера.',
-          instance: '/api/public/teachers',
+          instance: '/api/teachers',
         }),
       ),
     );
@@ -545,7 +546,7 @@ describe('AdminAchievementsPage, правка', () => {
         problemResponse(500, {
           title: 'Internal Server Error',
           detail: 'Внутренняя ошибка сервера.',
-          instance: '/api/public/teachers',
+          instance: '/api/teachers',
         }),
       ),
       // Отвечает сам, а не пропускает дальше: тело уже прочитано.

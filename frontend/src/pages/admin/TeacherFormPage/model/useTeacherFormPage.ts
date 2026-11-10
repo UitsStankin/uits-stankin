@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { teacherQuery } from '@entities/teacher';
+import { useArchiveTeacher } from '@features/manage-teachers';
 import { isApiError } from '@shared/api';
 import { ADMIN_TEACHERS_ROUTE } from '@shared/config/routes';
 import { parseId } from '@shared/lib';
@@ -22,7 +23,12 @@ import { parseId } from '@shared/lib';
  * заполнятся, — а модератор к этому моменту успел бы начать печатать.
  *
  * Ручка публичная: своей у модератора в контракте нет, а карточка одна
- * и та же.
+ * и та же. Архивную она тоже отдаёт — по прямой ссылке, с `archived: true`.
+ *
+ * Архив живёт здесь, а не в хуке формы: у него своя ручка, и срабатывает
+ * он сразу, мимо «Сохранить». После него кэш карточки сбрасывается,
+ * и `archived` приходит свежим ответом — форма при этом не пересоздаётся,
+ * набранное не теряется.
  */
 export function useTeacherFormPage() {
   const { id: rawId } = useParams<{ id: string }>();
@@ -41,11 +47,13 @@ export function useTeacherFormPage() {
   });
 
   const isNotFound = isApiError(query.error) && query.error.status === 404;
+  const { archive, unarchive, isPending: isArchiving } = useArchiveTeacher();
+  const card = query.data ?? null;
 
   return {
     isNew,
     /** Загруженная карточка; `null` — новая либо ещё не доехала. */
-    card: query.data ?? null,
+    card,
 
     isLoading: !isNew && id !== null && query.isLoading,
     /** Запрос приостановлен: нет сети либо вкладка в фоне, показать нечего. */
@@ -65,5 +73,13 @@ export function useTeacherFormPage() {
      * и после перезагрузки, и «назад» увёл бы тогда неизвестно куда.
      */
     goToList: () => void navigate(ADMIN_TEACHERS_ROUTE),
+
+    archive: () => {
+      if (card) archive(card);
+    },
+    unarchive: () => {
+      if (card) unarchive(card);
+    },
+    isArchiving,
   };
 }
