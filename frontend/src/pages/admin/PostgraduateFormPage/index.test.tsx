@@ -262,6 +262,26 @@ describe('PostgraduateFormPage, правка', () => {
 
     expect(await screen.findByRole('textbox', { name: 'Фамилия' })).toHaveValue('Абрамов');
   });
+
+  /**
+   * Руководитель ушёл в архив. Подписи руководителя в записи нет — только
+   * `teacherId`, — и из публичного списка пункт собрался бы как
+   * «Карточка № 3». Защищённый список отдаёт архивных, и пункт
+   * подписан именем с пометкой (F-53).
+   */
+  it('подписывает архивного руководителя именем', async () => {
+    server.use(
+      ...teacherHandlers([{ ...TEACHERS[0], archived: true }, TEACHERS[1]]),
+    );
+
+    renderForm('/admin/postgraduates/12');
+
+    expect(
+      await screen.findByRole('option', { name: 'Баранов Илья Матвеевич (в архиве)' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Научный руководитель' })).toHaveValue('3');
+    expect(screen.queryByRole('option', { name: /Карточка №/ })).not.toBeInTheDocument();
+  });
 });
 
 describe('PostgraduateFormPage, новая запись', () => {
@@ -340,11 +360,11 @@ describe('PostgraduateFormPage, новая запись', () => {
 
   it('держит выбор руководителя запертым, пока список не доехал, и говорит о сбое', async () => {
     server.use(
-      http.get('*/api/public/teachers', () =>
+      http.get('*/api/teachers', () =>
         problemResponse(500, {
           title: 'Internal Server Error',
           detail: 'Внутренняя ошибка сервера.',
-          instance: '/api/public/teachers',
+          instance: '/api/teachers',
         }),
       ),
     );
