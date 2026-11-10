@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-postgraduate-student-not-null
+      author: eeffeecct
+      changes:
+        - addNotNullConstraint:
+            tableName: postgraduate_postgraduate
+            columnName: student_id
+            columnDataType: BIGINT
+      rollback:
+        - dropNotNullConstraint:
+            tableName: postgraduate_postgraduate
+            columnName: student_id
+            columnDataType: BIGINT
