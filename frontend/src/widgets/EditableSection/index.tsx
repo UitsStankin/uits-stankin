@@ -1,3 +1,4 @@
+import EditLink from '@shared/ui/EditLink';
 import Markdown from '@shared/ui/Markdown';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { RetryButton } from '@shared/ui/StatusAction';
@@ -48,11 +49,30 @@ interface EditableSectionProps {
  * здесь неприменим: тот HTML бэкенд санитизирует, этот Markdown — нет.
  */
 export default function EditableSection({ slug }: EditableSectionProps) {
-  const { text, isLoading, isOffline, isError, errorMessage, isEmpty, refetch } =
-    useEditableSection(slug);
+  const {
+    text,
+    isLoading,
+    isOffline,
+    isError,
+    errorMessage,
+    isEmpty,
+    refetch,
+    editHref,
+    returnTo,
+  } = useEditableSection(slug);
 
   return (
     <>
+      {/* Строкой над содержимым, а не поверх карточки, как в оригинале:
+          у четырёх состояний из пяти карточки нет, а ссылка нужна во всех. */}
+      {editHref && (
+        <div className="flex justify-end">
+          <EditLink to={editHref} returnTo={returnTo}>
+            Править раздел
+          </EditLink>
+        </div>
+      )}
+
       {isLoading && <EditableSectionSkeleton />}
 
       {isOffline && (
