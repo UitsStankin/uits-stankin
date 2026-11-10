@@ -32,16 +32,16 @@ import { HomeFeed } from './ui/HomeFeed';
  * для одной ленты, для витрины узка.
  */
 export default function HomePage() {
-  const { before, after, news, announcements, hrefForItem } = useHomeContent();
+  const { before, after, returnTo, news, announcements, hrefForItem } = useHomeContent();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-gutter">
-      <HomeBlock text={before} />
+      <HomeBlock block={before} name="Блок над лентой" returnTo={returnTo} />
 
       <HomeFeed postType="news" feed={news} hrefForItem={hrefForItem} />
       <HomeFeed postType="announcements" feed={announcements} hrefForItem={hrefForItem} />
 
-      <HomeBlock text={after} />
+      <HomeBlock block={after} name="Блок под лентой" returnTo={returnTo} />
     </div>
   );
 }

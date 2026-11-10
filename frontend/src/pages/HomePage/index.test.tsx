@@ -1,16 +1,34 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { editablePageHandlers, newsHandlers, problemResponse } from '@shared/api/mocks';
+import { clearSession } from '@shared/api';
+import {
+  editablePageHandlers,
+  makeProfile,
+  newsHandlers,
+  problemResponse,
+} from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
+import { signInAs } from '@/test/session';
 
 import HomePage from './index';
 
 /** Секция по её заголовку: на главной их две, и они почти одинаковые. */
 function section(title: string) {
   return screen.getByRole('heading', { level: 2, name: title }).closest('section')!;
+}
+
+afterEach(() => {
+  clearSession();
+});
+
+/** Главная глазами модератора: с профилем в кэше до первого кадра. */
+function renderAsModerator() {
+  return renderWithProviders(<HomePage />, {
+    queryClient: signInAs(makeProfile({ moderator: true })),
+  });
 }
 
 /**
@@ -152,5 +170,73 @@ describe('HomePage', () => {
 
     expect(await screen.findByText('Новостей пока нет')).toBeInTheDocument();
     expect(screen.getByText('Объявлений пока нет')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Блоки главной для модератора (F-52). Собственного адреса у блоков нет,
+ * и единственное место, где их видно, — сама главная.
+ */
+describe('HomePage, правка блоков', () => {
+  /**
+   * На чистой базе пусты оба блока, посетителю они не рисуются вовсе —
+   * без рамки модератору с главной не до чего было бы дотянуться.
+   */
+  it('пустые блоки модератору показывает рамкой со ссылкой на форму', async () => {
+    renderAsModerator();
+
+    expect(await screen.findByText(/Блок над лентой не заполнен/)).toBeInTheDocument();
+    expect(screen.getByText(/Блок под лентой не заполнен/)).toBeInTheDocument();
+
+    const links = screen.getAllByRole('link', { name: 'Заполнить' });
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/admin/pages/home-before',
+      '/admin/pages/home-after',
+    ]);
+  });
+
+  it('у заполненного блока ставит ссылку «Править блок»', async () => {
+    server.use(...editablePageHandlers({ 'home-before': '# Кафедра ИТ-6' }));
+
+    renderAsModerator();
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Кафедра ИТ-6');
+    expect(screen.getByRole('link', { name: 'Править блок' })).toHaveAttribute(
+      'href',
+      '/admin/pages/home-before',
+    );
+    // Второй блок пуст — у него рамка, а не вторая ссылка «Править».
+    expect(screen.getAllByRole('link', { name: 'Править блок' })).toHaveLength(1);
+    expect(screen.getByText(/Блок под лентой не заполнен/)).toBeInTheDocument();
+  });
+
+  /**
+   * «Не заполнен» на упавшем запросе было бы неправдой: блок, может быть,
+   * заполнен, просто не доехал. Сбой остаётся молчаливым и для модератора.
+   */
+  it('на сбое блока не называет его незаполненным', async () => {
+    server.use(
+      http.get('*/api/public/pages/:slug', () =>
+        problemResponse(500, {
+          title: 'Internal Server Error',
+          detail: 'Что-то пошло не так на сервере',
+          instance: '/api/public/pages/home-before',
+        }),
+      ),
+    );
+
+    renderAsModerator();
+
+    await screen.findByText('Новость 1');
+    expect(screen.queryByText(/не заполнен/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Заполнить' })).not.toBeInTheDocument();
+  });
+
+  it('гостю пустые блоки не показывает и ссылок на правку не ставит', async () => {
+    renderWithProviders(<HomePage />);
+
+    await screen.findByText('Новость 1');
+    expect(screen.queryByText(/не заполнен/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Заполнить|Править/ })).not.toBeInTheDocument();
   });
 });
