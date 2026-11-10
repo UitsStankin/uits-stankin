@@ -54,3 +54,20 @@ export async function updateTeacher(id: number, body: TeacherAdminRequest): Prom
 export async function deleteTeacher(id: number): Promise<void> {
   await api.delete(`${TEACHERS_PATH}/${id}`);
 }
+
+/**
+ * Архив вместо удаления для ушедшего преподавателя (T-102). `204` без тела,
+ * повтор — тоже `204`. Карточка пропадает из публичных выдач, но по прямой
+ * ссылке открывается, а расписания, достижения, аспиранты и ведомости
+ * остаются при ней (docs/API.md, «Архив»).
+ */
+export async function archiveTeacher(id: number): Promise<void> {
+  await api.post(`${TEACHERS_PATH}/${id}/archive`);
+}
+
+/**
+ * Возврат из архива — единственный путь назад: `PUT` архив не снимает.
+ */
+export async function unarchiveTeacher(id: number): Promise<void> {
+  await api.post(`${TEACHERS_PATH}/${id}/unarchive`);
+}

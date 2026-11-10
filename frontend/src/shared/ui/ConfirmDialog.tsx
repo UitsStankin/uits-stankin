@@ -10,6 +10,13 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   /** Запрос в полёте: кнопки заблокированы, окно не закрывается. */
   isPending?: boolean;
+  /**
+   * Безопасный путь вместо необратимого — «В архив» рядом с «Удалить».
+   * Кнопка спокойного цвета, между отменой и действием: окно, которое
+   * только пугает, не помогает выбрать, а штатный путь должен быть
+   * под рукой ровно там, где человек собрался сделать нештатный.
+   */
+  alternative?: { label: string; onClick: () => void };
 }
 
 /**
@@ -32,12 +39,13 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   isPending = false,
+  alternative,
 }: ConfirmDialogProps) {
   return (
     <Modal title={title} onClose={onCancel} placement="center" isBusy={isPending}>
       <p className="text-base text-text-default">{description}</p>
 
-      <div className="mt-gutter flex justify-end gap-2">
+      <div className="mt-gutter flex flex-wrap justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
@@ -46,6 +54,17 @@ export default function ConfirmDialog({
         >
           Отмена
         </button>
+
+        {alternative && (
+          <button
+            type="button"
+            onClick={alternative.onClick}
+            disabled={isPending}
+            className="rounded border border-primary px-4 py-2 text-base font-bold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          >
+            {alternative.label}
+          </button>
+        )}
 
         <button
           type="button"
