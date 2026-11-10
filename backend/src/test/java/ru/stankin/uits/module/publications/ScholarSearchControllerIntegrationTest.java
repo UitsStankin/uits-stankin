@@ -12,9 +12,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.exception.ScholarUnavailableException;
+import ru.stankin.uits.common.exception.TooManyRequestsException;
 import ru.stankin.uits.module.publications.client.SerperScholarClient;
 import ru.stankin.uits.module.publications.client.SerperScholarItem;
 import ru.stankin.uits.module.publications.dto.ScholarSearchItemDto;
+import ru.stankin.uits.module.publications.service.ScholarCallLimiter;
 
 import java.util.List;
 
@@ -30,6 +32,9 @@ class ScholarSearchControllerIntegrationTest extends AbstractIntegrationTest {
 
     @MockitoBean
     private SerperScholarClient serperScholarClient;
+
+    @MockitoBean
+    private ScholarCallLimiter callLimiter;
 
     @BeforeEach
     void stubClient() {
@@ -128,6 +133,19 @@ class ScholarSearchControllerIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<String> response = search("/api/publications/scholar?q=Чеканин", login("teacher"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        then(serperScholarClient).should(never()).search(anyString(), anyInt());
+    }
+
+    @Test
+    void limiterRejectionGivesTooManyRequestsWithRetryAfter() {
+        willThrow(new TooManyRequestsException("Слишком много поисков в Google Scholar. Повторите через 30 с.", 30))
+                .given(callLimiter).acquire();
+
+        ResponseEntity<String> response = search("/api/publications/scholar?q=Чеканин", moderatorToken());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("30");
+        assertThat(response.getBody()).contains("Слишком много поисков в Google Scholar");
         then(serperScholarClient).should(never()).search(anyString(), anyInt());
     }
 }

@@ -129,6 +129,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(problemDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+    }
+
     @ExceptionHandler(ResourceInUseException.class)
     public ProblemDetail handleResourceInUse(ResourceInUseException ex) {
         return problemDetail(HttpStatus.CONFLICT, ex.getMessage());

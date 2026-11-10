@@ -98,6 +98,10 @@ application:
     connect-timeout: ${SERPER_CONNECT_TIMEOUT:3s}
     read-timeout: ${SERPER_READ_TIMEOUT:30s}
     cache-ttl: ${SERPER_CACHE_TTL:30d}
+    empty-cache-ttl: ${SERPER_EMPTY_CACHE_TTL:1d}
+    rate-limit:
+      attempts: ${SERPER_RATE_LIMIT_ATTEMPTS:10}
+      period: ${SERPER_RATE_LIMIT_PERIOD:1m}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   storage:
