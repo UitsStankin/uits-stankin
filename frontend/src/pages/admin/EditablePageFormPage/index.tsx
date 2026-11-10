@@ -15,19 +15,31 @@ import { useEditablePageFormPage } from './model/useEditablePageFormPage';
  * разбор в `shared/config/routes.ts`, у `adminEditablePageRoute`.
  *
  * Ссылка «к списку» ведёт на список, а не «назад» по истории: на форму
- * попадают и по присланному адресу, и после перезагрузки.
+ * попадают и по присланному адресу, и после перезагрузки. Пришедшего
+ * с сайта ссылкой «Править» (F-52) она и сохранение возвращают на ту
+ * страницу сайта — правят оттуда опечатку и хотят увидеть исправленное.
  */
 export default function EditablePageFormPage() {
-  const { section, isLoading, isOffline, isNotFound, isError, errorMessage, refetch, goToList } =
-    useEditablePageFormPage();
+  const {
+    section,
+    isLoading,
+    isOffline,
+    isNotFound,
+    isError,
+    errorMessage,
+    refetch,
+    returnTo,
+    goBack,
+  } = useEditablePageFormPage();
 
   return (
     <div className="flex flex-col gap-gutter-sm">
       <Link
-        to={ADMIN_PAGES_ROUTE}
+        to={returnTo ?? ADMIN_PAGES_ROUTE}
         className="inline-flex w-fit items-center gap-1 text-base text-text-muted transition-colors hover:text-primary"
       >
-        <ChevronLeft size={16} aria-hidden />К списку разделов
+        <ChevronLeft size={16} aria-hidden />
+        {returnTo ? 'Вернуться на страницу' : 'К списку разделов'}
       </Link>
 
       <h1 className="text-h4 text-text-heading">Правка раздела</h1>
@@ -59,7 +71,7 @@ export default function EditablePageFormPage() {
         />
       )}
 
-      {section && <SectionEditor section={section} onDone={goToList} />}
+      {section && <SectionEditor section={section} onDone={goBack} />}
     </div>
   );
 }
@@ -88,7 +100,7 @@ function SectionEditor({ section, onDone }: { section: EditablePage; onDone: () 
         <p>
           Подпись видна только в списке разделов: заголовок страницы на сайте задаёт меню. Пустой
           текст на сайте показывается надписью «Раздел пока не заполнен», а блоки главной в этом
-          случае не показываются вовсе.
+          случае посетителям не показываются вовсе — модератор видит на их месте пунктирную рамку.
         </p>
       </div>
 
