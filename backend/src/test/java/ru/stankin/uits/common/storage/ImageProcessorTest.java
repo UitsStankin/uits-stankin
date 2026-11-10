@@ -61,6 +61,64 @@ class ImageProcessorTest {
         assertThat(read(result).getWidth()).isEqualTo(300);
     }
 
+    @Test
+    void process_WhenPhotoPng_ConvertsToJpeg() throws IOException {
+        byte[] png = TestImages.photoPng(800, 600, false);
+
+        ProcessedImage result = processor.process(png);
+
+        assertThat(result.extension()).isEqualTo("jpg");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("jpeg");
+        assertThat(result.data().length * 2).isLessThanOrEqualTo(png.length);
+        assertThat(read(result).getWidth()).isEqualTo(800);
+    }
+
+    @Test
+    void process_WhenFlatPng_KeepsPng() throws IOException {
+        ProcessedImage result = processor.process(TestImages.flatPng(800, 600));
+
+        assertThat(result.extension()).isEqualTo("png");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("png");
+    }
+
+    @Test
+    void process_WhenPhotoPngHasTransparency_KeepsPng() throws IOException {
+        ProcessedImage result = processor.process(TestImages.photoPng(800, 600, true));
+
+        assertThat(result.extension()).isEqualTo("png");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("png");
+        assertThat(read(result).getColorModel().hasAlpha()).isTrue();
+    }
+
+    @Test
+    void thumbnail_WhenMainIsJpegButSourceIsPng_ReturnsJpeg() throws IOException {
+        byte[] png = TestImages.photoPng(800, 600, false);
+
+        ProcessedImage result = processor.thumbnail(png, "jpg");
+
+        assertThat(result.extension()).isEqualTo("jpg");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("jpeg");
+        assertThat(read(result).getWidth()).isEqualTo(240);
+    }
+
+    @Test
+    void thumbnail_WhenMainIsPng_ReturnsPng() throws IOException {
+        byte[] png = TestImages.photoPng(800, 600, true);
+
+        ProcessedImage result = processor.thumbnail(png, "png");
+
+        assertThat(result.extension()).isEqualTo("png");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("png");
+    }
+
+    @Test
+    void thumbnail_WhenExtensionIsUnknown_Throws() throws IOException {
+        byte[] png = TestImages.flatPng(300, 300);
+
+        assertThatThrownBy(() -> processor.thumbnail(png, "gif"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     /** Расширению и заголовку запроса не верим: формат определяется по содержимому файла. */
     @Test
     void process_WhenNotAnImage_Throws() {
