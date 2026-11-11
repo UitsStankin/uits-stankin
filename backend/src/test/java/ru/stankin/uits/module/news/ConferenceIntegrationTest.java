@@ -422,4 +422,27 @@ class ConferenceIntegrationTest extends AbstractIntegrationTest {
 
         return new HttpEntity<>(headers);
     }
+
+    @Test
+    void create_WhenContactPhoneHasMarkup_Returns400() {
+        String token = moderatorToken();
+        ConferenceRequestDto request = validRequest().contactPhone("<b>1</b>").build();
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/api/conferences", withToken(request, token), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("contactPhone");
+    }
+
+    @Test
+    void create_AcceptsFormattedContactPhone() {
+        String token = moderatorToken();
+        ConferenceRequestDto request = validRequest().contactPhone("+7 (495) 123-45-67, доб. 12").build();
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/api/conferences", withToken(request, token), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
 }

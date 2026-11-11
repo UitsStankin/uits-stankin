@@ -73,7 +73,7 @@ public class ParsingServiceClient {
     private void translate(ClientHttpResponse response) throws IOException {
         int status = response.getStatusCode().value();
         String detail = readDetail(response);
-        log.error("schedule-service ответил {}: {}", status, detail);
+        logFailure(status, detail);
 
         if (status == UNPROCESSABLE_CONTENT) {
             throw new InvalidFileException(detail);
@@ -83,6 +83,14 @@ public class ParsingServiceClient {
         }
         throw new ScheduleServiceUnavailableException(
                 "Сервис разбора " + documentName + " недоступен.");
+    }
+
+    private void logFailure(int status, String detail) {
+        if (status == UNPROCESSABLE_CONTENT || status == CONTENT_TOO_LARGE) {
+            log.warn("schedule-service отклонил файл ({}): {}", status, detail);
+        } else {
+            log.error("schedule-service ответил {}: {}", status, detail);
+        }
     }
 
     private String readDetail(ClientHttpResponse response) throws IOException {

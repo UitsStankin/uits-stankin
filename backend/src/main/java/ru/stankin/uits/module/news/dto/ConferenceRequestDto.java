@@ -3,11 +3,13 @@ package ru.stankin.uits.module.news.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.stankin.uits.common.validation.PhoneRules;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -38,6 +40,7 @@ public class ConferenceRequestDto {
     String contactEmail;
 
     @Size(max = 32, message = "Телефон не длиннее 32 символов")
+    @Pattern(regexp = PhoneRules.REGEXP, message = PhoneRules.MESSAGE)
     String contactPhone;
 
     String content;
