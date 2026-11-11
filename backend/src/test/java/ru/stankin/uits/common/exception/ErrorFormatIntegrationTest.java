@@ -2,6 +2,8 @@ package ru.stankin.uits.common.exception;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,7 +14,9 @@ import org.springframework.http.ResponseEntity;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -118,6 +122,70 @@ class ErrorFormatIntegrationTest extends AbstractIntegrationTest {
                 String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    static Stream<Arguments> fileKeyRequests() {
+        String key = "a\u0000b.jpg";
+
+        return Stream.of(
+                Arguments.of("/api/news", Map.of(
+                        "title", "Новость с нулём", "postType", "news",
+                        "content", "<p>x</p>", "display", true, "previewImage", key)),
+                Arguments.of("/api/conferences", Map.of(
+                        "title", "Конференция с нулём", "description", "d",
+                        "content", "<p>x</p>", "display", true, "previewImage", key)),
+                Arguments.of("/api/achievements", Map.of(
+                        "title", "Достижение с нулём", "description", "d",
+                        "content", "<p>x</p>", "display", true, "previewImage", key)),
+                Arguments.of("/api/publications", Map.of(
+                        "name", "Публикация с нулём", "authors", List.of("Автор А.А."),
+                        "description", "d", "year", 2024, "source", "Вестник", "file", key))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("fileKeyRequests")
+    void nulCharacterInFileKeyOnCreateReturns400(String path, Map<String, Object> body) {
+        ResponseEntity<String> response = restTemplate.exchange(
+                path, HttpMethod.POST, new HttpEntity<>(body, moderatorJsonHeaders()), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("не найден");
+    }
+
+    @Test
+    void nulCharacterInFileKeyOnUpdateReturns400() {
+        HttpHeaders headers = moderatorJsonHeaders();
+        ResponseEntity<Map> created = restTemplate.exchange(
+                "/api/news",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of("title", "Новость без обложки", "postType", "news",
+                        "content", "<p>x</p>", "display", true), headers),
+                Map.class);
+        Object id = created.getBody().get("id");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/news/" + id,
+                HttpMethod.PUT,
+                new HttpEntity<>(Map.of("title", "Новость без обложки", "postType", "news",
+                        "content", "<p>x</p>", "display", true, "previewImage", "a\u0000b.jpg"), headers),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("Файл обложки не найден");
+    }
+
+    @Test
+    void nulCharacterInAvatarKeyReturns400() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                new HttpEntity<>(Map.of("firstName", "Имя", "lastName", "Фамилия", "avatar", "a\u0000b.jpg"),
+                        moderatorJsonHeaders()),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("Файл аватара не найден");
     }
 
     @Test
