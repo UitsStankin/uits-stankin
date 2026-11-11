@@ -61,6 +61,14 @@ public class GradeSheetService {
                 .build();
     }
 
+    @Transactional
+    public void deleteGradeSheet(Long id) {
+        GradeSheet gradeSheet = gradeSheetRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Ведомость не найдена: id=" + id));
+
+        gradeSheetRepository.delete(gradeSheet);
+    }
+
     @Transactional(readOnly = true)
     public GradeSheetDetailsResponseDto getGradeSheet(Long id) {
         GradeSheet gradeSheet = gradeSheetRepository.findWithStudentsById(id)
