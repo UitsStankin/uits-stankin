@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
@@ -94,8 +95,8 @@ public class LocalFileStorage implements FileStorage {
 
     @Override
     public boolean exists(String key) {
-        Path target = resolve(key);
-        return isInsideRoot(target) && Files.isRegularFile(target);
+        Path target = resolveOrNull(key);
+        return target != null && isInsideRoot(target) && Files.isRegularFile(target);
     }
 
     @Override
@@ -122,10 +123,10 @@ public class LocalFileStorage implements FileStorage {
 
     @Override
     public boolean existsInCategory(String key, String category) {
-        Path target = resolve(key);
+        Path target = resolveOrNull(key);
         Path categoryRoot = root.resolve(category).normalize();
 
-        return target.startsWith(categoryRoot) && Files.isRegularFile(target);
+        return target != null && target.startsWith(categoryRoot) && Files.isRegularFile(target);
     }
 
     @Override
@@ -135,6 +136,14 @@ public class LocalFileStorage implements FileStorage {
 
     private Path resolve(String key) {
         return root.resolve(key).normalize();
+    }
+
+    private Path resolveOrNull(String key) {
+        try {
+            return resolve(key);
+        } catch (InvalidPathException e) {
+            return null;
+        }
     }
 
     private boolean isInsideRoot(Path target) {

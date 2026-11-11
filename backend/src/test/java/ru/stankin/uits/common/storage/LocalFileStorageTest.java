@@ -151,6 +151,20 @@ class LocalFileStorageTest {
     }
 
     @Test
+    void exists_WhenKeyContainsNulCharacter_ReturnsFalseWithoutThrowing() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
+
+        assertThat(storage.exists("news/2026/08/a\u0000b.jpg")).isFalse();
+    }
+
+    @Test
+    void existsInCategory_WhenKeyContainsNulCharacter_ReturnsFalseWithoutThrowing() {
+        LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
+
+        assertThat(storage.existsInCategory("news/2026/08/a\u0000b.jpg", CATEGORY)).isFalse();
+    }
+
+    @Test
     void existsInCategory_WhenFileStoredInThatCategory_ReturnsTrue() {
         LocalFileStorage storage = new LocalFileStorage(tempDir.toString(), PUBLIC_BASE_URL);
         String key = storage.store(content("данные"), EXTENSION, "avatars");

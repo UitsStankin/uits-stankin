@@ -127,9 +127,19 @@ public class TeacherService {
     public void archive(Long id) {
         Teacher teacher = teacherRepository.findById(id)
                 .orElseThrow(() -> teacherNotFound(id));
+        User account = teacher.getUser();
+
+        if (account != null && account.getUsername().equals(currentUsername())) {
+            throw new InvalidRequestException(
+                    "Нельзя архивировать собственную карточку: архив заблокирует вашу учётную запись");
+        }
 
         if (teacher.getArchivedAt() == null) {
             teacher.setArchivedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        }
+
+        if (account != null) {
+            account.setActive(false);
         }
     }
 
