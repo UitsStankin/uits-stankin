@@ -177,8 +177,8 @@ class UserIntegrationTest extends AbstractIntegrationTest {
     }
 
     /**
-     * PUT заменяет карточку целиком: не присланное поле очищается. Форма правки обязана
-     * отправлять все три поля, иначе правка аватара сотрёт имя.
+     * PUT заменяет карточку целиком: поля, пришедшие как null, очищаются. Аватар, которого
+     * в теле нет вовсе, не трогается, это проверяет {@link #shouldKeepAvatar_WhenFieldIsAbsentFromBody}.
      */
     @Test
     void shouldClearFields_WhenTheyAreOmitted() throws IOException {
@@ -291,6 +291,83 @@ class UserIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("firstName");
         assertThat(response.getBody()).contains("\"instance\":\"/api/users/profile\"");
+    }
+
+    @Test
+    void shouldKeepAvatar_WhenFieldIsAbsentFromBody() throws IOException {
+        String avatarKey = storeFile("avatars");
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", avatarKey)), UserResponseDto.class);
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withJson("{\"firstName\":\"Пётр\",\"lastName\":\"Петров\"}"),
+                UserResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getFirstName()).isEqualTo("Пётр");
+        assertThat(response.getBody().getAvatar()).isEqualTo(avatarKey);
+        assertThat(userRepository.findByUsername("prof_ivanov").orElseThrow().getAvatar()).isEqualTo(avatarKey);
+        assertThat(Files.exists(STORAGE_ROOT.resolve(avatarKey))).isTrue();
+    }
+
+    @Test
+    void shouldKeepAvatar_WhenBodyIsEmptyObject() throws IOException {
+        String avatarKey = storeFile("avatars");
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", avatarKey)), UserResponseDto.class);
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile", HttpMethod.PUT, withJson("{}"), UserResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getAvatar()).isEqualTo(avatarKey);
+        assertThat(Files.exists(STORAGE_ROOT.resolve(avatarKey))).isTrue();
+    }
+
+    @Test
+    void shouldClearAvatarAndDeleteFile_WhenFieldIsExplicitNull() throws IOException {
+        String avatarKey = storeFile("avatars");
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", avatarKey)), UserResponseDto.class);
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withJson("{\"firstName\":\"Иван\",\"lastName\":\"Иванов\",\"avatar\":null}"),
+                UserResponseDto.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getAvatar()).isNull();
+        assertThat(Files.exists(STORAGE_ROOT.resolve(avatarKey))).isFalse();
+    }
+
+    @Test
+    void shouldClearAvatar_WhenFieldIsEmptyString() throws IOException {
+        String avatarKey = storeFile("avatars");
+        restTemplate.exchange("/api/users/profile", HttpMethod.PUT,
+                withToken(updateRequest("Иван", "Иванов", avatarKey)), UserResponseDto.class);
+
+        ResponseEntity<UserResponseDto> response = restTemplate.exchange(
+                "/api/users/profile",
+                HttpMethod.PUT,
+                withJson("{\"firstName\":\"Иван\",\"lastName\":\"Иванов\",\"avatar\":\"\"}"),
+                UserResponseDto.class
+        );
+
+        assertThat(response.getBody().getAvatar()).isNull();
+        assertThat(Files.exists(STORAGE_ROOT.resolve(avatarKey))).isFalse();
+    }
+
+    private HttpEntity<String> withJson(String json) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(validToken);
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        return new HttpEntity<>(json, headers);
     }
 
     private UserUpdateRequestDto updateRequest(String firstName, String lastName, String avatar) {

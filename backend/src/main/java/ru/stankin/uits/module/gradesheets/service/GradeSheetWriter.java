@@ -50,19 +50,48 @@ public class GradeSheetWriter {
     @Transactional
     public List<ImportedGradeSheetDto> saveAll(List<ParsedGradeSheetDto> sheets, String filename) {
         Map<String, String> seen = new HashMap<>();
+        List<String> groups = effectiveGroups(sheets);
+        List<ImportedGradeSheetDto> imported = new ArrayList<>();
+
+        for (int i = 0; i < sheets.size(); i++) {
+            imported.add(save(sheets.get(i), groups.get(i), filename, seen));
+        }
+
+        return imported;
+    }
+
+    private List<String> effectiveGroups(List<ParsedGradeSheetDto> sheets) {
+        Map<String, Long> occurrences = new HashMap<>();
+        sheets.forEach(sheet -> occurrences.merge(sheetKey(sheet), 1L, Long::sum));
+
         return sheets.stream()
-                .map(sheet -> save(sheet, filename, seen))
+                .map(sheet -> {
+                    String headerGroup = text(sheet.getGroup());
+                    String sheetName = text(sheet.getSheetName());
+                    boolean collides = occurrences.get(sheetKey(sheet)) > 1;
+                    boolean namedDifferently = sheetName != null && !sheetName.equals(headerGroup);
+
+                    return collides && namedDifferently ? sheetName : sheet.getGroup();
+                })
                 .toList();
     }
 
+    private String sheetKey(ParsedGradeSheetDto sheet) {
+        return text(sheet.getDiscipline()) + "|" + text(sheet.getGroup()) + "|" + text(sheet.getSemester());
+    }
+
     private ImportedGradeSheetDto save(
-            ParsedGradeSheetDto parsed, String filename, Map<String, String> seen) {
+            ParsedGradeSheetDto parsed, String effectiveGroup, String filename, Map<String, String> seen) {
         String sheetName = Objects.requireNonNullElse(text(parsed.getSheetName()), "без имени");
         String discipline = required(parsed.getDiscipline(), "дисциплина", sheetName, DISCIPLINE_LIMIT);
-        String group = required(parsed.getGroup(), "группа", sheetName, GROUP_LIMIT);
+        String group = required(effectiveGroup, "группа", sheetName, GROUP_LIMIT);
         String semester = required(parsed.getSemester(), "семестр", sheetName, SEMESTER_LIMIT);
 
         List<String> warnings = new ArrayList<>(orEmpty(parsed.getWarnings()));
+        if (!Objects.equals(text(parsed.getGroup()), group)) {
+            warnings.add("группа в шапке '" + text(parsed.getGroup()) + "' совпала с другим листом,"
+                    + " ведомость сохранена с группой '" + group + "' по имени листа");
+        }
         String previous = seen.put(discipline + "|" + group + "|" + semester, sheetName);
         if (previous != null) {
             throw new InvalidFileException("Листы '" + previous + "' и '" + sheetName

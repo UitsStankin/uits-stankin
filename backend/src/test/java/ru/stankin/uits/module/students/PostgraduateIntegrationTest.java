@@ -618,4 +618,23 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getBody()).doesNotContain("size must be");
     }
+
+    @Test
+    void deletingTheSupervisorKeepsTheRecordWithoutSupervisor() {
+        ResponseEntity<Void> deleted = restTemplate.exchange(
+                "/api/teachers/" + chekanin.getId(),
+                HttpMethod.DELETE,
+                new HttpEntity<>(authJson(moderatorToken())),
+                Void.class
+        );
+
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        PostgraduateResponseDto row = list("").stream()
+                .filter(item -> item.getId().equals(yakovlev.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(row.getTeacherId()).isNull();
+        assertThat(row.getTeacherName()).isNull();
+        assertThat(list("")).hasSize(2);
+    }
 }
