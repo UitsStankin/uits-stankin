@@ -265,4 +265,44 @@ class ScholarSearchServiceIntegrationTest extends AbstractIntegrationTest {
 
         then(callLimiter).should(times(1)).acquire();
     }
+
+    @Test
+    void staleRowIsServedWhenSerperIsDown() {
+        scholarSearchService.search("Чеканин", 0);
+        OffsetDateTime old = OffsetDateTime.now().minusDays(40);
+        jdbc.update("UPDATE scholar_search_cache SET fetched_at = ?", old);
+        given(serperScholarClient.search("чеканин", 0))
+                .willThrow(new ScholarUnavailableException("Google Scholar не отвечает."));
+
+        List<SerperScholarItem> items = scholarSearchService.search("Чеканин", 0);
+
+        assertThat(items).hasSize(2);
+        assertThat(items.getFirst().getTitle()).isEqualTo("Первая работа");
+        assertThat(cacheRepository.findByQueryAndPage("чеканин", 0))
+                .get()
+                .extracting(row -> row.getFetchedAt().isBefore(OffsetDateTime.now().minusDays(30)))
+                .isEqualTo(true);
+    }
+
+    @Test
+    void staleEmptyRowIsNotServedWhenSerperIsDown() {
+        given(serperScholarClient.search("чеканин", 0)).willReturn(List.of());
+        scholarSearchService.search("Чеканин", 0);
+        jdbc.update("UPDATE scholar_search_cache SET fetched_at = ?", OffsetDateTime.now().minusDays(3));
+        given(serperScholarClient.search("чеканин", 0))
+                .willThrow(new ScholarUnavailableException("Google Scholar не отвечает."));
+
+        assertThatThrownBy(() -> scholarSearchService.search("Чеканин", 0))
+                .isInstanceOf(ScholarUnavailableException.class);
+    }
+
+    @Test
+    void freshRowIsNotAffectedByAnOutage() {
+        scholarSearchService.search("Чеканин", 0);
+        given(serperScholarClient.search("чеканин", 0))
+                .willThrow(new ScholarUnavailableException("Google Scholar не отвечает."));
+
+        assertThat(scholarSearchService.search("Чеканин", 0)).hasSize(2);
+        then(serperScholarClient).should(times(1)).search("чеканин", 0);
+    }
 }

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import ru.stankin.uits.common.exception.InvalidRequestException;
+import ru.stankin.uits.common.exception.ScholarUnavailableException;
 import ru.stankin.uits.module.publications.client.SerperScholarClient;
 import ru.stankin.uits.module.publications.client.SerperScholarItem;
 import ru.stankin.uits.module.publications.entity.ScholarSearchCache;
@@ -110,7 +111,21 @@ public class ScholarSearchService {
 
     private List<SerperScholarItem> fetchAndStore(SearchKey key, ScholarSearchCache existing) {
         callLimiter.acquire();
-        List<SerperScholarItem> items = serperScholarClient.search(key.query(), key.page());
+
+        List<SerperScholarItem> items;
+        try {
+            items = serperScholarClient.search(key.query(), key.page());
+        } catch (ScholarUnavailableException e) {
+            if (existing == null || existing.getResponse().isEmpty()) {
+                throw e;
+            }
+
+            log.warn("Serper недоступен, для «{}» страницы {} выдан устаревший ответ: {}",
+                    key.query(), key.page(), e.getMessage());
+
+            return existing.getResponse();
+        }
+
         store(existing, key, items);
 
         return items;

@@ -39,6 +39,26 @@ final class TestImages {
         return write(image, "png");
     }
 
+    static byte[] photoPngWithAlphaChannel(int width, int height, int lastPixelAlpha) throws IOException {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Random random = new Random(7);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int noise = random.nextInt(24) - 12;
+                int red = channel(x * 255 / width + noise);
+                int green = channel(y * 255 / height + noise);
+                int blue = channel((x + y) * 255 / (width + height) + noise);
+                boolean last = x == width - 1 && y == height - 1;
+                int alpha = last ? lastPixelAlpha : 0xFF;
+
+                image.setRGB(x, y, alpha << 24 | red << 16 | green << 8 | blue);
+            }
+        }
+
+        return write(image, "png");
+    }
+
     static byte[] flatPng(int width, int height) throws IOException {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = image.createGraphics();

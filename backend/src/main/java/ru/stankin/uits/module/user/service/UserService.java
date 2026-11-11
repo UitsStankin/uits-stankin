@@ -46,8 +46,12 @@ public class UserService {
         User managedUser = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Пользователь не найден"));
 
-        validateAvatar(request.getAvatar());
         String oldAvatarKey = managedUser.getAvatar();
+        if (request.isAvatarProvided()) {
+            validateAvatar(request.getAvatar());
+        } else {
+            request.setAvatar(oldAvatarKey);
+        }
         userMapper.updateEntity(managedUser, request);
 
         if (oldAvatarKey != null && !oldAvatarKey.equals(managedUser.getAvatar())) {

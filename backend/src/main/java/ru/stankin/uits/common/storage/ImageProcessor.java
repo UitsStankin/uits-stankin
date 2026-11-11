@@ -79,7 +79,24 @@ public class ImageProcessor {
     }
 
     private boolean isConvertibleToJpeg(String format, BufferedImage image) {
-        return PNG_FORMAT.equals(format) && !image.getColorModel().hasAlpha();
+        return PNG_FORMAT.equals(format) && (!image.getColorModel().hasAlpha() || isFullyOpaque(image));
+    }
+
+    private boolean isFullyOpaque(BufferedImage image) {
+        int width = image.getWidth();
+        int[] row = new int[width];
+
+        for (int y = 0; y < image.getHeight(); y++) {
+            image.getRGB(0, y, width, 1, row, 0, width);
+
+            for (int argb : row) {
+                if ((argb >>> 24) != 0xFF) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private byte[] encode(BufferedImage source, int maxWidth, int maxHeight, String format,

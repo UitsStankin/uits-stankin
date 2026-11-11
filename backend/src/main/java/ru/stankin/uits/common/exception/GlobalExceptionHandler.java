@@ -20,9 +20,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +35,8 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private static final String INVALID_BYTE_SEQUENCE_SQL_STATE = "22021";
 
     @Override
     protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -111,7 +116,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        if (hasSqlState(ex, INVALID_BYTE_SEQUENCE_SQL_STATE)) {
+            return problemDetail(HttpStatus.BAD_REQUEST, "Текст содержит недопустимые символы.");
+        }
+
         return problemDetail(HttpStatus.CONFLICT, "Конфликт данных.");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ProblemDetail handleMultipart(MultipartException ex) {
+        return problemDetail(HttpStatus.BAD_REQUEST, "Запрос должен быть multipart/form-data и содержать файл.");
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleNoResourceFoundException(NoResourceFoundException ex,
+                                                                              HttpHeaders headers,
+                                                                              HttpStatusCode status,
+                                                                              WebRequest request) {
+        return ResponseEntity.of(problemDetail(HttpStatus.NOT_FOUND, "Ресурс не найден.")).build();
     }
 
     @ExceptionHandler(ConcurrencyFailureException.class)
@@ -206,6 +228,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setTitle("Файл слишком большой");
 
         return ResponseEntity.of(problem).build();
+    }
+
+    private static boolean hasSqlState(Throwable ex, String sqlState) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sql && sqlState.equals(sql.getSQLState())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private ProblemDetail problemDetail(HttpStatus status, String detail) {

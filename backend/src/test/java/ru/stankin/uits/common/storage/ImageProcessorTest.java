@@ -54,6 +54,22 @@ class ImageProcessorTest {
     }
 
     @Test
+    void process_WhenPhotoPngHasOpaqueAlphaChannel_StoresJpeg() throws IOException {
+        ProcessedImage result = processor.process(TestImages.photoPngWithAlphaChannel(800, 600, 0xFF));
+
+        assertThat(result.extension()).isEqualTo("jpg");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("jpeg");
+    }
+
+    @Test
+    void process_WhenOnlyTheLastPixelIsNotOpaque_StaysPng() throws IOException {
+        ProcessedImage result = processor.process(TestImages.photoPngWithAlphaChannel(800, 600, 0xFE));
+
+        assertThat(result.extension()).isEqualTo("png");
+        assertThat(TestImages.formatOf(result.data())).isEqualTo("png");
+    }
+
+    @Test
     void process_WhenPng_ReturnsPngExtension() throws IOException {
         ProcessedImage result = processor.process(image(300, 300, "png"));
 
