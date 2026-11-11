@@ -8,6 +8,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,7 @@ import ru.stankin.uits.module.students.entity.Student;
 import ru.stankin.uits.module.students.enums.EducationLevel;
 import ru.stankin.uits.module.students.repository.PostgraduateRepository;
 import ru.stankin.uits.module.students.repository.StudentRepository;
+import ru.stankin.uits.module.user.entity.User;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -112,10 +114,76 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMyCard_WhenTeacherIsArchived_ReturnsArchivedFlagAndLoginStillWorks() {
+    void archive_BlocksLinkedAccount() {
+        Teacher card = createCard("Иванова", "Мария");
+        linkAccount(card, "teacher_user");
+
+        archive(card.getId());
+
+        assertThat(userRepository.findByUsername("teacher_user").orElseThrow().isActive()).isFalse();
+    }
+
+    @Test
+    void archive_CutsOffLinkedAccountSessionAndLogin() {
+        Teacher card = createCard("Иванова", "Мария");
+        linkAccount(card, "teacher_user");
+        String teacherToken = login("teacher_user");
+
+        archive(card.getId());
+
+        assertThat(myCardStatus(teacherToken)).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(loginResponse("teacher_user").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void archive_WhenCardHasNoAccount_Returns204() {
+        Teacher card = createCard("Яковлев", "Пётр");
+
+        assertThat(archive(card.getId()).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    void archive_Twice_BlocksAccountUnblockedInBetween() {
         Teacher card = createCard("Иванова", "Мария");
         linkAccount(card, "teacher_user");
         archive(card.getId());
+        unblock("teacher_user");
+
+        assertThat(archive(card.getId()).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        assertThat(userRepository.findByUsername("teacher_user").orElseThrow().isActive()).isFalse();
+    }
+
+    @Test
+    void archive_OwnCard_Returns400AndChangesNothing() {
+        Teacher card = createCard("Яковлев", "Пётр");
+        card.setUser(userRepository.findByUsername("moder").orElseThrow());
+        teacherRepository.save(card);
+
+        assertThat(archive(card.getId()).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getArchivedAt()).isNull();
+        assertThat(userRepository.findByUsername("moder").orElseThrow().isActive()).isTrue();
+    }
+
+    @Test
+    void unarchive_DoesNotUnblockAccount() {
+        Teacher card = createCard("Иванова", "Мария");
+        linkAccount(card, "teacher_user");
+        archive(card.getId());
+
+        assertThat(unarchive(card.getId()).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        assertThat(userRepository.findByUsername("teacher_user").orElseThrow().isActive()).isFalse();
+        assertThat(teacherRepository.findById(card.getId()).orElseThrow().getArchivedAt()).isNull();
+    }
+
+    @Test
+    void getMyCard_WhenArchivedAccountIsUnblocked_ReturnsArchivedFlag() {
+        Teacher card = createCard("Иванова", "Мария");
+        linkAccount(card, "teacher_user");
+        archive(card.getId());
+        unblock("teacher_user");
 
         TeacherDetailsResponseDto mine = myCard(login("teacher_user"));
 
@@ -124,14 +192,14 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMyCard_AfterUnarchive_ReturnsArchivedFalse() {
+    void getMyCard_AfterUnarchiveAndUnblock_ReturnsArchivedFalse() {
         Teacher card = createCard("Иванова", "Мария");
         linkAccount(card, "teacher_user");
-        String teacherToken = login("teacher_user");
         archive(card.getId());
         unarchive(card.getId());
+        unblock("teacher_user");
 
-        assertThat(myCard(teacherToken).isArchived()).isFalse();
+        assertThat(myCard(login("teacher_user")).isArchived()).isFalse();
     }
 
     @Test
@@ -373,6 +441,20 @@ class TeacherArchiveIntegrationTest extends AbstractIntegrationTest {
     private void linkAccount(Teacher card, String username) {
         card.setUser(createUser(username, TestRole.TEACHER));
         teacherRepository.save(card);
+    }
+
+    private void unblock(String username) {
+        User account = userRepository.findByUsername(username).orElseThrow();
+        account.setActive(true);
+        userRepository.save(account);
+    }
+
+    private HttpStatusCode myCardStatus(String teacherToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(teacherToken);
+
+        return restTemplate.exchange(
+                "/api/teachers/me", HttpMethod.GET, new HttpEntity<>(headers), String.class).getStatusCode();
     }
 
     private TeacherDetailsResponseDto myCard(String teacherToken) {
