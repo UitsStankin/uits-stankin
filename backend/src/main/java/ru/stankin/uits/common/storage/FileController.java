@@ -73,7 +73,7 @@ public class FileController {
                 processed.extension(), category);
 
         if (THUMBNAIL_CATEGORIES.contains(category)) {
-            ProcessedImage thumbnail = imageProcessor.thumbnail(content);
+            ProcessedImage thumbnail = imageProcessor.thumbnail(content, processed.extension());
             fileStorage.storeVariant(key, THUMBNAIL_SUFFIX, new ByteArrayInputStream(thumbnail.data()));
         }
 

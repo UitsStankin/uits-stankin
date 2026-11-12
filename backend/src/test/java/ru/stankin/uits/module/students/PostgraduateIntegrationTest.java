@@ -583,4 +583,58 @@ class PostgraduateIntegrationTest extends AbstractIntegrationTest {
         assertThat(card.getTeacherId()).isNull();
         assertThat(card.getStudentName()).isEqualTo("Абрамов Пётр");
     }
+
+    @Test
+    void createWithTooLongGroupReturnsRussianValidationMessage() {
+        StudentRequestDto student = studentRequest("Новиков", EducationLevel.POSTGRADUATE, 2023);
+        student.setGroup("Г".repeat(17));
+        PostgraduateRequestDto request = PostgraduateRequestDto.builder().student(student).build();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/postgraduates",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("student.group").doesNotContain("size must be");
+    }
+
+    @Test
+    void validationMessageDoesNotDependOnAcceptLanguage() {
+        StudentRequestDto student = studentRequest("Новиков", EducationLevel.POSTGRADUATE, 2023);
+        student.setGroup("Г".repeat(17));
+        PostgraduateRequestDto request = PostgraduateRequestDto.builder().student(student).build();
+        HttpHeaders headers = authJson(moderatorToken());
+        headers.set(HttpHeaders.ACCEPT_LANGUAGE, "en-US");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/postgraduates",
+                HttpMethod.POST,
+                new HttpEntity<>(request, headers),
+                String.class
+        );
+
+        assertThat(response.getBody()).doesNotContain("size must be");
+    }
+
+    @Test
+    void deletingTheSupervisorKeepsTheRecordWithoutSupervisor() {
+        ResponseEntity<Void> deleted = restTemplate.exchange(
+                "/api/teachers/" + chekanin.getId(),
+                HttpMethod.DELETE,
+                new HttpEntity<>(authJson(moderatorToken())),
+                Void.class
+        );
+
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        PostgraduateResponseDto row = list("").stream()
+                .filter(item -> item.getId().equals(yakovlev.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(row.getTeacherId()).isNull();
+        assertThat(row.getTeacherName()).isNull();
+        assertThat(list("")).hasSize(2);
+    }
 }

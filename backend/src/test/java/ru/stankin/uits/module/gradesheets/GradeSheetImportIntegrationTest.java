@@ -479,4 +479,80 @@ class GradeSheetImportIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
+
+    private static ParsedGradeSheetDto sheetNamed(String sheetName, String headerGroup,
+                                                  ParsedGradeSheetStudentDto... students) {
+        return ParsedGradeSheetDto.builder()
+                .sheetName(sheetName)
+                .group(headerGroup)
+                .discipline(DISCIPLINE)
+                .department("УИТС")
+                .teachers(List.of("Чеканин В.А.", "Ступивцев А.В."))
+                .semester(SEMESTER)
+                .direction("09.03.03 «Прикладная информатика»")
+                .blocks(List.of("М1", "М2", "Курсовой проект", "Зачёт"))
+                .students(List.of(students))
+                .warnings(List.of(WARNING))
+                .build();
+    }
+
+    @Test
+    void headerGroupTakenByAnotherSheetIsReplacedByTheSheetName() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheet("ИДБ-25-14", student(1, "Абрамов", score("М1", "30"))),
+                sheetNamed("ИДБ-25-15", "ИДБ-25-14", student(1, "Агапова", score("М1", "45")))));
+
+        ResponseEntity<GradeSheetImportResponseDto> response =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getSheets()).extracting(ImportedGradeSheetDto::getGroup)
+                .containsExactly("ИДБ-25-14", "ИДБ-25-15");
+        assertThat(response.getBody().getSheets().getLast().getWarnings())
+                .anySatisfy(warning -> assertThat(warning).contains("по имени листа").contains("ИДБ-25-15"));
+        assertThat(response.getBody().getSheets().getFirst().getWarnings())
+                .noneSatisfy(warning -> assertThat(warning).contains("по имени листа"));
+        assertThat(countRows("gradesheet_gradesheet")).isEqualTo(2);
+    }
+
+    @Test
+    void sheetNameWinsOverHeaderGroupRegardlessOfSheetOrder() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheetNamed("ИДБ-25-15", "ИДБ-25-14", student(1, "Агапова", score("М1", "45"))),
+                sheet("ИДБ-25-14", student(1, "Абрамов", score("М1", "30")))));
+
+        ResponseEntity<GradeSheetImportResponseDto> response =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getSheets()).extracting(ImportedGradeSheetDto::getGroup)
+                .containsExactly("ИДБ-25-15", "ИДБ-25-14");
+    }
+
+    @Test
+    void twoSheetsWithTheSameHeaderGroupAreKeptUnderTheirOwnNames() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheetNamed("ИДБ-25-13", "ИДБ-25-99", student(1, "Абрамов", score("М1", "30"))),
+                sheetNamed("ИДБ-25-14", "ИДБ-25-99", student(1, "Агапова", score("М1", "45")))));
+
+        ResponseEntity<GradeSheetImportResponseDto> response =
+                importWorkbook(adminToken, GradeSheetImportResponseDto.class);
+
+        assertThat(response.getBody().getSheets()).extracting(ImportedGradeSheetDto::getGroup)
+                .containsExactly("ИДБ-25-13", "ИДБ-25-14");
+    }
+
+    @Test
+    void sheetRenamedByTheRuleStillCollidingWithAThirdSheetIsRejected() {
+        given(gradeSheetParseClient.parse(any(), any())).willReturn(parsedWith(
+                sheet("ИДБ-25-14", student(1, "Абрамов", score("М1", "30"))),
+                sheetNamed("ИДБ-25-15", "ИДБ-25-14", student(1, "Агапова", score("М1", "45"))),
+                sheet("ИДБ-25-15", student(1, "Борисов", score("М1", "20")))));
+
+        ResponseEntity<String> response = importWorkbook(adminToken, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("описывают одну ведомость");
+        assertThat(countRows("gradesheet_gradesheet")).isZero();
+    }
 }

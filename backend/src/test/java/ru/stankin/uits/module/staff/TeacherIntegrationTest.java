@@ -767,4 +767,25 @@ class TeacherIntegrationTest extends AbstractIntegrationTest {
         assertThat(teacherRepository.findById(card.getId()).orElseThrow().getBio())
                 .isEqualTo("Научные интересы: <b>СУБД</b> и 5 < 7");
     }
+
+    @Test
+    void createTeacher_WithMarkupInPhoneNumber_Returns400() {
+        TeacherRequestDto request = TeacherRequestDto.builder()
+                .lastName("Тестов")
+                .firstName("Тест")
+                .position("доцент")
+                .phoneNumber("<script>1</script>")
+                .build();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/teachers",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authJson(moderatorToken())),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("phoneNumber");
+        assertThat(teacherRepository.count()).isZero();
+    }
 }

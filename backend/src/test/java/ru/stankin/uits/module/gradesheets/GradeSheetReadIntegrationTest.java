@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
 import ru.stankin.uits.common.PageResponseDto;
@@ -35,6 +36,9 @@ class GradeSheetReadIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private GradeSheetRepository gradeSheetRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private String adminToken;
     private Long firstSheetId;
@@ -221,5 +225,49 @@ class GradeSheetReadIntegrationTest extends AbstractIntegrationTest {
                 String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void deleteRemovesSheetWithItsStudentsAndMarks() {
+        int sheetsBefore = jdbc.queryForObject("select count(*) from gradesheet_gradesheet", Integer.class);
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/api/gradesheets/" + firstSheetId, HttpMethod.DELETE, auth(adminToken), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(jdbc.queryForObject("select count(*) from gradesheet_gradesheet", Integer.class))
+                .isEqualTo(sheetsBefore - 1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from gradesheet_student where gradesheet_id = ?", Integer.class, firstSheetId))
+                .isZero();
+        assertThat(jdbc.queryForObject(
+                "select count(*) from gradesheet_block where gradesheet_id = ?", Integer.class, firstSheetId))
+                .isZero();
+        assertThat(restTemplate.exchange("/api/gradesheets/" + firstSheetId, HttpMethod.GET, auth(adminToken),
+                String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteLeavesOtherSheetsAlone() {
+        restTemplate.exchange("/api/gradesheets/" + firstSheetId, HttpMethod.DELETE, auth(adminToken), Void.class);
+
+        assertThat(list("").getBody().totalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void deleteOfUnknownSheetReturns404() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/gradesheets/999999", HttpMethod.DELETE, auth(adminToken), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteWithoutTokenReturns401() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/gradesheets/" + firstSheetId, HttpMethod.DELETE, auth(null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(jdbc.queryForObject("select count(*) from gradesheet_gradesheet", Integer.class)).isEqualTo(3);
     }
 }

@@ -17,3 +17,5 @@ application:
 
   serper:
     key: ""
+    rate-limit:
+      attempts: 100000
