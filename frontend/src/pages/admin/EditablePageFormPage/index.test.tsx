@@ -5,12 +5,20 @@ import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { editablePageKeys } from '@entities/editable-page';
-import { editablePageHandlers, fileHandlers, problemResponse } from '@shared/api/mocks';
+import { clearSession } from '@shared/api';
+import {
+  editablePageHandlers,
+  fileHandlers,
+  makeProfile,
+  problemResponse,
+} from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { useToastStore } from '@shared/store';
 import type { EditablePage, EditablePageRequest } from '@shared/types';
 import ToastViewport from '@shared/ui/Toast';
+import EditableSection from '@widgets/EditableSection';
 import { createTestQueryClient, renderWithProviders } from '@/test/render';
+import { signInAs } from '@/test/session';
 
 import EditablePageFormPage from './index';
 
@@ -62,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   useToastStore.setState({ toasts: [] });
   onlineManager.setOnline(true);
+  clearSession();
 });
 
 const titleField = () => screen.getByRole('textbox', { name: 'Подпись раздела' });
@@ -151,7 +160,10 @@ describe('EditablePageFormPage, правка', () => {
     let put = false;
     server.use(
       http.get(PUBLIC_PAGE, ({ params }) =>
-        HttpResponse.json({ ...savedFrom(String(params.slug), { title: '', text: CONTACTS }), title: null }),
+        HttpResponse.json({
+          ...savedFrom(String(params.slug), { title: '', text: CONTACTS }),
+          title: null,
+        }),
       ),
       http.put(PAGE_ITEM, () => {
         put = true;
@@ -233,7 +245,9 @@ describe('EditablePageFormPage, правка', () => {
   it('вставляет картинку в текст адресом из раздела pages', async () => {
     renderForm();
 
-    const field = await screen.findByRole<HTMLTextAreaElement>('textbox', { name: 'Текст раздела' });
+    const field = await screen.findByRole<HTMLTextAreaElement>('textbox', {
+      name: 'Текст раздела',
+    });
     field.setSelectionRange(CONTACTS.length, CONTACTS.length);
 
     const input = document.querySelector<HTMLInputElement>('input[type="file"]');
@@ -243,9 +257,7 @@ describe('EditablePageFormPage, правка', () => {
       target: { files: [new File(['x'], 'map.png', { type: 'image/png' })] },
     });
 
-    await waitFor(() =>
-      expect(field).toHaveValue(`${CONTACTS}![](/media/pages/uploaded-1.jpg)`),
-    );
+    await waitFor(() => expect(field).toHaveValue(`${CONTACTS}![](/media/pages/uploaded-1.jpg)`));
   });
 });
 
@@ -327,5 +339,73 @@ describe('EditablePageFormPage, адрес и загрузка', () => {
     renderForm();
 
     expect(await screen.findByText('Нет связи с сервером')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Форма, открытая с сайта ссылкой «Править» (F-52). Страница — настоящий
+ * виджет раздела, а не заглушка: адрес возврата кладёт его ссылка,
+ * и проверить согласие писателя с читателем можно только вместе.
+ */
+describe('EditablePageFormPage, вход со страницы сайта', () => {
+  function renderFromSite() {
+    return renderWithProviders(
+      <>
+        <Routes>
+          <Route path="/contacts" element={<EditableSection slug="contacts" />} />
+          <Route path="/admin/pages" element={<p>Список разделов</p>} />
+          <Route path="/admin/pages/:slug" element={<EditablePageFormPage />} />
+        </Routes>
+        <ToastViewport />
+      </>,
+      {
+        route: '/contacts',
+        queryClient: signInAs(makeProfile({ moderator: true })),
+      },
+    );
+  }
+
+  it('после сохранения возвращается на страницу с исправленным текстом', async () => {
+    renderFromSite();
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Править раздел' }));
+
+    await screen.findByRole('textbox', { name: 'Подпись раздела' });
+    expect(screen.getByRole('link', { name: 'Вернуться на страницу' })).toHaveAttribute(
+      'href',
+      '/contacts',
+    );
+
+    fireEvent.change(textField(), {
+      target: { value: 'Москва, Вадковский переулок, 3а' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    // Текст новый — значит, ключ раздела сброшен и страница перечитала его,
+    // а не показала кэш, взятый до правки.
+    expect(await screen.findByText('Москва, Вадковский переулок, 3а')).toBeInTheDocument();
+    expect(screen.queryByText('Список разделов')).not.toBeInTheDocument();
+  });
+
+  it('по «Отмене» возвращается на страницу', async () => {
+    renderFromSite();
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Править раздел' }));
+    await screen.findByRole('textbox', { name: 'Подпись раздела' });
+    fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(await screen.findByRole('link', { name: 'Править раздел' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Как нас найти' })).toBeInTheDocument();
+  });
+
+  /** Открытая из списка или по адресу — как раньше: к списку разделов. */
+  it('без адреса возврата ведёт ссылкой к списку разделов', async () => {
+    renderForm();
+
+    await screen.findByRole('textbox', { name: 'Подпись раздела' });
+    expect(screen.getByRole('link', { name: 'К списку разделов' })).toHaveAttribute(
+      'href',
+      '/admin/pages',
+    );
   });
 });

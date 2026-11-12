@@ -1,9 +1,11 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useLocation } from 'react-router';
 
 import { editablePageQuery } from '@entities/editable-page';
 import { newsListQuery } from '@entities/news';
-import { newsItemRoute } from '@shared/config/routes';
-import type { EditablePage, News, NewsPage } from '@shared/types';
+import { useAuth } from '@features/auth';
+import { adminEditablePageRoute, newsItemRoute } from '@shared/config/routes';
+import type { EditablePage, EditablePageSlug, News, NewsPage } from '@shared/types';
 
 /**
  * Сколько записей показывать в каждой секции.
@@ -14,6 +16,20 @@ import type { EditablePage, News, NewsPage } from '@shared/types';
  */
 const HOME_NEWS_SIZE = 5;
 const HOME_ANNOUNCEMENTS_SIZE = 4;
+
+/** Разобранное состояние редактируемого блока главной. */
+export interface HomeBlockState {
+  /** Готовый Markdown или `null`, если рисовать нечего. */
+  text: string | null;
+  /**
+   * Блок загружен и пуст. Отличается от `text === null` тем, что не
+   * включает загрузку и сбой: место под «блок не заполнен» модератору
+   * можно показать только тогда, когда это правда.
+   */
+  isEmpty: boolean;
+  /** Адрес формы блока для модератора, `null` — для всех остальных (F-52). */
+  editHref: string | null;
+}
 
 /** Разобранное состояние одной секции — то, что нужно разметке, и ничего больше. */
 export interface HomeFeedState {
@@ -55,6 +71,8 @@ export interface HomeFeedState {
 export function useHomeContent() {
   const before = useQuery(editablePageQuery('home-before'));
   const after = useQuery(editablePageQuery('home-after'));
+  const { canEdit } = useAuth();
+  const { pathname, search } = useLocation();
 
   // Только `size` и `postType`: `page` по умолчанию нулевая, а лишний
   // `?page=0` в запросе ничего не уточняет. Сортировка тоже умолчанием —
@@ -65,8 +83,10 @@ export function useHomeContent() {
   );
 
   return {
-    before: blockText(before.data),
-    after: blockText(after.data),
+    before: blockState(before, 'home-before', canEdit),
+    after: blockState(after, 'home-after', canEdit),
+    /** Куда вернуться с формы блока — на главную, откуда пришли. */
+    returnTo: pathname + search,
 
     news: feedState(news),
     announcements: feedState(announcements),
@@ -93,7 +113,7 @@ function feedState(query: UseQueryResult<NewsPage>): HomeFeedState {
 }
 
 /**
- * Текст блока — или `null`, если рисовать нечего.
+ * Состояние блока: текст — или `null`, если рисовать нечего.
  *
  * Схлопывает в одно «нечего» три разных случая, и это осознанный размен.
  *
@@ -116,10 +136,24 @@ function feedState(query: UseQueryResult<NewsPage>): HomeFeedState {
  * сбоя показаны все. Цена размена — молчаливо пропавший блок при `500`
  * на одной ручке из четырёх; она признана меньшей, чем тревожная плашка
  * на главной вместо текста, которого там и так может не быть.
+ *
+ * Для модератора первый случай отделён от двух других (`isEmpty`, F-52):
+ * пустой блок не рисуется, и ссылке на его правку иначе негде было бы
+ * стоять — а на чистой базе пусты оба. Сбой и загрузка остаются молчаливыми
+ * и для него: «блок не заполнен» на упавшем запросе было бы неправдой.
  */
-function blockText(page: EditablePage | undefined): string | null {
+function blockState(
+  query: UseQueryResult<EditablePage>,
+  slug: EditablePageSlug,
+  canEdit: boolean,
+): HomeBlockState {
   // trim: строка из одних пробелов и переводов строки — то же «не заполнено»,
   // но рисует пустую белую карточку с отступами.
-  const text = page?.text.trim();
-  return text ? text : null;
+  const text = query.data?.text.trim() ?? '';
+
+  return {
+    text: text || null,
+    isEmpty: query.isSuccess && text === '',
+    editHref: canEdit ? adminEditablePageRoute(slug) : null,
+  };
 }
