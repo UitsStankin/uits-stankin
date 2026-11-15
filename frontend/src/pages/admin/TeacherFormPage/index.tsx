@@ -4,11 +4,13 @@ import { Link } from 'react-router';
 import {
   AccountField,
   SubjectsField,
+  archiveDescription,
   TeacherCardForm,
   useTeacherAdminForm,
 } from '@features/manage-teachers';
 import { ADMIN_TEACHERS_ROUTE } from '@shared/config/routes';
 import type { Teacher } from '@shared/types';
+import ConfirmDialog from '@shared/ui/ConfirmDialog';
 import Loader from '@shared/ui/Loader';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
@@ -39,7 +41,10 @@ export default function TeacherFormPage() {
     errorMessage,
     refetch,
     goToList,
-    archive,
+    isConfirmingArchive,
+    askArchive,
+    cancelArchive,
+    confirmArchive,
     unarchive,
     isArchiving,
   } = useTeacherFormPage();
@@ -87,13 +92,25 @@ export default function TeacherFormPage() {
       {card && (
         <ArchiveBar
           archived={card.archived}
-          onArchive={archive}
+          onArchive={askArchive}
           onUnarchive={unarchive}
           isPending={isArchiving}
         />
       )}
 
       {(isNew || card) && <TeacherEditor card={card} onDone={goToList} />}
+
+      {/* Здесь, в отличие от строки таблицы, связь с учёткой известна:
+          полная карточка несёт `userId`, и окно говорит определённо. */}
+      {card && isConfirmingArchive && (
+        <ConfirmDialog
+          title="Отправить карточку в архив?"
+          description={archiveDescription(`${card.lastName} ${card.firstName}`, card.userId)}
+          confirmLabel="В архив"
+          onConfirm={confirmArchive}
+          onCancel={cancelArchive}
+        />
+      )}
     </div>
   );
 }

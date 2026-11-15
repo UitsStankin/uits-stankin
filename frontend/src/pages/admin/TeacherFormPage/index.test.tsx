@@ -599,11 +599,18 @@ describe('TeacherFormPage, картинки в rich-text полях', () => {
 });
 
 describe('TeacherFormPage, архив', () => {
+  /** Подтверждает архив в окне, которое открывает кнопка над формой. */
+  function confirmArchive() {
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'В архив' }));
+  }
+
   it('отправляет карточку в архив с формы', async () => {
     renderForm('/admin/teachers/3');
 
     expect(await screen.findByText(/Карточка действующая/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
 
     expect(await screen.findByText('Карточка «Андреева Ольга» в архиве')).toBeInTheDocument();
     expect(await screen.findByText(/Карточка в архиве: в списках на сайте её нет/)).toBeInTheDocument();
@@ -621,6 +628,7 @@ describe('TeacherFormPage, архив', () => {
     const position = await screen.findByDisplayValue('профессор кафедры');
     fireEvent.change(position, { target: { value: 'заведующий кафедрой' } });
     fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
 
     expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('заведующий кафедрой')).toBeInTheDocument();
@@ -642,6 +650,80 @@ describe('TeacherFormPage, архив', () => {
       await screen.findByText('Карточка «Андреева Ольга» возвращена из архива'),
     ).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'В архив' })).toBeInTheDocument();
+  });
+
+  /**
+   * У формы связь с учёткой известна (`userId` в полной карточке),
+   * и окно говорит определённо, а не «если привязана».
+   */
+  it('предупреждает о блокировке привязанной учётки', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(dialog.getByText(/Привязанная учётная запись будет заблокирована/)).toBeInTheDocument();
+    expect(dialog.getByText(/Возврат из архива доступ не вернёт/)).toBeInTheDocument();
+  });
+
+  it('не пугает блокировкой, если учётка не привязана', async () => {
+    server.use(...teacherHandlers([{ ...card(), userId: null }]));
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(dialog.getByText(/Учётная запись к карточке не привязана/)).toBeInTheDocument();
+    expect(dialog.queryByText(/заблокирована/)).not.toBeInTheDocument();
+  });
+
+  it('ничего не шлёт, если архив отменили', async () => {
+    let archived = false;
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/archive')) archived = true;
+    });
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' })).getByRole(
+        'button',
+        { name: 'Отмена' },
+      ),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(/Карточка действующая/)).toBeInTheDocument();
+    expect(archived).toBe(false);
+  });
+
+  /**
+   * Архив блокирует учётку, и справочник формы её больше не предлагает.
+   * Живёт справочник пять минут — без сброса после архива форма звала бы
+   * привязать заблокированного. Сторожим повторный запрос справочника.
+   */
+  it('перечитывает справочник учёток после архива', async () => {
+    let directoryRequests = 0;
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'GET' && request.url.includes('/api/users/directory')) {
+        directoryRequests += 1;
+      }
+    });
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    await waitFor(() => expect(directoryRequests).toBe(1));
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
+
+    expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
+    await waitFor(() => expect(directoryRequests).toBe(2));
   });
 
   it('не показывает архив у новой карточки', async () => {
