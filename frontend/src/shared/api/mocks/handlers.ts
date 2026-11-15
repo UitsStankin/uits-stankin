@@ -1,9 +1,11 @@
 import { achievementHandlers } from './achievements';
 import { conferenceHandlers } from './conferences';
 import { editablePageHandlers } from './editablePages';
+import { examHandlers } from './exams';
 import { helperHandlers } from './helpers';
 import { newsHandlers } from './news';
 import { postgraduateHandlers } from './postgraduates';
+import { scheduleHandlers } from './schedule';
 import { subjectHandlers } from './subjects';
 import { myTeacherCardHandlers, teacherHandlers } from './teachers';
 import { adminUserHandlers, userDirectoryHandlers } from './users';
@@ -45,5 +47,7 @@ export const handlers = [
   ...userDirectoryHandlers(),
   ...adminUserHandlers(),
   ...postgraduateHandlers(),
+  ...scheduleHandlers(),
+  ...examHandlers(),
   ...subjectHandlers(),
 ];

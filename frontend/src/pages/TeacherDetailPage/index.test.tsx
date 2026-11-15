@@ -5,6 +5,7 @@ import { Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  examHandlers,
   achievementHandlers,
   makeAchievement,
   makeTeacher,
@@ -151,13 +152,17 @@ describe('TeacherDetailPage', () => {
     expect(await screen.findByText('Базы данных')).toBeInTheDocument();
     expect(screen.getByText('Реляционная модель, SQL')).toBeInTheDocument();
 
-    const link = screen.getByRole('link', { name: 'Выпускные курсы' });
+    // Ссылки на PDF с F-56 стоят в блоке экзаменов, а не в профиле, —
+    // и подписаны «(PDF)», чтобы не путаться с разобранными экзаменами рядом.
+    const link = await screen.findByRole('link', { name: 'Выпускные курсы (PDF)' });
     expect(link).toHaveAttribute('href', 'https://stankin.ru/uploads/exams-graduation.pdf');
     expect(link).toHaveAttribute('target', '_blank');
 
     // Второй ссылки нет: невыпускные курсы в этой карточке не заполнены,
     // и пустого пункта на её месте быть не должно.
-    expect(screen.queryByRole('link', { name: 'Невыпускные курсы' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Невыпускные курсы (PDF)' }),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -186,6 +191,10 @@ describe('TeacherDetailPage', () => {
           examScheduleNonGraduation: null,
         }),
       ]),
+      // Экзамены у первого преподавателя в наборе по умолчанию есть, а блок
+      // «Расписание экзаменов» с F-56 зависит и от них: без пустого ответа
+      // проверка ниже прошла бы, только успей она раньше ответа.
+      ...examHandlers({}),
     );
 
     renderCard(1);

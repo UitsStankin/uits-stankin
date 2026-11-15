@@ -3,11 +3,11 @@
  *
  * Типы контракта разложены по модулям бэкенда — `auth`, `news`, `staff` —
  * плюс `api` для общего транспорта. Отдельно стоит `planned`: модели,
- * которым сегодня не соответствует ни одна ручка. Из барреля они
+ * которым не соответствует ни одна ручка. Из барреля они
  * **не реэкспортируются намеренно** — импорт оттуда должен оставаться
  * заметным, поэтому пишется полным путём:
  *
- *   import type { Schedule } from '@shared/types/planned.types';
+ *   import type { TelegramUser } from '@shared/types/planned.types';
  */
 
 // Транспорт
@@ -65,6 +65,19 @@ export type {
   HelperPage,
   HelperRequest,
 } from './staff.types';
+
+// Расписание
+export type {
+  ClassTime,
+  Exam,
+  ExamConsultation,
+  ExamScheduleFiles,
+  ScheduleLesson,
+  ScheduleLessonDate,
+  TeacherExamSchedule,
+  TeacherSchedule,
+  WeekDay,
+} from './schedule.types';
 
 // Аспирантура
 export type {

@@ -14,6 +14,7 @@ import {
   ADMIN_TEACHERS_ROUTE,
   ANNOUNCEMENTS_ROUTE,
   CONFERENCES_ROUTE,
+  EXAM_SCHEDULE_ROUTE,
   HELPERS_ROUTE,
   LOGIN_ROUTE,
   NEWS_ROUTE,
@@ -41,6 +42,7 @@ import ConferenceDetailPage from '@pages/ConferenceDetailPage';
 import AchievementsPage from '@pages/AchievementsPage';
 import AchievementDetailPage from '@pages/AchievementDetailPage';
 import EditablePagePage from '@pages/EditablePagePage';
+import ExamSchedulePage from '@pages/ExamSchedulePage';
 import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
@@ -348,6 +350,14 @@ export const routes: RouteObject[] = [
           { index: true, element: <AchievementsPage />, errorElement: <RouteError /> },
           { path: ':id', element: <AchievementDetailPage />, errorElement: <RouteError /> },
         ],
+      },
+      // Расписание экзаменов. Публичное: все три ручки, которые страница
+      // зовёт, открыты без входа. Адрес — константой: страница собирает
+      // по нему ссылку «все группы» (F-56).
+      {
+        path: EXAM_SCHEDULE_ROUTE,
+        element: <ExamSchedulePage />,
+        errorElement: <RouteError />,
       },
       // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`
       // открыта всем. Одна страница на девять адресов — разделы отличаются
