@@ -6,7 +6,8 @@
  * и экзамены — его и сводные, с PDF из карточек (F-56), и сводное
  * расписание пар (F-57). Неделя и листание (`model/useScheduleWeek.ts`)
  * общие у карточки и сводной.
- * Импорт PDF — действие модератора, и ляжет он в фичу.
+ * Импорт PDF — действие модератора, он в фиче `import-schedule` (F-58)
+ * и после себя сбрасывает здешний кэш целиком (`scheduleKeys.all`).
  */
 export { fetchExamFiles, fetchExamsSummary, fetchTeacherExams } from './api/examApi';
 export { fetchScheduleSummary, fetchTeacherSchedule } from './api/scheduleApi';
