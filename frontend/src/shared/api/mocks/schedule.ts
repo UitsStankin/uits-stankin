@@ -2,11 +2,13 @@ import { http, HttpResponse } from 'msw';
 
 import type { ScheduleLesson, Teacher, TeacherSchedule } from '@shared/types';
 
+import { rejectImportBody } from './importPdf';
 import { problemResponse } from './problemResponse';
 import { teachersFixture } from './teachers';
 
 const TEACHER_SCHEDULE = '*/api/public/teachers/:id/schedule';
 const SCHEDULE_SUMMARY = '*/api/public/schedule';
+const SCHEDULE_IMPORT = '*/api/teachers/:id/schedule/import';
 
 /**
  * Одна пара со всеми полями контракта. Умолчание — лабораторная
@@ -177,6 +179,14 @@ function teacherName(teacher: Teacher): string {
  * * сводная (`/api/public/schedule`) — по фамилии, без архивных и без
  *   преподавателей с пустым расписанием, с фильтром `?teacherId=`.
  *
+ * * импорт PDF (`POST /api/teachers/{id}/schedule/import`) заменяет пары
+ *   преподавателя целиком — двенадцатью сгенерированными, с новыми `id`,
+ *   как при переимпорте на бэкенде, какой бы файл ни пришёл (почему —
+ *   `importPdf.ts`). Чтение после импорта отдаёт уже новые пары: иначе
+ *   под `VITE_ENABLE_MOCKS` загрузка ничего бы видимо не меняла.
+ *   Замена живёт в замыкании набора, а стандартный набор создаётся раз
+ *   на файл тестов: тест импорта ставит себе свежий через `server.use`.
+ *
  * `lessonsByTeacher` — пары по `id` преподавателя. Тест пустого
  * расписания — `server.use(...scheduleHandlers({}))`, своей недели —
  * `scheduleHandlers({ 1: [makeLesson(...)] })`.
@@ -186,6 +196,11 @@ export function scheduleHandlers(
   teachers: readonly Teacher[] = teachersFixture,
 ) {
   const byName = [...teachers].sort((a, b) => teacherName(a).localeCompare(teacherName(b), 'ru'));
+  const current: Record<number, readonly ScheduleLesson[]> = { ...lessonsByTeacher };
+  let imports = 0;
+
+  const notFound = (instance: string) =>
+    problemResponse(404, { title: 'Not Found', detail: 'Преподаватель не найден', instance });
 
   return [
     // Сводное: по фамилии, без архивных и без тех, у кого пар нет;
@@ -199,7 +214,7 @@ export function scheduleHandlers(
         .map((teacher) => ({
           teacherId: teacher.id,
           teacherName: teacherName(teacher),
-          lessons: lessonsByTeacher[teacher.id] ?? [],
+          lessons: current[teacher.id] ?? [],
         }))
         .filter((schedule) => schedule.lessons.length > 0);
       return HttpResponse.json(body);
@@ -219,8 +234,30 @@ export function scheduleHandlers(
       const body: TeacherSchedule = {
         teacherId: teacher.id,
         teacherName: teacherName(teacher),
-        lessons: lessonsByTeacher[id] ?? [],
+        lessons: current[id] ?? [],
       };
+      return HttpResponse.json(body);
+    }),
+
+    http.post(SCHEDULE_IMPORT, async ({ params, request }) => {
+      const id = Number(params.id);
+      const instance = `/api/teachers/${String(params.id)}/schedule/import`;
+      const teacher = teachers.find((item) => item.id === id);
+      if (!teacher) return notFound(instance);
+
+      const rejected = await rejectImportBody(request, instance);
+      if (rejected) return rejected;
+
+      // Новые `id` на каждый импорт — контракт прямо говорит, что при
+      // переимпорте они меняются, и ключи списка не должны на них опираться.
+      imports += 1;
+      const lessons = generatedLessons(id).map((lesson) => ({
+        ...lesson,
+        id: lesson.id + imports * 100_000,
+      }));
+      current[id] = lessons;
+
+      const body: TeacherSchedule = { teacherId: id, teacherName: teacherName(teacher), lessons };
       return HttpResponse.json(body);
     }),
   ];
