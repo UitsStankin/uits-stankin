@@ -3,7 +3,7 @@ import { http } from 'msw';
 import { Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { makeLesson, problemResponse, scheduleHandlers } from '@shared/api/mocks';
+import { examHandlers, makeLesson, problemResponse, scheduleHandlers } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
 
@@ -77,7 +77,9 @@ const SPRING_LESSONS = [
 
 describe('TeacherDetailPage — расписание пар (F-55)', () => {
   beforeEach(() => {
-    server.use(...scheduleHandlers({ 1: SPRING_LESSONS }));
+    // Экзамены — соседний блок с днями тех же названий («Понедельник, …»);
+    // здесь проверяются пары, и чужие дни сбивали бы поиск по региону.
+    server.use(...scheduleHandlers({ 1: SPRING_LESSONS }), ...examHandlers({}));
   });
 
   it('показывает текущую неделю: пары по дням, сегодняшний день отмечен', async () => {

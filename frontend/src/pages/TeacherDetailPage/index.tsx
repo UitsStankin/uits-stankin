@@ -7,8 +7,10 @@ import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { useTeacherAchievements } from './model/useTeacherAchievements';
 import { useTeacherCard } from './model/useTeacherCard';
+import { useTeacherExams } from './model/useTeacherExams';
 import { useTeacherSchedule } from './model/useTeacherSchedule';
 import { TeacherAchievements } from './ui/TeacherAchievements';
+import { TeacherExams } from './ui/TeacherExams';
 import { TeacherProfile } from './ui/TeacherProfile';
 import { TeacherProfileSkeleton } from './ui/TeacherProfileSkeleton';
 import { TeacherSchedule } from './ui/TeacherSchedule';
@@ -21,11 +23,11 @@ import { TeacherSchedule } from './ui/TeacherSchedule';
  * на страницу попадают и из поиска, и по присланному адресу, и
  * `history.back()` увёл бы такого посетителя с портала совсем.
  *
- * Под профилем — два блока со своими ручками: расписание пар (F-55)
- * и достижения (F-25). Расписание выше: за ним на карточку приходят
- * чаще — студент ищет, где и когда пара.
+ * Под профилем — три блока со своими ручками: расписание пар (F-55),
+ * экзамены (F-56) и достижения (F-25). Расписания выше: за ними
+ * на карточку приходят чаще — студент ищет, где и когда пара или экзамен.
  *
- * Все три запроса уходят параллельно, но блоки рисуются только рядом
+ * Все четыре запроса уходят параллельно, но блоки рисуются только рядом
  * с загруженной карточкой: на несуществующем преподавателе ручка
  * достижений отвечает не `404`, а пустой страницей, и «достижений нет»
  * висело бы под «преподаватель не найден».
@@ -34,6 +36,7 @@ export default function TeacherDetailPage() {
   const { teacher, id, isLoading, isOffline, isNotFound, isError, errorMessage, refetch } =
     useTeacherCard();
   const schedule = useTeacherSchedule(id);
+  const exams = useTeacherExams(id);
   const achievements = useTeacherAchievements(id);
 
   return (
@@ -79,6 +82,11 @@ export default function TeacherDetailPage() {
         <>
           <TeacherProfile teacher={teacher} />
           <TeacherSchedule state={schedule} />
+          <TeacherExams
+            state={exams}
+            graduationPdf={teacher.examScheduleGraduation}
+            nonGraduationPdf={teacher.examScheduleNonGraduation}
+          />
           <TeacherAchievements state={achievements} />
         </>
       )}
