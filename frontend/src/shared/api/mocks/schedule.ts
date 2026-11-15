@@ -132,10 +132,12 @@ function generatedLessons(teacherId: number): ScheduleLesson[] {
       id,
       weekNumber: (((teacherId + k) % 6) + 1) as ScheduleLesson['weekNumber'],
       classTime: (((teacherId * 3 + k * 2) % 6) + 1) as ScheduleLesson['classTime'],
-      group: GROUPS[(teacherId + k) % GROUPS.length],
+      // Множитель у `k` другой, чем у дня недели: при одном и том же
+      // `teacherId + k` у всего понедельника была бы одна группа.
+      group: GROUPS[(teacherId + k * 5) % GROUPS.length],
       name: NAMES[(teacherId * 2 + k) % NAMES.length],
       type: TYPES[k % TYPES.length],
-      subgroup: k % 4 === 1 ? 'А' : null,
+      subgroup: k % 4 === 1 ? (teacherId % 2 === 0 ? 'А' : 'Б') : null,
       cabinet: k % 5 === 4 ? null : String(200 + ((teacherId * 7 + k) % 60)),
       dates: [
         { id: id * 2, startDate: '01.09', endDate: '28.12', alternativelyPeriod },
