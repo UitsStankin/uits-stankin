@@ -11,6 +11,12 @@ interface ConfirmDialogProps {
   /** Запрос в полёте: кнопки заблокированы, окно не закрывается. */
   isPending?: boolean;
   /**
+   * Подпись кнопки, пока запрос в полёте. По умолчанию «Удаляем…» —
+   * окно заводилось под удаление, и почти все вызовы о нём; импорт
+   * расписания (F-58) заменяет, а не удаляет, и говорит своё.
+   */
+  pendingLabel?: string;
+  /**
    * Безопасный путь вместо необратимого — «В архив» рядом с «Удалить».
    * Кнопка спокойного цвета, между отменой и действием: окно, которое
    * только пугает, не помогает выбрать, а штатный путь должен быть
@@ -39,6 +45,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   isPending = false,
+  pendingLabel = 'Удаляем…',
   alternative,
 }: ConfirmDialogProps) {
   return (
@@ -72,7 +79,7 @@ export default function ConfirmDialog({
           disabled={isPending}
           className="rounded bg-danger px-4 py-2 text-base font-bold text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
         >
-          {isPending ? 'Удаляем…' : confirmLabel}
+          {isPending ? pendingLabel : confirmLabel}
         </button>
       </div>
     </Modal>
