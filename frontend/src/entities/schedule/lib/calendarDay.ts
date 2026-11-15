@@ -51,6 +51,18 @@ export function parseDayMonth(value: string, year: number): CalendarDay | null {
   return exists ? calendarDay(year, month, day) : null;
 }
 
+/**
+ * Дата ISO, `ГГГГ-ММ-ДД`, в день. Так приходят даты экзаменов — с годом,
+ * в отличие от `ДД.ММ` пар. Несуществующая дата (`2025-02-30`) даёт `null`
+ * по тому же правилу, что и у `parseDayMonth`.
+ */
+export function parseIsoDate(value: string): CalendarDay | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  return parseDayMonth(`${match[3]}.${match[2]}`, Number(match[1]));
+}
+
 /** Форматтеры создаются раз на модуль: конструктор `Intl` дорогой. */
 const dayMonthFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: 'numeric',
@@ -62,6 +74,11 @@ const dayMonthYearFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
+  timeZone: 'UTC',
+});
+
+const weekDayFormatter = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'long',
   timeZone: 'UTC',
 });
 
@@ -77,6 +94,11 @@ export function formatDayMonth(day: CalendarDay): string {
 /** «16 марта 2026 г.». */
 export function formatDayMonthYear(day: CalendarDay): string {
   return dayMonthYearFormatter.format(toUtcDate(day));
+}
+
+/** «понедельник» — со строчной, как пишет его `Intl`. */
+export function formatWeekDay(day: CalendarDay): string {
+  return weekDayFormatter.format(toUtcDate(day));
 }
 
 /**

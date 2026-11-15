@@ -69,8 +69,12 @@ export type {
 // Расписание
 export type {
   ClassTime,
+  Exam,
+  ExamConsultation,
+  ExamScheduleFiles,
   ScheduleLesson,
   ScheduleLessonDate,
+  TeacherExamSchedule,
   TeacherSchedule,
   WeekDay,
 } from './schedule.types';

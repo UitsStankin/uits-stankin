@@ -63,3 +63,70 @@ export type TeacherSchedule = {
   teacherName: string;
   lessons: readonly ScheduleLesson[];
 };
+
+/**
+ * Консультация перед экзаменом — `ConsultationResponseDto`. Половинчатой
+ * не бывает: либо все три поля, либо вместо объекта `null` (это же
+ * ограничение стоит в базе).
+ */
+export type ExamConsultation = {
+  /**
+   * ISO, `ГГГГ-ММ-ДД`. Год бывает другим, чем у экзамена: консультация
+   * 28.12 к экзамену 09.01.
+   */
+  date: string;
+  /** `ЧЧ:ММ`. */
+  time: string;
+  cabinet: string;
+};
+
+/**
+ * Экзамен, разобранный из PDF рассылки, — `ExamResponseDto`
+ * (docs/API.md, «Импорт расписания экзаменов преподавателя»).
+ *
+ * В отличие от пар, год здесь есть: он написан в самом документе.
+ * Дня недели в ответе нет — он выводится из `date`.
+ */
+export type Exam = {
+  /** Меняется при переимпорте: годится в `key`, хранить дольше ответа нельзя. */
+  id: number;
+  /** ISO, `ГГГГ-ММ-ДД`. */
+  date: string;
+  /** `ЧЧ:ММ` с ведущим нулём. */
+  timeStart: string;
+  timeEnd: string;
+  /** Код группы; у экзамена нескольких групп — через запятую. */
+  group: string;
+  name: string;
+  /** Как в документе: `209`, `306(а)`, `0402`. Скобка — литера, не подгруппа. */
+  cabinet: string;
+  consultation: ExamConsultation | null;
+};
+
+/**
+ * Экзамены одного преподавателя — `ExamScheduleResponseDto`. Одна схема
+ * на импорт, чтение одного преподавателя и сводную выборку, как у пар.
+ * Не загружено — `exams: []`, а не `404`.
+ */
+export type TeacherExamSchedule = {
+  teacherId: number;
+  teacherName: string;
+  /** По дате и времени начала — порядок задаёт бэкенд. */
+  exams: readonly Exam[];
+};
+
+/**
+ * Ссылки на PDF с расписанием экзаменов из карточки ППС —
+ * `ExamScheduleFilesResponseDto` (`GET /api/public/exams/files`).
+ * С разобранными экзаменами не связаны: это перенос того, как экзамены
+ * показывал старый портал. Хотя бы одна ссылка заполнена всегда —
+ * преподаватель с двумя `null` в выдачу не попадает.
+ */
+export type ExamScheduleFiles = {
+  teacherId: number;
+  teacherName: string;
+  /** Выпускные курсы. */
+  examScheduleGraduation: string | null;
+  /** Невыпускные курсы. */
+  examScheduleNonGraduation: string | null;
+};

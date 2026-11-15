@@ -136,6 +136,18 @@ const DEGREES = ['CANDIDATE_TECH', 'DOCTOR_TECH', 'CANDIDATE_PHYS_MATH'] as cons
 
 const RANKS = ['READER', 'PROFESSOR'] as const;
 
+/** Ссылки на PDF экзаменов по номеру карточки в фикстуре. */
+const EXAM_PDFS: Readonly<
+  Record<number, Partial<Pick<Teacher, 'examScheduleGraduation' | 'examScheduleNonGraduation'>>>
+> = {
+  0: { examScheduleGraduation: 'https://stankin.ru/uploads/exams/abramov-graduation.pdf' },
+  1: { examScheduleNonGraduation: 'https://stankin.ru/uploads/exams/andreeva.pdf' },
+  3: {
+    examScheduleGraduation: '/media/exams/belova-graduation.pdf',
+    examScheduleNonGraduation: '/media/exams/belova.pdf',
+  },
+};
+
 /** Дисциплины, которые раздаются карточкам по кругу. */
 const SUBJECTS = [
   { id: 1, name: 'Базы данных', description: 'Реляционная модель, SQL' },
@@ -182,6 +194,10 @@ function buildTeachers(): readonly Teacher[] {
       // Каждый пятый — без дисциплин: их назначает модератор, и новая
       // карточка живёт с пустым списком, пока до неё не дошли руки.
       subjects: index % 5 === 0 ? [] : SUBJECTS.slice(index % 2, (index % 2) + 2),
+      // Ссылки на PDF экзаменов — у троих из первых четырёх: только выпускные,
+      // только невыпускные и обе (страница экзаменов, F-56). Остальные
+      // без ссылок, как большинство карточек на стенде.
+      ...EXAM_PDFS[index],
     }),
   );
 }
