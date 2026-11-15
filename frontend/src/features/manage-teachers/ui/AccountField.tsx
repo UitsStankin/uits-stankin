@@ -44,6 +44,15 @@ interface AccountFieldProps {
  * ФИО в справочнике может быть не заполнено вовсе — тогда подпись
  * собирается из `id`: пустой пункт списка выбрать можно, но понять,
  * что выбрал, нельзя.
+ *
+ * **Привязанной учётки может не быть в справочнике.** Он отдаёт только
+ * действующие учётки с ролью преподавателя, а связь у карточки остаётся
+ * и после блокировки, и после снятия роли. С T-120 это обычное дело:
+ * архив блокирует учётку, и у каждой архивной карточки с учёткой её
+ * в справочнике нет. Без своего пункта `<select>` не находит значения
+ * и показывает «Без учётной записи» — подпись врёт, хотя связь в форме
+ * цела и уйдёт обратно в `PUT` (бэкенд блокировку при связи не проверяет).
+ * Пункт подписан номером: ФИО взять неоткуда, справочник его не отдал.
  */
 export function AccountField({
   accounts,
@@ -54,6 +63,10 @@ export function AccountField({
   hasFailed,
 }: AccountFieldProps) {
   const id = 'teacher-account';
+  // Пока справочник едет или не доехал, «нет в справочнике» сказать
+  // нельзя: его ещё нет.
+  const isOutsideDirectory =
+    value !== null && !isLoading && !hasFailed && !accounts.some((account) => account.id === value);
 
   return (
     <FieldShell id={id} label="Учётная запись" error={error ?? undefined}>
@@ -75,12 +88,22 @@ export function AccountField({
             под полем может занять отказ сохранения, и «почему не нажимается»
             осталось бы без ответа. */}
         <option value="">{emptyLabel(isLoading, hasFailed)}</option>
+        {isOutsideDirectory && (
+          <option value={value}>{`Учётная запись № ${value} — нет в справочнике`}</option>
+        )}
         {accounts.map((account) => (
           <option key={account.id} value={account.id}>
             {accountLabel(account)}
           </option>
         ))}
       </select>
+
+      {isOutsideDirectory && (
+        <p className="text-sm text-text-muted">
+          Учётная запись заблокирована или у неё снята роль преподавателя. Связь сохранится, если
+          не выбрать другую.
+        </p>
+      )}
 
       <p className="text-sm text-text-muted">
         По этой связи преподаватель открывает свою карточку в личном кабинете. Одна учётная запись —

@@ -128,6 +128,35 @@ describe('TeacherFormPage, правка', () => {
     expect(screen.getByLabelText('Учётная запись')).toHaveValue('102');
   });
 
+  /**
+   * Заблокированной учётки (с T-120 — у каждой архивной карточки) или
+   * учётки без роли в справочнике нет. Без своего пункта `<select>`
+   * показывал «Без учётной записи», хотя связь цела. Найдено на живом
+   * стенде при проверке F-54.
+   */
+  it('показывает привязанную учётку, которой нет в справочнике', async () => {
+    server.use(...teacherHandlers([{ ...card(), userId: 105 }]));
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByRole('option', { name: 'Андреева Ольга' });
+
+    expect(screen.getByLabelText('Учётная запись')).toHaveValue('105');
+    expect(
+      screen.getByRole('option', { name: 'Учётная запись № 105 — нет в справочнике' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/заблокирована или у неё снята роль/)).toBeInTheDocument();
+  });
+
+  it('не выдумывает пункт, когда учётка карточки в справочнике есть', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByRole('option', { name: 'Андреева Ольга' });
+
+    expect(screen.queryByRole('option', { name: /нет в справочнике/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/заблокирована или у неё снята роль/)).not.toBeInTheDocument();
+  });
+
   it('отправляет правку и уходит к списку', async () => {
     renderForm('/admin/teachers/3');
 
