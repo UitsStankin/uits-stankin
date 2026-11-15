@@ -27,6 +27,7 @@ export {
   teacherListItem,
   teachersFixture,
 } from './teachers';
+export { makeLesson, scheduleHandlers } from './schedule';
 export { makeSubject, subjectHandlers, subjectsFixture } from './subjects';
 export {
   adminUserHandlers,
