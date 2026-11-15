@@ -29,7 +29,7 @@ export async function rejectImportBody(request: Request, instance: string) {
 
   return problemResponse(400, {
     title: 'Bad Request',
-    detail: 'Файл не выбран',
+    detail: 'Файл расписания не выбран.',
     instance,
   });
 }
