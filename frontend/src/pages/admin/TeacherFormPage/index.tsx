@@ -1,6 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router';
 
+import { ScheduleImport } from '@features/import-schedule';
 import {
   AccountField,
   SubjectsField,
@@ -97,6 +98,11 @@ export default function TeacherFormPage() {
           isPending={isArchiving}
         />
       )}
+
+      {/* Импорт — рядом с архивом, над формой: срабатывает сразу, мимо
+          «Сохранить». У новой карточки его нет — расписание вешается на `id`.
+          `key` — чтобы переход к другой карточке не унёс итог чужого импорта. */}
+      {card && <ScheduleImport key={card.id} teacherId={card.id} />}
 
       {(isNew || card) && <TeacherEditor card={card} onDone={goToList} />}
 
