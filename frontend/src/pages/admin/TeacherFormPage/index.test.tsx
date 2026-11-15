@@ -604,7 +604,9 @@ describe('TeacherFormPage, картинки в rich-text полях', () => {
     // Ждём саму форму: редактор приезжает отдельным куском.
     await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
 
-    const выбор = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    // Только внутри формы: над ней стоит импорт расписаний (F-58)
+    // со своими двумя выборами файла.
+    const выбор = document.querySelectorAll<HTMLInputElement>('form input[type="file"]');
     // Три: фото карточки и по одному у каждого rich-text поля.
     expect(выбор).toHaveLength(3);
 
@@ -760,5 +762,33 @@ describe('TeacherFormPage, архив', () => {
 
     expect(await screen.findByRole('button', { name: 'Создать' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'В архив' })).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * Сам импорт проверяется в `features/import-schedule`; здесь — только
+ * что блок стоит на форме правки и что его нет у новой карточки:
+ * расписание вешается на `id`, которого у неё ещё нет.
+ */
+describe('TeacherFormPage, расписание из PDF', () => {
+  it('показывает импорт расписаний у существующей карточки', async () => {
+    renderForm('/admin/teachers/3');
+
+    expect(
+      await screen.findByRole('region', { name: 'Расписание из PDF' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Расписание пар: загрузить PDF')).toBeInTheDocument();
+    expect(screen.getByLabelText('Расписание экзаменов: загрузить PDF')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Посмотреть на сайте' })).toHaveAttribute(
+      'href',
+      '/about/employee/teachers/3',
+    );
+  });
+
+  it('не показывает импорт у новой карточки', async () => {
+    renderForm('/admin/teachers/new');
+
+    expect(await screen.findByRole('button', { name: 'Создать' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Расписание из PDF' })).not.toBeInTheDocument();
   });
 });

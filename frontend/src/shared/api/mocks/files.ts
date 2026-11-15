@@ -112,7 +112,7 @@ function stringOrNull(value: FormDataEntryValue | null): string | null {
  * строки и кончается перед следующим граничником. Годится для простых
  * текстовых полей, а других запасной путь и не спрашивает.
  */
-function multipartField(body: string, name: string): string | null {
+export function multipartField(body: string, name: string): string | null {
   const at = body.indexOf(`name="${name}"`);
   if (at === -1) return null;
 

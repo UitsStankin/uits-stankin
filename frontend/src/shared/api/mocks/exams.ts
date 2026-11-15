@@ -2,12 +2,14 @@ import { http, HttpResponse } from 'msw';
 
 import type { Exam, ExamScheduleFiles, Teacher, TeacherExamSchedule } from '@shared/types';
 
+import { rejectImportBody } from './importPdf';
 import { problemResponse } from './problemResponse';
 import { teachersFixture } from './teachers';
 
 const TEACHER_EXAMS = '*/api/public/teachers/:id/exams';
 const EXAMS = '*/api/public/exams';
 const EXAM_FILES = '*/api/public/exams/files';
+const EXAMS_IMPORT = '*/api/teachers/:id/exams/import';
 
 /** Экзамен со всеми полями контракта и консультацией накануне. */
 export function makeExam(overrides: Partial<Exam> = {}): Exam {
@@ -97,6 +99,13 @@ function hasGroup(exam: Exam, group: string): boolean {
  *   они расходятся, показывал бы на сводной странице одно, а на карточке
  *   преподавателя — другое.
  *
+ * * импорт PDF (`POST /api/teachers/{id}/exams/import`) заменяет экзамены
+ *   преподавателя целиком — тремя выдуманными, с новыми `id`, какой бы
+ *   файл ни пришёл (почему — `importPdf.ts`). Чтение после импорта
+ *   отдаёт уже их.
+ *   Замена живёт в замыкании набора, а стандартный набор создаётся раз
+ *   на файл тестов: тест импорта ставит себе свежий через `server.use`.
+ *
  * Тест пустой сессии — `server.use(...examHandlers({}))`.
  */
 export function examHandlers(
@@ -104,6 +113,8 @@ export function examHandlers(
   teachers: readonly Teacher[] = teachersFixture,
 ) {
   const byName = [...teachers].sort((a, b) => teacherName(a).localeCompare(teacherName(b), 'ru'));
+  const current: Record<number, readonly Exam[]> = { ...examsByTeacher };
+  let imports = 0;
 
   return [
     http.get(TEACHER_EXAMS, ({ params }) => {
@@ -120,7 +131,7 @@ export function examHandlers(
       const body: TeacherExamSchedule = {
         teacherId: teacher.id,
         teacherName: teacherName(teacher),
-        exams: examsByTeacher[id] ?? [],
+        exams: current[id] ?? [],
       };
       return HttpResponse.json(body);
     }),
@@ -152,11 +163,45 @@ export function examHandlers(
         .map((teacher) => ({
           teacherId: teacher.id,
           teacherName: teacherName(teacher),
-          exams: (examsByTeacher[teacher.id] ?? []).filter(
+          exams: (current[teacher.id] ?? []).filter(
             (exam) => group === '' || hasGroup(exam, group),
           ),
         }))
         .filter((schedule) => schedule.exams.length > 0);
+      return HttpResponse.json(body);
+    }),
+
+    http.post(EXAMS_IMPORT, async ({ params, request }) => {
+      const id = Number(params.id);
+      const instance = `/api/teachers/${String(params.id)}/exams/import`;
+      const teacher = teachers.find((item) => item.id === id);
+      if (!teacher) {
+        return problemResponse(404, {
+          title: 'Not Found',
+          detail: 'Преподаватель не найден',
+          instance,
+        });
+      }
+
+      const rejected = await rejectImportBody(request, instance);
+      if (rejected) return rejected;
+
+      imports += 1;
+      const base = id * 1000 + imports * 100_000;
+      const exams = [
+        makeExam({ id: base + 1, date: '2027-01-12' }),
+        makeExam({ id: base + 2, date: '2027-01-16', group: 'ИДБ-24-01', name: 'Базы данных' }),
+        makeExam({
+          id: base + 3,
+          date: '2027-01-21',
+          group: 'ИДБ-24-03',
+          name: 'Операционные системы',
+          consultation: null,
+        }),
+      ];
+      current[id] = exams;
+
+      const body: TeacherExamSchedule = { teacherId: id, teacherName: teacherName(teacher), exams };
       return HttpResponse.json(body);
     }),
   ];
