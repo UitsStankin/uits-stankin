@@ -1,15 +1,6 @@
-import { type ScheduleDay, classTimeRange, formatDayMonth } from '@entities/schedule';
+import { type ScheduleDay, classTimeRange, formatScheduleDay } from '@entities/schedule';
 import { cn } from '@shared/lib';
-import type { ScheduleLesson, WeekDay } from '@shared/types';
-
-const WEEK_DAY_NAMES: Record<WeekDay, string> = {
-  1: 'Понедельник',
-  2: 'Вторник',
-  3: 'Среда',
-  4: 'Четверг',
-  5: 'Пятница',
-  6: 'Суббота',
-};
+import type { ScheduleLesson } from '@shared/types';
 
 interface ScheduleDayCardProps {
   day: ScheduleDay;
@@ -24,7 +15,7 @@ interface ScheduleDayCardProps {
  * пары четверга оказываются под заголовком колонки, где ждут среду.
  */
 export function ScheduleDayCard({ day, isToday }: ScheduleDayCardProps) {
-  const title = `${WEEK_DAY_NAMES[day.weekDay]}, ${formatDayMonth(day.day)}`;
+  const title = formatScheduleDay(day);
 
   return (
     <section

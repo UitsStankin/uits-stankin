@@ -20,6 +20,7 @@ import {
   NEWS_ROUTE,
   PERSONAL_ROUTE,
   POSTGRADUATE_ROUTE,
+  SCHEDULE_SUMMARY_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
 import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
@@ -43,6 +44,7 @@ import AchievementsPage from '@pages/AchievementsPage';
 import AchievementDetailPage from '@pages/AchievementDetailPage';
 import EditablePagePage from '@pages/EditablePagePage';
 import ExamSchedulePage from '@pages/ExamSchedulePage';
+import ScheduleSummaryPage from '@pages/ScheduleSummaryPage';
 import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
@@ -357,6 +359,13 @@ export const routes: RouteObject[] = [
       {
         path: EXAM_SCHEDULE_ROUTE,
         element: <ExamSchedulePage />,
+        errorElement: <RouteError />,
+      },
+      // Сводное расписание пар. Публичное: ручка `GET /api/public/schedule`
+      // открыта без входа (F-57).
+      {
+        path: SCHEDULE_SUMMARY_ROUTE,
+        element: <ScheduleSummaryPage />,
         errorElement: <RouteError />,
       },
       // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`

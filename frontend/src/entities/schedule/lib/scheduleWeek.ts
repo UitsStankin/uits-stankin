@@ -1,6 +1,6 @@
 import type { ScheduleLesson, ScheduleLessonDate, WeekDay } from '@shared/types';
 
-import { type CalendarDay, parseDayMonth, weekStart } from './calendarDay';
+import { type CalendarDay, formatDayMonth, parseDayMonth, weekStart } from './calendarDay';
 
 /**
  * Разворачивание расписания в конкретную неделю.
@@ -27,12 +27,15 @@ import { type CalendarDay, parseDayMonth, weekStart } from './calendarDay';
  * Старый портал ставил по дате и в таком случае рисовал сдвинутую сетку.
  */
 
-/** Один день недели в развёрнутом расписании. */
-export type ScheduleDay = {
+/**
+ * Один день недели в развёрнутом расписании. Тип пары — параметр:
+ * сводное расписание разворачивает пары с подписанным преподавателем.
+ */
+export type ScheduleDay<L extends ScheduleLesson = ScheduleLesson> = {
   day: CalendarDay;
   weekDay: WeekDay;
-  /** В порядке ответа — по номеру пары, затем по `id`. */
-  lessons: readonly ScheduleLesson[];
+  /** В порядке входного списка. */
+  lessons: readonly L[];
 };
 
 type Period = {
@@ -84,11 +87,11 @@ function occursInWeek(period: Period, monday: CalendarDay): boolean {
  * `monday` — понедельник недели; день из её середины тоже годится,
  * он приводится к понедельнику.
  */
-export function lessonsOfWeek(
-  lessons: readonly ScheduleLesson[],
+export function lessonsOfWeek<L extends ScheduleLesson>(
+  lessons: readonly L[],
   monday: CalendarDay,
   year: number,
-): ScheduleDay[] {
+): ScheduleDay<L>[] {
   const week = weekStart(monday);
 
   return WEEK_DAYS.map((weekDay) => ({
@@ -132,4 +135,18 @@ export function nearestLessonWeek(
 ): CalendarDay | null {
   const monday = weekStart(from);
   return weeks.find((week) => week >= monday) ?? weeks.at(-1) ?? null;
+}
+
+const WEEK_DAY_NAMES: Record<WeekDay, string> = {
+  1: 'Понедельник',
+  2: 'Вторник',
+  3: 'Среда',
+  4: 'Четверг',
+  5: 'Пятница',
+  6: 'Суббота',
+};
+
+/** «Понедельник, 16 марта» — заголовок дня на карточке и в сводной. */
+export function formatScheduleDay(day: ScheduleDay<ScheduleLesson>): string {
+  return `${WEEK_DAY_NAMES[day.weekDay]}, ${formatDayMonth(day.day)}`;
 }
