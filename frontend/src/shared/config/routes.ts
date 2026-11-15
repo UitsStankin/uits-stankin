@@ -130,6 +130,16 @@ export function achievementRoute(id: number): string {
 export const POSTGRADUATE_ROUTE = '/scientific-activities/postgraduate';
 
 /**
+ * Расписание экзаменов (F-56). Адрес взят из меню
+ * (`shared/config/navigation.ts`, пункт `educational-activities/schedule/exams`)
+ * и повторяет старый портал.
+ *
+ * Знают двое: список роутов и сама страница — ссылка «все группы»
+ * из пустой выдачи отбора.
+ */
+export const EXAM_SCHEDULE_ROUTE = '/educational-activities/schedule/schedule-exams';
+
+/**
  * Профессорско-преподавательский состав. Адрес взят из меню
  * (`shared/config/navigation.ts`, пункт `about/employee/teachers`)
  * и повторяет старый портал — как и остальные перенесённые разделы,
