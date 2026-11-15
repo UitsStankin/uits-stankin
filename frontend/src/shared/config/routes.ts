@@ -140,6 +140,13 @@ export const POSTGRADUATE_ROUTE = '/scientific-activities/postgraduate';
 export const EXAM_SCHEDULE_ROUTE = '/educational-activities/schedule/schedule-exams';
 
 /**
+ * Сводное расписание преподавателей (F-57). Адрес взят из меню
+ * (`shared/config/navigation.ts`, пункт `educational-activities/schedule/summary`)
+ * и повторяет старый портал. Знает о нём только список роутов.
+ */
+export const SCHEDULE_SUMMARY_ROUTE = '/educational-activities/schedule/schedule-summary';
+
+/**
  * Профессорско-преподавательский состав. Адрес взят из меню
  * (`shared/config/navigation.ts`, пункт `about/employee/teachers`)
  * и повторяет старый портал — как и остальные перенесённые разделы,

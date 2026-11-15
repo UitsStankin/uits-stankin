@@ -1,6 +1,6 @@
 import type { ScheduleLesson, ScheduleLessonDate, WeekDay } from '@shared/types';
 
-import { type CalendarDay, parseDayMonth, weekStart } from './calendarDay';
+import { type CalendarDay, formatDayMonth, parseDayMonth, weekStart } from './calendarDay';
 
 /**
  * Разворачивание расписания в конкретную неделю.
@@ -135,4 +135,18 @@ export function nearestLessonWeek(
 ): CalendarDay | null {
   const monday = weekStart(from);
   return weeks.find((week) => week >= monday) ?? weeks.at(-1) ?? null;
+}
+
+const WEEK_DAY_NAMES: Record<WeekDay, string> = {
+  1: 'Понедельник',
+  2: 'Вторник',
+  3: 'Среда',
+  4: 'Четверг',
+  5: 'Пятница',
+  6: 'Суббота',
+};
+
+/** «Понедельник, 16 марта» — заголовок дня на карточке и в сводной. */
+export function formatScheduleDay(day: ScheduleDay<ScheduleLesson>): string {
+  return `${WEEK_DAY_NAMES[day.weekDay]}, ${formatDayMonth(day.day)}`;
 }

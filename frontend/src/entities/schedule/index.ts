@@ -39,6 +39,7 @@ export {
 } from './lib/summary';
 export {
   type ScheduleDay,
+  formatScheduleDay,
   lessonsOfWeek,
   lessonWeeks,
   nearestLessonWeek,
