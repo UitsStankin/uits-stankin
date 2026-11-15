@@ -34,4 +34,10 @@ export {
   lessonWeeks,
   nearestLessonWeek,
 } from './lib/scheduleWeek';
+export {
+  type NearestWeekHint,
+  type ScheduleWeekState,
+  useScheduleWeek,
+} from './model/useScheduleWeek';
 export { ExamDayCard } from './ui/ExamDayCard';
+export { NearestWeekNotice, WeekNavigation } from './ui/WeekNavigation';

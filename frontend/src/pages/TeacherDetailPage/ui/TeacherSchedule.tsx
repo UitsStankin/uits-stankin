@@ -1,5 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-
+import { NearestWeekNotice, WeekNavigation } from '@entities/schedule';
 import StatusBlock from '@shared/ui/StatusBlock';
 import { RetryButton } from '@shared/ui/StatusAction';
 
@@ -9,9 +8,6 @@ import { ScheduleDayCard } from './ScheduleDayCard';
 interface TeacherScheduleProps {
   state: TeacherScheduleState;
 }
-
-const navButtonClass =
-  'inline-flex items-center gap-1 rounded border border-gray-300 px-3 py-1.5 text-sm text-text-default transition-colors hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50';
 
 /**
  * Блок расписания на карточке преподавателя. Чистый: получает разобранное
@@ -31,22 +27,8 @@ const navButtonClass =
  * на широком экране — сеткой по три.
  */
 export function TeacherSchedule({ state }: TeacherScheduleProps) {
-  const {
-    hasSchedule,
-    days,
-    today,
-    weekLabel,
-    isCurrentWeek,
-    nearestWeek,
-    showPreviousWeek,
-    showNextWeek,
-    showCurrentWeek,
-    showNearestWeek,
-    isOffline,
-    isError,
-    errorMessage,
-    refetch,
-  } = state;
+  const { week, isOffline, isError, errorMessage, refetch } = state;
+  const { hasLessons: hasSchedule, days, today, nearestWeek } = week;
 
   if (!hasSchedule && !isOffline && !isError) return null;
 
@@ -73,50 +55,15 @@ export function TeacherSchedule({ state }: TeacherScheduleProps) {
 
       {hasSchedule && (
         <>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Подпись недели объявляется при листании: без этого читалка
-                экрана после нажатия «Следующая неделя» молчит, и понять,
-                что сетка сменилась, можно только перечитав её. */}
-            <p aria-live="polite" className="text-base font-bold text-text-heading">
-              {weekLabel}
-            </p>
+          <WeekNavigation
+            weekLabel={week.weekLabel}
+            isCurrentWeek={week.isCurrentWeek}
+            onPrevious={week.showPreviousWeek}
+            onNext={week.showNextWeek}
+            onCurrent={week.showCurrentWeek}
+          />
 
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={showPreviousWeek} className={navButtonClass}>
-                <ChevronLeft size={16} aria-hidden />
-                Предыдущая
-              </button>
-              <button
-                type="button"
-                onClick={showCurrentWeek}
-                disabled={isCurrentWeek}
-                className={navButtonClass}
-              >
-                Текущая неделя
-              </button>
-              <button type="button" onClick={showNextWeek} className={navButtonClass}>
-                Следующая
-                <ChevronRight size={16} aria-hidden />
-              </button>
-            </div>
-          </div>
-
-          {nearestWeek && (
-            <div className="flex flex-col gap-2 rounded bg-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-base text-text-default">
-                На этой неделе пар нет.{' '}
-                {nearestWeek.isAhead ? 'Ближайшие — ' : 'Последние были — '}
-                {nearestWeek.label}
-              </p>
-              <button
-                type="button"
-                onClick={showNearestWeek}
-                className="w-fit shrink-0 text-base font-bold text-primary hover:underline"
-              >
-                Показать эту неделю
-              </button>
-            </div>
-          )}
+          {nearestWeek && <NearestWeekNotice hint={nearestWeek} onShow={week.showNearestWeek} />}
 
           {!nearestWeek && (
             <div className="grid grid-cols-1 gap-gutter-sm sm:grid-cols-2 lg:grid-cols-3">
