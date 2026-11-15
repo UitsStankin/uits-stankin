@@ -128,6 +128,35 @@ describe('TeacherFormPage, правка', () => {
     expect(screen.getByLabelText('Учётная запись')).toHaveValue('102');
   });
 
+  /**
+   * Заблокированной учётки (с T-120 — у каждой архивной карточки) или
+   * учётки без роли в справочнике нет. Без своего пункта `<select>`
+   * показывал «Без учётной записи», хотя связь цела. Найдено на живом
+   * стенде при проверке F-54.
+   */
+  it('показывает привязанную учётку, которой нет в справочнике', async () => {
+    server.use(...teacherHandlers([{ ...card(), userId: 105 }]));
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByRole('option', { name: 'Андреева Ольга' });
+
+    expect(screen.getByLabelText('Учётная запись')).toHaveValue('105');
+    expect(
+      screen.getByRole('option', { name: 'Учётная запись № 105 — нет в справочнике' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/заблокирована или у неё снята роль/)).toBeInTheDocument();
+  });
+
+  it('не выдумывает пункт, когда учётка карточки в справочнике есть', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByRole('option', { name: 'Андреева Ольга' });
+
+    expect(screen.queryByRole('option', { name: /нет в справочнике/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/заблокирована или у неё снята роль/)).not.toBeInTheDocument();
+  });
+
   it('отправляет правку и уходит к списку', async () => {
     renderForm('/admin/teachers/3');
 
@@ -599,11 +628,18 @@ describe('TeacherFormPage, картинки в rich-text полях', () => {
 });
 
 describe('TeacherFormPage, архив', () => {
+  /** Подтверждает архив в окне, которое открывает кнопка над формой. */
+  function confirmArchive() {
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'В архив' }));
+  }
+
   it('отправляет карточку в архив с формы', async () => {
     renderForm('/admin/teachers/3');
 
     expect(await screen.findByText(/Карточка действующая/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
 
     expect(await screen.findByText('Карточка «Андреева Ольга» в архиве')).toBeInTheDocument();
     expect(await screen.findByText(/Карточка в архиве: в списках на сайте её нет/)).toBeInTheDocument();
@@ -621,6 +657,7 @@ describe('TeacherFormPage, архив', () => {
     const position = await screen.findByDisplayValue('профессор кафедры');
     fireEvent.change(position, { target: { value: 'заведующий кафедрой' } });
     fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
 
     expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('заведующий кафедрой')).toBeInTheDocument();
@@ -642,6 +679,80 @@ describe('TeacherFormPage, архив', () => {
       await screen.findByText('Карточка «Андреева Ольга» возвращена из архива'),
     ).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'В архив' })).toBeInTheDocument();
+  });
+
+  /**
+   * У формы связь с учёткой известна (`userId` в полной карточке),
+   * и окно говорит определённо, а не «если привязана».
+   */
+  it('предупреждает о блокировке привязанной учётки', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(dialog.getByText(/Привязанная учётная запись будет заблокирована/)).toBeInTheDocument();
+    expect(dialog.getByText(/Возврат из архива доступ не вернёт/)).toBeInTheDocument();
+  });
+
+  it('не пугает блокировкой, если учётка не привязана', async () => {
+    server.use(...teacherHandlers([{ ...card(), userId: null }]));
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(dialog.getByText(/Учётная запись к карточке не привязана/)).toBeInTheDocument();
+    expect(dialog.queryByText(/заблокирована/)).not.toBeInTheDocument();
+  });
+
+  it('ничего не шлёт, если архив отменили', async () => {
+    let archived = false;
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/archive')) archived = true;
+    });
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' })).getByRole(
+        'button',
+        { name: 'Отмена' },
+      ),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(/Карточка действующая/)).toBeInTheDocument();
+    expect(archived).toBe(false);
+  });
+
+  /**
+   * Архив блокирует учётку, и справочник формы её больше не предлагает.
+   * Живёт справочник пять минут — без сброса после архива форма звала бы
+   * привязать заблокированного. Сторожим повторный запрос справочника.
+   */
+  it('перечитывает справочник учёток после архива', async () => {
+    let directoryRequests = 0;
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'GET' && request.url.includes('/api/users/directory')) {
+        directoryRequests += 1;
+      }
+    });
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    await waitFor(() => expect(directoryRequests).toBe(1));
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
+
+    expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
+    await waitFor(() => expect(directoryRequests).toBe(2));
   });
 
   it('не показывает архив у новой карточки', async () => {

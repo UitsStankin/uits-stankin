@@ -74,6 +74,9 @@ afterEach(() => {
   cleanup();
   // Точечные хендлеры теста (`server.use`) не должны доживать до соседнего.
   server.resetHandlers();
+  // И слушатели `server.events` — тесты ими считают запросы, а без
+  // снятия каждый следующий тест тащит за собой всех прежних.
+  server.events.removeAllListeners();
 });
 
 afterAll(() => {

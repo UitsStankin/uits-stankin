@@ -126,6 +126,7 @@ export function useTeachersAdmin() {
   );
 
   const [deleting, setDeleting] = useState<TeacherListItem | null>(null);
+  const [archiving, setArchiving] = useState<TeacherListItem | null>(null);
   const { remove, isPending: isDeleting } = useDeleteTeacher(() => setDeleting(null));
   const { archive, unarchive } = useArchiveTeacher();
 
@@ -192,8 +193,10 @@ export function useTeachersAdmin() {
     },
     /**
      * Архив из окна удаления — штатный путь для ушедшего преподавателя
-     * (docs/API.md, «Архив»). Окно закрывается сразу: у архива свой тост,
-     * а держать открытым окно с красной кнопкой незачем.
+     * (docs/API.md, «Архив»). Второго окна не будет: о блокировке учётки
+     * окно удаления говорит само, и нажатие «В архив» в нём — уже ответ.
+     * Окно закрывается сразу: у архива свой тост, а держать открытым окно
+     * с красной кнопкой незачем.
      */
     archiveInsteadOfDelete: () => {
       if (!deleting) return;
@@ -203,7 +206,21 @@ export function useTeachersAdmin() {
     },
     isDeleting,
 
-    archive,
+    /**
+     * Карточка, которую собрались отправить в архив. С T-120 архив
+     * блокирует привязанную учётку, и возврат её не разблокирует, —
+     * поэтому перед ним окно, а перед возвратом нет.
+     */
+    archiving,
+    askArchive: (teacher: TeacherListItem) => setArchiving(teacher),
+    cancelArchive: () => setArchiving(null),
+    /** Окно закрывается сразу, как у архива из окна удаления: итог скажет тост. */
+    confirmArchive: () => {
+      if (!archiving) return;
+
+      archive(archiving);
+      setArchiving(null);
+    },
     unarchive,
   };
 }
