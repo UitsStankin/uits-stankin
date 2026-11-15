@@ -6,6 +6,7 @@ import { problemResponse } from './problemResponse';
 import { teachersFixture } from './teachers';
 
 const TEACHER_SCHEDULE = '*/api/public/teachers/:id/schedule';
+const SCHEDULE_SUMMARY = '*/api/public/schedule';
 
 /**
  * Одна пара со всеми полями контракта. Умолчание — лабораторная
@@ -101,6 +102,65 @@ const ABRAMOV_LESSONS: readonly ScheduleLesson[] = [
   }),
 ];
 
+const GROUPS = ['ИДБ-23-01', 'ИДБ-23-02', 'ИДБ-24-01', 'ИДБ-24-03', 'ИДБ-25-11', 'ИДМ-25-01'];
+const NAMES = [
+  'Базы данных',
+  'Операционные системы',
+  'Проектирование информационных систем',
+  'Компьютерные сети',
+  'Программирование на Java',
+  'Теория вероятностей и математическая статистика',
+  'Методы оптимизации',
+];
+const TYPES = ['Лекция', 'Семинар', 'Лабораторная'];
+
+/**
+ * Пары остальных преподавателей фикстуры — по двенадцать у каждого,
+ * детерминированно из номера. Получается около двухсот пятидесяти пар
+ * на неделю: сводное расписание (F-57) под `VITE_ENABLE_MOCKS` видно
+ * на объёме, близком к кафедре, а не на пяти парах одного Абрамова —
+ * на пяти ни вёрстку плотного дня, ни производительность не проверить.
+ *
+ * Периоды — оба семестра, как у Абрамова. Каждая третья пара — через
+ * неделю, каждая пятая — без аудитории, каждая четвёртая — подгруппе.
+ */
+function generatedLessons(teacherId: number): ScheduleLesson[] {
+  return Array.from({ length: 12 }, (_, k) => {
+    const id = teacherId * 100 + k;
+    const alternativelyPeriod = k % 3 === 0;
+    return makeLesson({
+      id,
+      weekNumber: (((teacherId + k) % 6) + 1) as ScheduleLesson['weekNumber'],
+      classTime: (((teacherId * 3 + k * 2) % 6) + 1) as ScheduleLesson['classTime'],
+      group: GROUPS[(teacherId + k) % GROUPS.length],
+      name: NAMES[(teacherId * 2 + k) % NAMES.length],
+      type: TYPES[k % TYPES.length],
+      subgroup: k % 4 === 1 ? 'А' : null,
+      cabinet: k % 5 === 4 ? null : String(200 + ((teacherId * 7 + k) % 60)),
+      dates: [
+        { id: id * 2, startDate: '01.09', endDate: '28.12', alternativelyPeriod },
+        { id: id * 2 + 1, startDate: '09.02', endDate: '31.05', alternativelyPeriod },
+      ],
+    });
+  });
+}
+
+/**
+ * Пары по преподавателям для браузера и тестов, которым неважно чьи:
+ * Абрамов с крайними случаями и сгенерированные пары у остальных, кроме
+ * последних трёх — у них расписание не загружено, и сводная обязана
+ * их не показывать.
+ */
+const LESSONS_BY_TEACHER: Readonly<Record<number, readonly ScheduleLesson[]>> =
+  Object.fromEntries(
+    teachersFixture
+      .slice(0, -3)
+      .map((teacher) => [
+        teacher.id,
+        teacher.id === 1 ? ABRAMOV_LESSONS : generatedLessons(teacher.id),
+      ]),
+  );
+
 function teacherName(teacher: Teacher): string {
   return [teacher.lastName, teacher.firstName, teacher.patronymic].filter(Boolean).join(' ');
 }
@@ -112,15 +172,37 @@ function teacherName(teacher: Teacher): string {
  * * расписание не загружено — `200` с пустым `lessons`, не `404`;
  * * `teacherName` собирается из карточки, как на бэкенде.
  *
+ * * сводная (`/api/public/schedule`) — по фамилии, без архивных и без
+ *   преподавателей с пустым расписанием, с фильтром `?teacherId=`.
+ *
  * `lessonsByTeacher` — пары по `id` преподавателя. Тест пустого
  * расписания — `server.use(...scheduleHandlers({}))`, своей недели —
  * `scheduleHandlers({ 1: [makeLesson(...)] })`.
  */
 export function scheduleHandlers(
-  lessonsByTeacher: Readonly<Record<number, readonly ScheduleLesson[]>> = { 1: ABRAMOV_LESSONS },
+  lessonsByTeacher: Readonly<Record<number, readonly ScheduleLesson[]>> = LESSONS_BY_TEACHER,
   teachers: readonly Teacher[] = teachersFixture,
 ) {
+  const byName = [...teachers].sort((a, b) => teacherName(a).localeCompare(teacherName(b), 'ru'));
+
   return [
+    // Сводное: по фамилии, без архивных и без тех, у кого пар нет;
+    // неизвестный `teacherId` просто не даёт строк — всё по контракту.
+    http.get(SCHEDULE_SUMMARY, ({ request }) => {
+      const teacherIds = new URL(request.url).searchParams.getAll('teacherId').map(Number);
+
+      const body: TeacherSchedule[] = byName
+        .filter((teacher) => !teacher.archived)
+        .filter((teacher) => teacherIds.length === 0 || teacherIds.includes(teacher.id))
+        .map((teacher) => ({
+          teacherId: teacher.id,
+          teacherName: teacherName(teacher),
+          lessons: lessonsByTeacher[teacher.id] ?? [],
+        }))
+        .filter((schedule) => schedule.lessons.length > 0);
+      return HttpResponse.json(body);
+    }),
+
     http.get(TEACHER_SCHEDULE, ({ params }) => {
       const id = Number(params.id);
       const teacher = teachers.find((item) => item.id === id);

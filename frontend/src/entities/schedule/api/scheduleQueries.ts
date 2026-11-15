@@ -1,7 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 
 import { fetchExamFiles, fetchExamsSummary, fetchTeacherExams } from './examApi';
-import { fetchTeacherSchedule } from './scheduleApi';
+import { fetchScheduleSummary, fetchTeacherSchedule } from './scheduleApi';
 
 /**
  * Ключи кэша расписаний. Пары и экзамены — под общим `all`: импорт PDF
@@ -11,6 +11,7 @@ export const scheduleKeys = {
   all: ['schedule'] as const,
   teachers: () => [...scheduleKeys.all, 'teacher'] as const,
   teacher: (teacherId: number) => [...scheduleKeys.teachers(), teacherId] as const,
+  summary: () => [...scheduleKeys.all, 'summary'] as const,
   exams: () => [...scheduleKeys.all, 'exams'] as const,
   teacherExams: (teacherId: number) => [...scheduleKeys.exams(), 'teacher', teacherId] as const,
   examsSummary: (group: string) => [...scheduleKeys.exams(), 'summary', { group }] as const,
@@ -27,6 +28,17 @@ export const teacherScheduleQuery = (teacherId: number) =>
   queryOptions({
     queryKey: scheduleKeys.teacher(teacherId),
     queryFn: ({ signal }) => fetchTeacherSchedule(teacherId, signal),
+  });
+
+/**
+ * Сводное расписание пар. Отбор по преподавателям в ключ не входит —
+ * он клиентский (`fetchScheduleSummary`), и переключение выбора
+ * не порождает запросов.
+ */
+export const scheduleSummaryQuery = () =>
+  queryOptions({
+    queryKey: scheduleKeys.summary(),
+    queryFn: ({ signal }) => fetchScheduleSummary(signal),
   });
 
 /** Разобранные экзамены одного преподавателя — для его карточки. */
