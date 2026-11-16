@@ -79,6 +79,14 @@ export type {
   WeekDay,
 } from './schedule.types';
 
+// Календарь событий
+export type {
+  EventPerson,
+  EventStatus,
+  NotificationFrequency,
+  UserEvent,
+} from './event.types';
+
 // Аспирантура
 export type {
   EducationLevel,
