@@ -1,4 +1,4 @@
-import { cn } from '@shared/lib';
+import { accountName, cn } from '@shared/lib';
 import { FieldShell } from '@shared/ui/FormFields';
 import type { UserDirectoryEntry } from '@shared/types';
 
@@ -93,7 +93,7 @@ export function AccountField({
         )}
         {accounts.map((account) => (
           <option key={account.id} value={account.id}>
-            {accountLabel(account)}
+            {accountName(account)}
           </option>
         ))}
       </select>
@@ -118,11 +118,4 @@ function emptyLabel(isLoading: boolean, hasFailed: boolean): string {
   if (hasFailed) return 'Справочник не доехал';
 
   return 'Без учётной записи';
-}
-
-/** «Фамилия Имя», а без них — хотя бы номер учётки. */
-function accountLabel(account: UserDirectoryEntry): string {
-  const name = [account.lastName, account.firstName].filter(Boolean).join(' ');
-
-  return name === '' ? `Учётная запись № ${account.id}` : name;
 }
