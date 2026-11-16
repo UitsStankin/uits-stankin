@@ -1,12 +1,14 @@
 import { http, HttpResponse } from 'msw';
 
-import type { UserEvent } from '@shared/types';
+import type { EventPerson, UserEvent, UserEventRequest } from '@shared/types';
 
 import { numberParam, pageResponse } from './page';
+import { problemResponse } from './problemResponse';
 import { userDirectoryFixture } from './users';
 
 /** `*` вместо origin — по той же причине, что и у новостей. */
 const EVENTS = '*/api/events';
+const EVENT_ITEM = '*/api/events/:id';
 
 /** Размер страницы календаря у контракта — `50`, а не общие `20`. */
 const EVENTS_PAGE_SIZE = 50;
@@ -131,10 +133,25 @@ export function eventsAround(base: Date): UserEvent[] {
  * Отбора «моё или мне назначено» мок не повторяет: вошедший в моках —
  * один, и все события фикстуры считаются его. Порядок — по началу,
  * как у ручки по умолчанию.
+ *
+ * **Создание, правка и удаление помнят себя в замыкании набора** (F-60):
+ * без этого чтение после правки не изменилось бы. До первой записи
+ * выдача по-прежнему строится на каждый запрос; первая запись
+ * замораживает её. Стандартный набор создаётся раз на файл тестов,
+ * поэтому тест, который пишет, ставит себе свежий в `beforeEach` —
+ * как тест импорта расписания.
+ *
+ * Отказы — те же, что у бэкенда: словарь `errors` у `@Valid` (название,
+ * цвет), одним `detail` — конец раньше начала и неизвестный назначенный.
+ * Владелец нового события — первая учётка справочника: вошедший в моках.
  */
 export function eventHandlers(items?: readonly UserEvent[]) {
+  let stored: UserEvent[] | null = null;
+  let nextId = 1000;
+
+  const base = () => stored ?? [...(items ?? eventsAround(new Date()))];
   const current = () =>
-    [...(items ?? eventsAround(new Date()))].sort(
+    base().sort(
       (a, b) =>
         Date.parse(a.startedAt) - Date.parse(b.startedAt) || a.id - b.id,
     );
@@ -150,5 +167,136 @@ export function eventHandlers(items?: readonly UserEvent[]) {
         pageResponse(current(), numberParam(url, 'page', 0), size),
       );
     }),
+
+    http.post(EVENTS, async ({ request }) => {
+      const body = (await request.json()) as UserEventRequest;
+      const people = knownPeople(base());
+      const refusal = validate(body, people, '/api/events');
+      if (refusal) return refusal;
+
+      const created = fromRequest(body, people, nextId++, abramov);
+      stored = [...base(), created];
+
+      return HttpResponse.json(created, {
+        status: 201,
+        headers: { Location: `/api/events/${String(created.id)}` },
+      });
+    }),
+
+    http.put(EVENT_ITEM, async ({ params, request }) => {
+      const id = Number(params.id);
+      const existing = base().find((event) => event.id === id);
+      if (!existing) return notFound(id);
+
+      const body = (await request.json()) as UserEventRequest;
+      const people = knownPeople(base());
+      const refusal = validate(body, people, `/api/events/${String(id)}`);
+      if (refusal) return refusal;
+
+      // Полная замена, включая назначенных; владелец остаётся прежним.
+      const updated = fromRequest(body, people, id, existing.owner);
+      stored = base().map((event) => (event.id === id ? updated : event));
+
+      return HttpResponse.json(updated);
+    }),
+
+    http.delete(EVENT_ITEM, ({ params }) => {
+      const id = Number(params.id);
+      if (!base().some((event) => event.id === id)) return notFound(id);
+
+      stored = base().filter((event) => event.id !== id);
+
+      return new HttpResponse(null, { status: 204 });
+    }),
   ];
+}
+
+/**
+ * Учётки, которых мок «знает»: справочник и все, кто уже стоит на событиях.
+ * Бэкенд проверяет назначенных на существование, а не по справочнику —
+ * заблокированный, оставшийся на событии, проходит.
+ */
+function knownPeople(events: readonly UserEvent[]): EventPerson[] {
+  const people = new Map<number, EventPerson>();
+
+  for (const person of [
+    ...userDirectoryFixture,
+    ...events.flatMap((event) => [event.owner, ...event.assignedUsers]),
+  ]) {
+    people.set(person.id, person);
+  }
+
+  return [...people.values()];
+}
+
+/** Отказ в духе бэкенда (`UserEventRequestDto`, `UserEventService`) или `null`. */
+function validate(body: UserEventRequest, people: readonly EventPerson[], instance: string) {
+  const errors: Record<string, string[]> = {};
+
+  if (body.name.trim() === '') errors.name = ['Название обязательно'];
+  else if (body.name.length > 200) errors.name = ['Название не длиннее 200 символов'];
+
+  if (!/^#[0-9a-fA-F]{6}$/.test(body.color)) {
+    errors.color = ['Цвет — решётка и шесть шестнадцатеричных цифр, например #3F51B5'];
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return problemResponse(400, {
+      title: 'Bad Request',
+      detail: Object.values(errors).flat().join(' '),
+      instance,
+      errors,
+    });
+  }
+
+  if (Date.parse(body.endedAt) < Date.parse(body.startedAt)) {
+    return problemResponse(400, {
+      title: 'Bad Request',
+      detail: 'Дата окончания не может быть раньше даты начала',
+      instance,
+    });
+  }
+
+  if (body.assignedUserIds.some((id) => !people.some((person) => person.id === id))) {
+    return problemResponse(400, {
+      title: 'Bad Request',
+      detail: 'Среди назначенных есть несуществующие пользователи',
+      instance,
+    });
+  }
+
+  return null;
+}
+
+/** Тело запроса — в событие ответа. Моменты сервер отдаёт в UTC с `Z`. */
+function fromRequest(
+  body: UserEventRequest,
+  people: readonly EventPerson[],
+  id: number,
+  owner: EventPerson,
+): UserEvent {
+  return {
+    id,
+    name: body.name,
+    description: body.description,
+    startedAt: new Date(body.startedAt).toISOString(),
+    endedAt: new Date(body.endedAt).toISOString(),
+    allDay: body.allDay,
+    color: body.color,
+    status: body.status,
+    notificationFrequency: body.notificationFrequency,
+    nextNotificationAt: null,
+    owner,
+    assignedUsers: [...new Set(body.assignedUserIds)].flatMap((assignedId) =>
+      people.filter((person) => person.id === assignedId),
+    ),
+  };
+}
+
+function notFound(id: number) {
+  return problemResponse(404, {
+    title: 'Not Found',
+    detail: `Событие id=${String(id)} не найдено`,
+    instance: `/api/events/${String(id)}`,
+  });
 }

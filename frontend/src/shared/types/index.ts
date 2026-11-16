@@ -85,6 +85,7 @@ export type {
   EventStatus,
   NotificationFrequency,
   UserEvent,
+  UserEventRequest,
 } from './event.types';
 
 // Аспирантура
