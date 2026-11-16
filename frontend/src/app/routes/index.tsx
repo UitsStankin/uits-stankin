@@ -47,6 +47,7 @@ import ExamSchedulePage from '@pages/ExamSchedulePage';
 import ScheduleSummaryPage from '@pages/ScheduleSummaryPage';
 import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
+import CorpLayout from '../layouts/CorpLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
 import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
 import AdminNewsPage from '@pages/admin/NewsPage';
@@ -376,13 +377,17 @@ export const routes: RouteObject[] = [
         element: <EditablePagePage slug={slug} heading={heading} />,
         errorElement: <RouteError />,
       })),
-      // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
-      // у /corp было боковое меню на два пункта, но второй из них —
-      // календарь событий — приедет только в Фазе 3. Меню из одного
-      // пункта, дублирующего текущую страницу, показывать незачем;
-      // корпоративный лейаут заведём вместе с календарём.
+      // Личный кабинет. Внутри общего лейаута — шапка нужна и здесь, — но
+      // со своим `CorpLayout`: вкладки «Личный кабинет · Календарь событий»
+      // вместо бокового меню оригинала. Вход проверяется один раз на весь
+      // раздел.
       {
         path: '/corp',
+        element: (
+          <ProtectedRoute>
+            <CorpLayout />
+          </ProtectedRoute>
+        ),
         children: [
           // Голый /corp — раздел, а не страница: как и в оригинале,
           // отправляем на единственную готовую страницу раздела.
@@ -392,11 +397,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: PERSONAL_ROUTE,
-            element: (
-              <ProtectedRoute>
-                <PersonalPage />
-              </ProtectedRoute>
-            ),
+            element: <PersonalPage />,
             errorElement: <RouteError />,
           },
         ],
