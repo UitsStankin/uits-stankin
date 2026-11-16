@@ -8,9 +8,24 @@ import StatusBlock from '@shared/ui/StatusBlock';
 
 import ProtectedRoute from './protectedRoute';
 
+/**
+ * Кого пускать: `moderator` — хватит модератора, `admin` — только
+ * суперпользователь, `calendar` — суперпользователь или преподаватель.
+ *
+ * `calendar` — не ступень той же лестницы: модератору календарь закрыт,
+ * хотя админку он видит (docs/API.md, «Роли»).
+ */
+export type RouteAccess = AdminAccess | 'calendar';
+
+/** Что сказать тому, кому не хватило прав. */
+const DENIED: Record<RouteAccess, string> = {
+  admin: 'Этот раздел доступен только администратору портала.',
+  moderator: 'Этот раздел доступен администратору и модератору портала.',
+  calendar: 'Календарь событий доступен преподавателям и администратору портала.',
+};
+
 interface RoleRouteProps {
-  /** `moderator` — хватит модератора, `admin` — только суперпользователь. */
-  access: AdminAccess;
+  access: RouteAccess;
   children: ReactNode;
 }
 
@@ -45,11 +60,11 @@ export default function RoleRoute({ access, children }: RoleRouteProps) {
  * на каждом обновлении страницы.
  */
 function RoleGate({ access, children }: RoleRouteProps) {
-  const { canEdit, isAdmin } = useAuth();
+  const { canEdit, isAdmin, canUseCalendar } = useAuth();
 
   // Админ проходит и там, где достаточно модератора: он может всё,
   // что может модератор (docs/API.md, «Роли»).
-  const allowed = access === 'admin' ? isAdmin : canEdit;
+  const allowed = { admin: isAdmin, moderator: canEdit, calendar: canUseCalendar }[access];
 
   if (!allowed) {
     return (
@@ -57,11 +72,7 @@ function RoleGate({ access, children }: RoleRouteProps) {
         <StatusBlock
           tone="danger"
           title="Недостаточно прав"
-          description={
-            access === 'admin'
-              ? 'Этот раздел доступен только администратору портала.'
-              : 'Этот раздел доступен администратору и модератору портала.'
-          }
+          description={DENIED[access]}
           action={<ActionLink to={HOME_ROUTE}>На главную</ActionLink>}
         />
       </div>
