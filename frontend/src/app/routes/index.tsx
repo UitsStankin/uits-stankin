@@ -18,6 +18,7 @@ import {
   HELPERS_ROUTE,
   LOGIN_ROUTE,
   NEWS_ROUTE,
+  CALENDAR_ROUTE,
   PERSONAL_ROUTE,
   POSTGRADUATE_ROUTE,
   SCHEDULE_SUMMARY_ROUTE,
@@ -32,6 +33,7 @@ import ContributorsPage from '@pages/ContributorsPage';
 import PostgraduatePage from '@pages/PostgraduatePage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
+import CalendarPage from '@pages/CalendarPage';
 import NewsPage from '@pages/NewsPage';
 import NewsDetailPage from '@pages/NewsDetailPage';
 import AnnouncementsPage from '@pages/AnnouncementsPage';
@@ -380,7 +382,7 @@ export const routes: RouteObject[] = [
       // Личный кабинет. Внутри общего лейаута — шапка нужна и здесь, — но
       // со своим `CorpLayout`: вкладки «Личный кабинет · Календарь событий»
       // вместо бокового меню оригинала. Вход проверяется один раз на весь
-      // раздел.
+      // раздел; календарю сверх того нужна роль (`RoleRoute`).
       {
         path: '/corp',
         element: (
@@ -398,6 +400,15 @@ export const routes: RouteObject[] = [
           {
             path: PERSONAL_ROUTE,
             element: <PersonalPage />,
+            errorElement: <RouteError />,
+          },
+          {
+            path: CALENDAR_ROUTE,
+            element: (
+              <RoleRoute access="calendar">
+                <CalendarPage />
+              </RoleRoute>
+            ),
             errorElement: <RouteError />,
           },
         ],
