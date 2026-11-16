@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { eventHandlers, makeEvent, problemResponse } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
+import { useToastStore } from '@shared/store';
+import type { UserEventRequest } from '@shared/types';
+import ToastViewport from '@shared/ui/Toast';
 import { renderWithProviders } from '@/test/render';
 
 import CalendarPage from './index';
@@ -157,5 +160,331 @@ describe('CalendarPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Повторить/ }));
 
     expect(await screen.findByText('Заседание кафедры')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Правка (F-60). Мок помнит созданное и удалённое, а стандартный набор
+ * один на файл — поэтому свой набор на каждый тест. Уголок тостов
+ * монтируется рядом: исход сохранения и удаления сообщается им.
+ */
+describe('CalendarPage, правка', () => {
+  const EVENT_ITEM = '*/api/events/:id';
+
+  beforeEach(() => {
+    server.use(...eventHandlers());
+  });
+
+  afterEach(() => {
+    useToastStore.setState({ toasts: [] });
+  });
+
+  function renderEditable() {
+    return renderWithProviders(
+      <>
+        <CalendarPage />
+        <ToastViewport />
+      </>,
+      { route: '/corp/calendar' },
+    );
+  }
+
+  /** Тела запросов `method` — пропускают запрос дальше, к моку. */
+  function captureBodies(method: 'post' | 'put', path: string) {
+    const bodies: UserEventRequest[] = [];
+    server.use(
+      http[method](path, async ({ request }) => {
+        bodies.push((await request.clone().json()) as UserEventRequest);
+      }),
+    );
+
+    return bodies;
+  }
+
+  async function openDetails(name: string) {
+    fireEvent.click(await screen.findByText(name));
+
+    return within(await screen.findByRole('dialog', { name }));
+  }
+
+  async function openEditor(name: string) {
+    const details = await openDetails(name);
+    fireEvent.click(details.getByRole('button', { name: 'Изменить' }));
+
+    return within(await screen.findByRole('dialog', { name: 'Правка события' }));
+  }
+
+  it('создаёт событие на сегодня и показывает его в сетке', async () => {
+    const bodies = captureBodies('post', EVENTS);
+    renderEditable();
+    await screen.findByText('Заседание кафедры');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Создать событие' }));
+    const form = within(await screen.findByRole('dialog', { name: 'Новое событие' }));
+
+    expect(form.getByLabelText('Дата начала')).toHaveValue('2026-11-16');
+    expect(form.getByLabelText('Время начала')).toHaveValue('09:00');
+    expect(form.getByLabelText('Статус')).toHaveValue('NOT_STARTED');
+
+    fireEvent.change(form.getByLabelText('Название'), { target: { value: 'Защита практики' } });
+    // Справочник едет своим запросом — до него в списке никого нет.
+    fireEvent.click(await form.findByLabelText('Андреева Ольга'));
+    fireEvent.click(form.getByRole('button', { name: 'Создать' }));
+
+    expect(await screen.findByText('Событие «Защита практики» создано')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await screen.findByText('Защита практики')).toBeInTheDocument();
+
+    expect(bodies).toEqual([
+      {
+        name: 'Защита практики',
+        description: null,
+        startedAt: at(11, 16, 9),
+        endedAt: at(11, 16, 10),
+        allDay: false,
+        color: '#11a1fd',
+        status: 'NOT_STARTED',
+        // Напоминаний нет — новое событие их не обещает.
+        notificationFrequency: 'NONE',
+        assignedUserIds: [102],
+      },
+    ]);
+  });
+
+  it('новое событие на листнутом месяце — в его первое число, а не сегодня', async () => {
+    renderEditable();
+    await screen.findByText('Заседание кафедры');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Следующий месяц' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Создать событие' }));
+    const form = within(await screen.findByRole('dialog', { name: 'Новое событие' }));
+
+    expect(form.getByLabelText('Дата начала')).toHaveValue('2026-12-01');
+  });
+
+  it('«весь день» прячет время и уходит двумя полуночами, конец включительно', async () => {
+    const bodies = captureBodies('post', EVENTS);
+    renderEditable();
+    await screen.findByText('Заседание кафедры');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Создать событие' }));
+    const form = within(await screen.findByRole('dialog', { name: 'Новое событие' }));
+
+    fireEvent.change(form.getByLabelText('Название'), { target: { value: 'Сессия' } });
+    fireEvent.click(form.getByLabelText('Весь день'));
+
+    expect(form.queryByLabelText('Время начала')).not.toBeInTheDocument();
+    expect(form.queryByLabelText('Время окончания')).not.toBeInTheDocument();
+
+    fireEvent.change(form.getByLabelText('Дата окончания'), { target: { value: '2026-11-18' } });
+    fireEvent.click(form.getByRole('button', { name: 'Создать' }));
+
+    await screen.findByText('Событие «Сессия» создано');
+
+    expect(bodies[0]).toMatchObject({
+      allDay: true,
+      startedAt: at(11, 16),
+      endedAt: at(11, 18),
+    });
+  });
+
+  it('проверяет поля до запроса: конец раньше начала', async () => {
+    const bodies = captureBodies('post', EVENTS);
+    renderEditable();
+    await screen.findByText('Заседание кафедры');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Создать событие' }));
+    const form = within(await screen.findByRole('dialog', { name: 'Новое событие' }));
+
+    fireEvent.change(form.getByLabelText('Время окончания'), { target: { value: '08:00' } });
+    fireEvent.click(form.getByRole('button', { name: 'Создать' }));
+
+    expect(await form.findByText('Укажите название')).toBeInTheDocument();
+    expect(form.getByText('Время окончания раньше времени начала')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+  });
+
+  it('открывает правку со значениями события и сохраняет её полной заменой', async () => {
+    const bodies = captureBodies('put', EVENT_ITEM);
+    renderEditable();
+
+    const form = await openEditor('Методическая неделя');
+
+    expect(form.getByLabelText('Название')).toHaveValue('Методическая неделя');
+    expect(form.getByLabelText('Весь день')).toBeChecked();
+    expect(form.getByLabelText('Дата начала')).toHaveValue('2026-11-10');
+    expect(form.getByLabelText('Дата окончания')).toHaveValue('2026-11-12');
+    expect(form.getByLabelText('Андреева Ольга')).toBeChecked();
+    expect(form.getByLabelText('Учётная запись № 112')).toBeChecked();
+    expect(await form.findByLabelText('Абрамов Никита')).not.toBeChecked();
+
+    fireEvent.change(form.getByLabelText('Название'), { target: { value: 'Методическая декада' } });
+    fireEvent.change(form.getByLabelText('Статус'), { target: { value: 'IN_PROGRESS' } });
+    fireEvent.click(form.getByLabelText('Баранов Илья'));
+    fireEvent.click(form.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByText('Событие «Методическая декада» сохранено')).toBeInTheDocument();
+    expect(await screen.findByText('Методическая декада')).toBeInTheDocument();
+    expect(screen.queryByText('Методическая неделя')).not.toBeInTheDocument();
+
+    expect(bodies).toEqual([
+      {
+        name: 'Методическая декада',
+        description: 'Открытые занятия и взаимопосещения',
+        startedAt: at(11, 10),
+        endedAt: at(11, 12),
+        allDay: true,
+        color: '#009688',
+        status: 'IN_PROGRESS',
+        // Формой не показывается, но `PUT` — полная замена: уходит пришедшее.
+        notificationFrequency: 'DAILY',
+        // Баранов снят, остальные — как были.
+        assignedUserIds: [102, 104, 112],
+      },
+    ]);
+  });
+
+  it('назначенного вне справочника показывает с пометкой и сохраняет', async () => {
+    server.use(
+      ...eventHandlers([
+        makeEvent({
+          id: 9,
+          name: 'Аттестация',
+          startedAt: at(11, 18, 9),
+          endedAt: at(11, 18, 10),
+          assignedUsers: [{ id: 999, lastName: 'Сидоров', firstName: 'Сергей' }],
+        }),
+      ]),
+    );
+    const bodies = captureBodies('put', EVENT_ITEM);
+    renderEditable();
+
+    const form = await openEditor('Аттестация');
+    const outside = await form.findByLabelText(/Сидоров Сергей — нет в справочнике/);
+
+    expect(outside).toBeChecked();
+
+    fireEvent.click(form.getByRole('button', { name: 'Сохранить' }));
+    await screen.findByText('Событие «Аттестация» сохранено');
+
+    expect(bodies[0].assignedUserIds).toEqual([999]);
+  });
+
+  it('без справочника назначенные остаются, а новых взять неоткуда', async () => {
+    server.use(
+      http.get('*/api/users/directory', () =>
+        problemResponse(500, {
+          title: 'Internal Server Error',
+          detail: 'Внутренняя ошибка сервера.',
+          instance: '/api/users/directory',
+        }),
+      ),
+    );
+    renderEditable();
+
+    const form = await openEditor('Заседание кафедры');
+
+    expect(await form.findByText(/Справочник не загрузился/)).toBeInTheDocument();
+    expect(form.getByLabelText('Андреева Ольга')).toBeChecked();
+    expect(form.queryByLabelText('Абрамов Никита')).not.toBeInTheDocument();
+  });
+
+  it('кладёт отказ сервера по полю под поле, а без словаря — в баннер', async () => {
+    let withErrors = true;
+    server.use(
+      http.put(EVENT_ITEM, () =>
+        withErrors
+          ? problemResponse(400, {
+              title: 'Bad Request',
+              detail: 'Название не длиннее 200 символов',
+              instance: '/api/events/2',
+              errors: { name: ['Название не длиннее 200 символов'] },
+            })
+          : problemResponse(400, {
+              title: 'Bad Request',
+              detail: 'Среди назначенных есть несуществующие пользователи',
+              instance: '/api/events/2',
+            }),
+      ),
+    );
+    renderEditable();
+
+    const form = await openEditor('Заседание кафедры');
+    fireEvent.click(form.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await form.findByText('Название не длиннее 200 символов')).toBeInTheDocument();
+    expect(form.queryByRole('alert')).not.toBeInTheDocument();
+
+    withErrors = false;
+    fireEvent.click(form.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await form.findByRole('alert')).toHaveTextContent(
+      'Среди назначенных есть несуществующие пользователи',
+    );
+  });
+
+  it('спрашивает подтверждение, называет назначенных и удаляет', async () => {
+    renderEditable();
+
+    const details = await openDetails('Заседание кафедры');
+    fireEvent.click(details.getByRole('button', { name: 'Удалить' }));
+
+    const confirm = within(await screen.findByRole('dialog', { name: 'Удалить событие?' }));
+    expect(
+      confirm.getByText(
+        'Событие «Заседание кафедры» будет удалено, и восстановить его нечем. Оно пропадёт и у 2 назначенных.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(confirm.getByRole('button', { name: 'Удалить' }));
+
+    expect(await screen.findByText('Событие «Заседание кафедры» удалено')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Соседнее событие того же дня на месте, удалённого нет.
+    expect(await screen.findByText('Приём курсовых работ')).toBeInTheDocument();
+    expect(screen.queryByText('Заседание кафедры')).not.toBeInTheDocument();
+  });
+
+  it('«Отмена» удаления возвращает к карточке', async () => {
+    renderEditable();
+
+    const details = await openDetails('Сдача ведомостей');
+    fireEvent.click(details.getByRole('button', { name: 'Удалить' }));
+
+    const confirm = within(await screen.findByRole('dialog', { name: 'Удалить событие?' }));
+    // Без назначенных хвоста про них нет.
+    expect(confirm.getByText(/будет удалено, и восстановить его нечем\.$/)).toBeInTheDocument();
+
+    fireEvent.click(confirm.getByRole('button', { name: 'Отмена' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Сдача ведомостей' })).toBeInTheDocument();
+  });
+
+  it('удаление уже удалённого — отказ тостом, событие пропадает после перечитывания', async () => {
+    renderEditable();
+    const details = await openDetails('Приём курсовых работ');
+
+    // Кто-то из назначенных успел раньше: мок его уже не знает.
+    server.use(
+      http.delete(EVENT_ITEM, () =>
+        problemResponse(404, {
+          title: 'Not Found',
+          detail: 'Событие id=3 не найдено',
+          instance: '/api/events/3',
+        }),
+      ),
+      ...eventHandlers([]),
+    );
+
+    fireEvent.click(details.getByRole('button', { name: 'Удалить' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: 'Удалить событие?' })).getByRole('button', {
+        name: 'Удалить',
+      }),
+    );
+
+    expect(await screen.findByText('Событие id=3 не найдено')).toBeInTheDocument();
+    expect(await screen.findByText('Событий пока нет')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

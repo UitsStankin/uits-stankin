@@ -1,3 +1,5 @@
+import { Pencil, Trash2 } from 'lucide-react';
+
 import { EVENT_STATUS_LABELS, formatEventPeriod } from '@entities/event';
 import { accountName } from '@shared/lib';
 import Modal from '@shared/ui/Modal';
@@ -6,6 +8,8 @@ import type { UserEvent } from '@shared/types';
 interface EventDetailsProps {
   event: UserEvent;
   onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 /**
@@ -14,13 +18,15 @@ interface EventDetailsProps {
  * В оригинале то же самое показывала всплывающая подсказка при наведении,
  * а клик открывал сразу правку. Подсказки по наведению нет на телефоне
  * и нет с клавиатуры, поэтому здесь всё — по клику, в боковой панели,
- * а правка приедет в ту же панель с F-60.
+ * а правка и удаление — кнопками внизу (F-60). Показываются они всегда:
+ * событие видят только владелец и назначенные, а править и удалять
+ * контракт разрешает им всем.
  *
  * Частота напоминаний не показывается: напоминаний в портале нет
  * (ARCHITECTURE.md §8, п. 14), и строка «каждую неделю» обещала бы то,
  * чего не случится.
  */
-export function EventDetails({ event, onClose }: EventDetailsProps) {
+export function EventDetails({ event, onClose, onEdit, onDelete }: EventDetailsProps) {
   return (
     <Modal title={event.name} onClose={onClose}>
       <dl className="flex flex-col gap-4 text-base">
@@ -58,6 +64,26 @@ export function EventDetails({ event, onClose }: EventDetailsProps) {
           )}
         </Field>
       </dl>
+
+      <div className="mt-gutter flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex items-center gap-2 rounded bg-primary px-4 py-2.5 text-base font-bold text-white transition hover:brightness-95"
+        >
+          <Pencil aria-hidden="true" className="size-4" />
+          Изменить
+        </button>
+
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex items-center gap-2 rounded border border-danger px-4 py-2.5 text-base font-bold text-danger transition-colors hover:bg-danger/10"
+        >
+          <Trash2 aria-hidden="true" className="size-4" />
+          Удалить
+        </button>
+      </div>
     </Modal>
   );
 }

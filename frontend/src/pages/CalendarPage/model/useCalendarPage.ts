@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { eventsQuery } from '@entities/event';
+import { useDeleteEvent } from '@features/manage-events';
 import type { UserEvent } from '@shared/types';
 
 import { calendarItems, type CalendarItem } from '../lib/calendarItems';
@@ -28,6 +29,22 @@ export type CalendarPageState = {
   selected: UserEvent | null;
   select: (id: number) => void;
   closeSelected: () => void;
+  /** Окно формы: правка открытого события или новое. `null` — закрыто. */
+  editing: { event: UserEvent | null } | null;
+  /**
+   * День нового события: сегодня, если оно на экране, иначе — первый
+   * день видимого месяца, недели или дня (туда листание ставит дату).
+   */
+  newEventDay: Date;
+  startCreate: () => void;
+  startEdit: () => void;
+  closeEditor: () => void;
+  /** Событие, удаление которого ждёт подтверждения. */
+  deleting: UserEvent | null;
+  askDelete: () => void;
+  cancelDelete: () => void;
+  confirmDelete: () => void;
+  isDeleting: boolean;
   isLoading: boolean;
   isOffline: boolean;
   isError: boolean;
@@ -46,13 +63,26 @@ export type CalendarPageState = {
  * коллеге — но коллега увидит **свой** календарь, а не мой, и ссылка
  * на чужую неделю ничего ему не скажет.
  *
- * Пустой календарь — не повод прятать сетку: в ней создают событие (F-60),
- * поэтому `isEmpty` даёт подсказку над ней, а не вместо неё.
+ * Пустой календарь — не повод прятать сетку: созданное событие появится
+ * в ней, поэтому `isEmpty` даёт подсказку над ней, а не вместо неё.
+ *
+ * **Одно окно за раз** (F-60), выбор — `mode`: карточка открытого события,
+ * его правка, подтверждение удаления или новое событие. Правка и удаление
+ * открываются из карточки, а не прямо по клику, как в оригинале: там клик
+ * вёл сразу в форму, и посмотреть событие можно было только в ней, а
+ * назначенному чаще нужно прочитать, чем править. Править и удалять может
+ * всякий, кто событие видит (владелец и назначенные, docs/API.md), поэтому
+ * кнопки в карточке есть всегда.
+ *
+ * После сохранения и удаления окно закрывается совсем, как формы админки:
+ * карточка, открытая сразу, показала бы старые данные до прихода свежей
+ * выдачи.
  */
 export function useCalendarPage(): CalendarPageState {
   const [view, setView] = useState<CalendarViewKind>('month');
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [mode, setMode] = useState<'view' | 'edit' | 'create' | 'delete'>('view');
 
   const query = useQuery(eventsQuery());
   const events = query.data ?? [];
@@ -61,19 +91,51 @@ export function useCalendarPage(): CalendarPageState {
   // пропавшее после перезапроса закроет окно само.
   const selected = events.find(({ id }) => id === selectedId) ?? null;
 
+  const close = () => {
+    setSelectedId(null);
+    setMode('view');
+  };
+
+  const deletion = useDeleteEvent({
+    onDeleted: close,
+    // Отказ возвращает к карточке: тост сказал, почему не вышло.
+    onSettled: () => setMode((current) => (current === 'delete' ? 'view' : current)),
+  });
+
+  const isShowingToday = containsDay(view, anchor, new Date());
+
   return {
     view,
     anchor,
     title: calendarTitle(view, anchor),
-    isShowingToday: containsDay(view, anchor, new Date()),
+    isShowingToday,
     setView,
     showPrevious: () => setAnchor(shiftAnchor(view, anchor, -1)),
     showNext: () => setAnchor(shiftAnchor(view, anchor, 1)),
     showToday: () => setAnchor(startOfDay(new Date())),
     items: calendarItems(events),
     selected,
-    select: setSelectedId,
-    closeSelected: () => setSelectedId(null),
+    select: (id) => {
+      setSelectedId(id);
+      setMode('view');
+    },
+    closeSelected: close,
+    editing:
+      mode === 'create' ? { event: null } : mode === 'edit' && selected ? { event: selected } : null,
+    newEventDay: isShowingToday ? startOfDay(new Date()) : anchor,
+    startCreate: () => {
+      setSelectedId(null);
+      setMode('create');
+    },
+    startEdit: () => setMode('edit'),
+    closeEditor: close,
+    deleting: mode === 'delete' ? selected : null,
+    askDelete: () => setMode('delete'),
+    cancelDelete: () => setMode('view'),
+    confirmDelete: () => {
+      if (selected) deletion.remove(selected);
+    },
+    isDeleting: deletion.isPending,
     isLoading: query.isLoading,
     isOffline: query.isPaused && query.data === undefined,
     isError: query.isError,
