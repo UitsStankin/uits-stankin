@@ -96,15 +96,19 @@ export function useModalBehavior(
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const panel = panelRef.current;
+
+      // Клавиши — только верхнему окну. Слушают все открытые, и без этой
+      // проверки Escape в вопросе «уйти без сохранения?» закрывал бы заодно
+      // и панель формы под ним, унося ровно то, ради чего спросили (D-F17).
+      if (!panel || !isTopmost(panel)) return;
+
       if (event.key === 'Escape') {
         if (!isBusy) onClose();
         return;
       }
 
       if (event.key !== 'Tab') return;
-
-      const panel = panelRef.current;
-      if (!panel) return;
 
       const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (focusable.length === 0) return;
@@ -129,4 +133,14 @@ export function useModalBehavior(
 
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [panelRef, onClose, isBusy]);
+}
+
+/**
+ * Верхнее ли это окно. Окна рисуются порталом в конец `body` в порядке
+ * открытия, так что верхнее — последнее в документе.
+ */
+function isTopmost(panel: HTMLElement): boolean {
+  const open = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+
+  return open[open.length - 1] === panel;
 }
