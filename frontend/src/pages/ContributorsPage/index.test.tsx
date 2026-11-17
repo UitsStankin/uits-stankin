@@ -104,10 +104,12 @@ describe('ContributorsPage', () => {
     expect(sources).toHaveLength(16);
     expect(sources.filter((src) => src === DEFAULT_AVATAR_URL)).toHaveLength(6);
     expect(photosIn(cardOf('Ерин Сергей'))[0]).toHaveAttribute('src', DEFAULT_AVATAR_URL);
-    expect(photosIn(cardOf('Малова Яна'))[0]).toHaveAttribute(
-      'src',
-      '/img/contributors/malova-iana.jpg',
-    );
+    // Свой снимок — свой файл. Адрес целиком не сторожится: снимки идут
+    // через сборщик (D-F16), и в сборке у имени появляется хеш. Имя файла
+    // при этом сохраняется — по нему и видно, что снимок тот.
+    const ownPhoto = photosIn(cardOf('Малова Яна'))[0].getAttribute('src');
+    expect(ownPhoto).not.toBe(DEFAULT_AVATAR_URL);
+    expect(ownPhoto).toMatch(/malova-iana/);
   });
 
   /**
