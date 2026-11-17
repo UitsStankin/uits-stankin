@@ -6,10 +6,10 @@ import { authKeys } from '@features/auth/api/profileQuery';
 import { clearSession, setAccessToken } from '@shared/api';
 import { makeProfile, profileHandlers } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
-import type { AdminAccess, Profile } from '@shared/types';
+import type { Profile } from '@shared/types';
 import { createTestQueryClient, renderWithProviders } from '@/test/render';
 
-import RoleRoute from './RoleRoute';
+import RoleRoute, { type RouteAccess } from './RoleRoute';
 
 /**
  * Роут по ролям.
@@ -26,7 +26,7 @@ import RoleRoute from './RoleRoute';
  * видно, что гость доехал именно до логина, а не просто не увидел
  * содержимое.
  */
-function renderGuarded(profile: Profile | null, access: AdminAccess = 'moderator') {
+function renderGuarded(profile: Profile | null, access: RouteAccess = 'moderator') {
   const queryClient = createTestQueryClient();
 
   if (profile) {
@@ -98,6 +98,28 @@ describe('RoleRoute', () => {
 
     expect(await screen.findByText('Недостаточно прав')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое админки')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Календарь — не ступень лестницы «модератор ⊂ админ»: преподавателю
+   * открыт, модератору нет (docs/API.md, «Роли»).
+   */
+  it('пускает в календарь преподавателя и админа', async () => {
+    const { unmount } = renderGuarded(makeProfile({ teacher: true }), 'calendar');
+    expect(await screen.findByText('Содержимое админки')).toBeInTheDocument();
+    unmount();
+
+    renderGuarded(makeProfile({ superuser: true }), 'calendar');
+    expect(await screen.findByText('Содержимое админки')).toBeInTheDocument();
+  });
+
+  it('не пускает в календарь модератора', async () => {
+    renderGuarded(makeProfile({ moderator: true }), 'calendar');
+
+    expect(await screen.findByText('Недостаточно прав')).toBeInTheDocument();
+    expect(
+      screen.getByText('Календарь событий доступен преподавателям и администратору портала.'),
+    ).toBeInTheDocument();
   });
 
   /** Гостю — на форму входа: ему как раз есть что там сделать. */

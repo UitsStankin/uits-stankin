@@ -1,0 +1,49 @@
+/*
+ * Палитра темы `classic` FullCalendar — цветами портала (tailwind.config.ts)
+ * вместо её `palette.css`. Переменные — её собственные, с префиксом
+ * `--fc-classic-`, и на чужую вёрстку не влияют; на `:root`, а не на обёртке,
+ * потому что всплывающий список «ещё N» календарь может нарисовать вне неё.
+ *
+ * Файл приезжает вместе с ленивым куском календаря и в основной CSS
+ * не попадает.
+ */
+:root {
+  /* кнопки — своей панели у календаря нет, но «ещё N» и список их рисуют */
+  --fc-classic-button: #11a1fd;
+  --fc-classic-button-border: #11a1fd;
+  --fc-classic-button-strong: #0b8ad8;
+  --fc-classic-button-strong-border: #0b8ad8;
+  --fc-classic-button-outline: #11a1fd80;
+  --fc-classic-button-foreground: #fff;
+
+  /* основной — primary портала */
+  --fc-classic-primary: #11a1fd;
+  --fc-classic-primary-foreground: #fff;
+
+  /* содержимое: цвет события задаёт само событие, это запасной */
+  --fc-classic-event: var(--fc-classic-primary);
+  --fc-classic-event-contrast: var(--fc-classic-primary-foreground);
+  --fc-classic-background-event: #11a1fd;
+  --fc-classic-background-event-opacity: 15%;
+  --fc-classic-background-event-foreground-opacity: 50%;
+  --fc-classic-highlight: #11a1fd1a;
+  --fc-classic-today: #11a1fd14;
+  --fc-classic-now: #f46363;
+  --fc-classic-small-dot-width: 8px;
+  --fc-classic-large-dot-width: 10px;
+
+  /* фоны */
+  --fc-classic-background: #fff;
+  --fc-classic-faint: #f3f7f9;
+  --fc-classic-muted: #edf4f9;
+  --fc-classic-strong: #dde7ef;
+
+  /* текст: основной, приглушённый, совсем бледный — как у портала */
+  --fc-classic-foreground: #00174c;
+  --fc-classic-faint-foreground: #7d9eb5;
+  --fc-classic-muted-foreground: #486f88;
+
+  /* границы */
+  --fc-classic-border: #dde7ef;
+  --fc-classic-strong-border: #7d9eb5;
+}

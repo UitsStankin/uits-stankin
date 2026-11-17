@@ -10,6 +10,7 @@ export { authHandlers } from './auth';
 export { achievementHandlers, achievementsFixture, makeAchievement } from './achievements';
 export { conferenceHandlers, conferencesFixture, makeConference } from './conferences';
 export { editablePageHandlers } from './editablePages';
+export { eventHandlers, eventsAround, makeEvent } from './events';
 export { examHandlers, makeExam } from './exams';
 export { fileHandlers } from './files';
 export { helperHandlers, helpersFixture, makeHelper } from './helpers';

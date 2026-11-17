@@ -1,3 +1,4 @@
+export { accountName } from './accountName';
 export { cn } from './cn';
 export { errorId, hintId, labelId } from './fieldIds';
 export { focusPageContent } from './focusPageContent';

@@ -26,6 +26,14 @@ export const HOME_ROUTE = '/';
 export const PERSONAL_ROUTE = '/corp/personal';
 
 /**
+ * Календарь событий — второй раздел личного кабинета, адрес оригинала.
+ * Открыт администратору и преподавателю (docs/API.md, «Роли»).
+ *
+ * Знают двое: список роутов и вкладки кабинета (`CorpLayout`).
+ */
+export const CALENDAR_ROUTE = '/corp/calendar';
+
+/**
  * Лента новостей. Адрес взят из меню (`shared/config/navigation.ts`,
  * пункт `about/news`) и повторяет старый портал — как и `/corp/personal`,
  * это экономит строку в карте редиректов nginx при переезде.
