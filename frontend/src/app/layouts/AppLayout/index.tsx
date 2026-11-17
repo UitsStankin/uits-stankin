@@ -3,6 +3,7 @@ import { cn } from '@/shared/lib/cn';
 import Header from '@widgets/Header';
 import Navbar from '@widgets/Navbar';
 import Footer from '@widgets/Footer';
+import UnsavedChangesGuard from '@widgets/UnsavedChangesGuard';
 import type { AppLayoutProps } from './AppLayout.types';
 
 /**
@@ -51,6 +52,11 @@ export default function AppLayout({ className }: AppLayoutProps) {
           Стоит на лейауте, а не на странице: касается всех страниц разом,
           и заводить его на каждой — значит однажды забыть. */}
       <ScrollRestoration />
+
+      {/* Вопрос перед уходом с несохранённой правкой — на лейауте по той же
+          причине: формы живут на многих страницах, а блокировщик переходов
+          у роутера один (D-F17). */}
+      <UnsavedChangesGuard />
     </div>
   );
 }
