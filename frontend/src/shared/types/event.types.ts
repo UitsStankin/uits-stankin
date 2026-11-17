@@ -52,3 +52,25 @@ export type UserEvent = {
   owner: EventPerson;
   assignedUsers: readonly EventPerson[];
 };
+
+/**
+ * Тело `POST /api/events` и `PUT /api/events/{id}` — `UserEventRequestDto`.
+ *
+ * `PUT` — **полная замена**, включая назначенных: список заменяет прежний
+ * целиком. Владельца в теле нет — бэкенд берёт его из токена.
+ *
+ * Моменты пишутся так же, как их отдаёт чтение (`UserEvent`): у «весь
+ * день» оба — местная полночь, конец — полночь **последнего** дня.
+ */
+export type UserEventRequest = {
+  name: string;
+  description: string | null;
+  startedAt: string;
+  endedAt: string;
+  allDay: boolean;
+  color: string;
+  status: EventStatus;
+  /** Обязательно по контракту, хоть и ничего не делает. */
+  notificationFrequency: NotificationFrequency;
+  assignedUserIds: number[];
+};
