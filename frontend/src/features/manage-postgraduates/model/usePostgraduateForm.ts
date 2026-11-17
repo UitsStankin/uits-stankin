@@ -6,7 +6,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 import { postgraduateKeys } from '@entities/postgraduate';
 import { adminTeachersListQuery } from '@entities/teacher';
 import { isApiError } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { PostgraduateDetails } from '@shared/types';
 
@@ -53,7 +53,7 @@ export function usePostgraduateForm(postgraduate: PostgraduateDetails | null, on
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PostgraduateFormValues>({
     resolver: zodResolver(postgraduateSchema),
     defaultValues: postgraduateToFormValues(postgraduate),
@@ -72,6 +72,8 @@ export function usePostgraduateForm(postgraduate: PostgraduateDetails | null, on
     },
   });
 
+  const unsaved = useUnsavedChanges(isDirty);
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -87,6 +89,7 @@ export function usePostgraduateForm(postgraduate: PostgraduateDetails | null, on
             ? `Запись «${saved.studentName}» сохранена`
             : `Запись «${saved.studentName}» создана`,
         );
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),

@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { teacherKeys } from '@entities/teacher';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors, takeFieldErrors } from '@shared/lib';
+import { applyFieldErrors, takeFieldErrors, useUnsavedChanges } from '@shared/lib';
 import type { FileUploadResponse, Teacher } from '@shared/types';
 
 import { updateMyTeacherCard } from '../api/teacherCardApi';
@@ -47,7 +47,7 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<TeacherCardFormValues>({
     resolver: zodResolver(teacherCardSchema),
     defaultValues: teacherToFormValues(card),
@@ -71,6 +71,9 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
   const avatarUpload = useImageUpload('avatars', setNewAvatar);
   const saveMutation = useMutation({ mutationFn: updateMyTeacherCard });
 
+  /** Несохранённое — и в полях, и в загруженном, но не сохранённом фото (D-F17). */
+  const unsaved = useUnsavedChanges(isDirty || newAvatar !== null);
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
     setAvatarError(null);
@@ -91,6 +94,7 @@ export function useMyTeacherCardForm(card: Teacher, onSaved: () => void) {
         // в кэш вместо инвалидации, и view-режим рисует свежие данные
         // без второго запроса.
         queryClient.setQueryData(teacherKeys.me(), fresh);
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeTeacherCardError(error, setError, setAvatarError)),
