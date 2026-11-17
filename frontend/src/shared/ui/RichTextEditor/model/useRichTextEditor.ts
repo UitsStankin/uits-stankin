@@ -140,7 +140,14 @@ export function useRichTextEditor({
   useEffect(() => {
     if (!isUsable(editor)) return;
 
-    editor.setEditable(editable);
+    // `false` — не объявлять это правкой. По умолчанию `setEditable` шлёт
+    // `update`, то есть эффект на монтировании отдавал в форму HTML
+    // редактора как набранное пользователем. Совпадал он с пришедшим —
+    // react-hook-form пропускала; не совпадал — а jsoup отдаёт блоки
+    // через перевод строки, редактор склеивает их без него, — поле
+    // становилось изменённым, ни разу не тронутое. Сторож несохранённого
+    // (D-F17) спрашивал бы тогда на каждом уходе с формы.
+    editor.setEditable(editable, false);
   }, [editor, editable]);
 
   useEffect(() => {
