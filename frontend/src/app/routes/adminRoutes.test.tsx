@@ -13,9 +13,11 @@ import {
   teacherHandlers,
 } from '@shared/api/mocks';
 import { makePublication, publicationHandlers } from '@shared/api/mocks/publications';
-import { publicationRoute, PUBLICATION_SCHOLAR_ROUTE } from '@shared/config/routes';
+import { ADMIN_GRADESHEETS_ROUTE, adminGradesheetRoute, publicationRoute, PUBLICATION_SCHOLAR_ROUTE } from '@shared/config/routes';
 import { server } from '@shared/api/mocks/server';
 import { createTestQueryClient } from '@/test/render';
+
+import '@pages/admin/GradesheetsPage';
 
 import { routes } from './index';
 
@@ -71,6 +73,23 @@ describe('адреса админки', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новая запись аспирантуры' }),
     ).toBeInTheDocument();
+  });
+
+  it('открывает ведомости в админке модератора', async () => {
+    renderAt(ADMIN_GRADESHEETS_ROUTE);
+    expect(await screen.findByRole('link', { name: 'Базы данных · ИДБ-25-11' }))
+      .toHaveAttribute('href', adminGradesheetRoute(1));
+  });
+
+  it('открывает карточку ведомости по прямой ссылке администратора', async () => {
+    renderAt(adminGradesheetRoute(1), makeProfile({ superuser: true }));
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+  });
+
+  it('закрывает ведомость по прямой ссылке от преподавателя', async () => {
+    renderAt(adminGradesheetRoute(1), makeProfile({ teacher: true }));
+    expect(await screen.findByText('Недостаточно прав')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('открывает управление публикациями из админки', async () => {

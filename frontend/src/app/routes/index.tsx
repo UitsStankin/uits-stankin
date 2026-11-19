@@ -9,6 +9,7 @@ import Loader from '@shared/ui/Loader';
 import {
   ACHIEVEMENTS_ROUTE,
   ADMIN_PAGES_ROUTE,
+  ADMIN_GRADESHEETS_ROUTE,
   ADMIN_POSTGRADUATES_ROUTE,
   ADMIN_ROUTE,
   ADMIN_TEACHERS_ROUTE,
@@ -81,6 +82,7 @@ import PostgraduateFormPage from '@pages/admin/PostgraduateFormPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
+import { GradesheetPage, GradesheetsPage } from './GradesheetRoutes';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
@@ -196,6 +198,8 @@ function adminSectionScreen(section: AdminSection) {
       // и у новостей: публичная страница аспирантуры — `PostgraduatePage`,
       // и разница в одной букве `s` в одном модуле читалась бы как опечатка.
       return <AdminPostgraduatesPage />;
+    case 'gradesheets':
+      return <GradesheetsPage />;
     case 'subjects':
       return <SubjectsPage />;
     case 'pages':
@@ -509,6 +513,11 @@ export const routes: RouteObject[] = [
           {
             path: `${adminChildPath(ADMIN_PAGES_ROUTE)}/:slug`,
             element: <EditablePageFormPage />,
+            errorElement: <RouteError />,
+          },
+          {
+            path: `${adminChildPath(ADMIN_GRADESHEETS_ROUTE)}/:id`,
+            element: <GradesheetPage />,
             errorElement: <RouteError />,
           },
           // Адрес внутри админки, которого нет. Без него такой адрес
