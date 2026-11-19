@@ -35,6 +35,13 @@ export type News = {
   previewImage: string | null;
   /** Готовый адрес обложки для `<img src>`, относительный. */
   previewImageUrl: string | null;
+  /**
+   * Адрес уменьшенной копии обложки — вписанной в 240×240, то есть
+   * у снимка 16:9 это 240×135. `null` без обложки и у записей, заведённых
+   * до появления миниатюр (docs/API.md, «Обложка новости»). Как ею
+   * пользуется лента — `coverSources` в `entities/news`.
+   */
+  previewThumbnailUrl: string | null;
   /** Текст для `alt` обложки. */
   previewImageDescription: string | null;
   /** Rich-text, HTML. */
