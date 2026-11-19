@@ -1,4 +1,5 @@
 import { TELEGRAM_CHAT_URL } from '@shared/config/contacts';
+import telegramIcon from '@shared/assets/telegram.png';
 
 /**
  * Чат кафедры под текстом контактов — перенос блока `.social-icons`
@@ -36,7 +37,7 @@ export function DepartmentChat() {
         rel="noreferrer"
         className="inline-flex items-center gap-3 text-primary transition-opacity hover:opacity-80"
       >
-        <img src="/img/telegram.png" alt="" aria-hidden className="h-8.75 w-8.75" />
+        <img src={telegramIcon} alt="" aria-hidden className="h-8.75 w-8.75" />
         Телеграм-чат кафедры
       </a>
     </section>
