@@ -66,4 +66,3 @@ export function renderWithProviders(
 
   return { queryClient, ...render(ui, { wrapper: Providers }) };
 }
-

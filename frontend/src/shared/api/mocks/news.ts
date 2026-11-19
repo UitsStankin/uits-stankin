@@ -29,6 +29,7 @@ export function makeNews(overrides: Partial<News> = {}): News {
     postType: 'news',
     previewImage: null,
     previewImageUrl: null,
+    previewThumbnailUrl: null,
     previewImageDescription: null,
     content: '<p>Текст новости.</p>',
     createdAt: '2026-08-20T10:15:30.123456+03:00',
@@ -253,6 +254,12 @@ function fromRequest(body: NewsRequest): Partial<News> {
     postType: body.postType,
     previewImage: body.previewImage,
     previewImageUrl: body.previewImage === null ? null : `/media/${body.previewImage}`,
+    // Миниатюра — тот же ключ с `_thumb` перед расширением: так её кладёт
+    // хранилище при загрузке в раздел `news`.
+    previewThumbnailUrl:
+      body.previewImage === null
+        ? null
+        : `/media/${body.previewImage.replace(/(\.[^./]+)?$/, '_thumb$1')}`,
     previewImageDescription: body.previewImageDescription,
     content: body.content,
     display: body.display,
