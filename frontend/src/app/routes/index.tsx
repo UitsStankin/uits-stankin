@@ -21,11 +21,24 @@ import {
   CALENDAR_ROUTE,
   PERSONAL_ROUTE,
   POSTGRADUATE_ROUTE,
+  PUBLICATIONS_ROUTE,
+  PUBLICATION_MANAGE_ROUTE,
+  PUBLICATION_NEW_ROUTE,
+  PUBLICATION_SCHOLAR_ROUTE,
+  PUBLICATION_TAGS_ROUTE,
+  publicationEditRoute,
+  publicationRoute,
   SCHEDULE_SUMMARY_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
 import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
 import Placeholder from '@pages/Placeholder';
+import PublicationsPage, {
+  PublicationDetailPage,
+  PublicationEditorPage,
+  PublicationScholarPage,
+  PublicationTagsPage,
+} from '@pages/PublicationsPage';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
 import ContactsPage from '@pages/ContactsPage';
@@ -170,6 +183,8 @@ function adminSectionScreen(section: AdminSection) {
       return <AdminConferencesPage />;
     case 'achievements':
       return <AdminAchievementsPage />;
+    case 'publications':
+      return <Navigate to={PUBLICATION_MANAGE_ROUTE} replace />;
     case 'teachers':
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список ППС — тоже `TeachersPage`.
@@ -321,6 +336,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
           { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
+          { path: ':id/publications', element: <TeacherDetailPage publicationsOnly />, errorElement: <RouteError /> },
         ],
       },
       // УВП. Публичный: ручка `GET /api/public/helpers` открыта всем.
@@ -501,6 +517,19 @@ export const routes: RouteObject[] = [
           { path: '*', element: <UnknownSectionPage /> },
         ],
       },
+      { path: PUBLICATIONS_ROUTE, element: <PublicationsPage />, errorElement: <RouteError /> },
+      { path: publicationRoute(':id'), element: <PublicationDetailPage />, errorElement: <RouteError /> },
+      ...[
+        { path: PUBLICATION_MANAGE_ROUTE, element: <PublicationsPage manage /> },
+        { path: PUBLICATION_NEW_ROUTE, element: <PublicationEditorPage /> },
+        { path: publicationEditRoute(':id'), element: <PublicationEditorPage /> },
+        { path: PUBLICATION_TAGS_ROUTE, element: <PublicationTagsPage /> },
+        { path: PUBLICATION_SCHOLAR_ROUTE, element: <PublicationScholarPage /> },
+      ].map(({ path, element }) => ({
+        path,
+        element: <RoleRoute access="moderator">{element}</RoleRoute>,
+        errorElement: <RouteError />,
+      })),
       // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на
       // ещё не перенесённые страницы, и если ловить их корневым '*', то на
       // первом же клике пропадают и шапка, и сайдбар — уйти можно только

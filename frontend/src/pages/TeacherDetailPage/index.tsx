@@ -8,6 +8,7 @@ import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 import { useTeacherAchievements } from './model/useTeacherAchievements';
 import { useTeacherCard } from './model/useTeacherCard';
 import { useTeacherExams } from './model/useTeacherExams';
+import { TeacherPublicationsSection } from './TeacherPublicationsSection';
 import { useTeacherSchedule } from './model/useTeacherSchedule';
 import { TeacherAchievements } from './ui/TeacherAchievements';
 import { TeacherExams } from './ui/TeacherExams';
@@ -23,21 +24,16 @@ import { TeacherSchedule } from './ui/TeacherSchedule';
  * на страницу попадают и из поиска, и по присланному адресу, и
  * `history.back()` увёл бы такого посетителя с портала совсем.
  *
- * Под профилем — три блока со своими ручками: расписание пар (F-55),
- * экзамены (F-56) и достижения (F-25). Расписания выше: за ними
- * на карточку приходят чаще — студент ищет, где и когда пара или экзамен.
- *
- * Все четыре запроса уходят параллельно, но блоки рисуются только рядом
- * с загруженной карточкой: на несуществующем преподавателе ручка
- * достижений отвечает не `404`, а пустой страницей, и «достижений нет»
- * висело бы под «преподаватель не найден».
+ * Расписание пар, экзамены и достижения загружаются вместе с карточкой.
+ * Запрос публикаций начинается после её загрузки: фильтру нужно полное
+ * имя преподавателя. Адрес прежней вкладки открывает только публикации.
  */
-export default function TeacherDetailPage() {
+export default function TeacherDetailPage({ publicationsOnly = false }: { publicationsOnly?: boolean }) {
   const { teacher, id, isLoading, isOffline, isNotFound, isError, errorMessage, refetch } =
     useTeacherCard();
-  const schedule = useTeacherSchedule(id);
-  const exams = useTeacherExams(id);
-  const achievements = useTeacherAchievements(id);
+  const schedule = useTeacherSchedule(publicationsOnly ? null : id);
+  const exams = useTeacherExams(publicationsOnly ? null : id);
+  const achievements = useTeacherAchievements(publicationsOnly ? null : id);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter-sm">
@@ -78,7 +74,7 @@ export default function TeacherDetailPage() {
         />
       )}
 
-      {teacher && (
+      {teacher && !publicationsOnly && (
         <>
           <TeacherProfile teacher={teacher} />
           <TeacherSchedule state={schedule} />
@@ -90,6 +86,7 @@ export default function TeacherDetailPage() {
           <TeacherAchievements state={achievements} />
         </>
       )}
+      {teacher && <TeacherPublicationsSection teacher={teacher} standalone={publicationsOnly} />}
     </div>
   );
 }
