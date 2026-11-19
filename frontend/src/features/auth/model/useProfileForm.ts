@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import type { FileUploadResponse, Profile } from '@shared/types';
 
 import { updateProfile } from '../api/authApi';
@@ -59,7 +59,7 @@ export function useProfileForm(profile: Profile, onSaved: () => void) {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: profileToFormValues(profile),
@@ -95,6 +95,9 @@ export function useProfileForm(profile: Profile, onSaved: () => void) {
   const avatarPreviewUrl =
     avatarChange === 'removed' ? null : (avatarChange?.url ?? profile.avatarUrl);
 
+  /** Несохранённое — и в полях, и в решении про аватар (D-F17). */
+  const unsaved = useUnsavedChanges(isDirty || avatarChange !== null);
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -104,6 +107,7 @@ export function useProfileForm(profile: Profile, onSaved: () => void) {
         // на ключ `['profile']` вместо инвалидации. Второго запроса нет,
         // а шапка, читающая тот же ключ, обновляется тем же движением.
         queryClient.setQueryData(authKeys.profile, fresh);
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeProfileError(error, setError)),

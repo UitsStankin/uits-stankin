@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { newsKeys } from '@entities/news';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { News } from '@shared/types';
 
@@ -52,7 +52,7 @@ export function useNewsForm(news: News | null, onSaved: () => void) {
     handleSubmit,
     setError,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<NewsFormValues>({
     resolver: zodResolver(newsSchema),
     defaultValues: newsToFormValues(news),
@@ -78,6 +78,9 @@ export function useNewsForm(news: News | null, onSaved: () => void) {
     },
   });
 
+  /** Несохранённое — и в полях, и в обложке вне react-hook-form (D-F17). */
+  const unsaved = useUnsavedChanges(isDirty || cover.key !== (news?.previewImage ?? null));
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -98,6 +101,7 @@ export function useNewsForm(news: News | null, onSaved: () => void) {
         void queryClient.invalidateQueries({ queryKey: newsKeys.all });
 
         toast.success(news ? `Запись «${saved.title}» сохранена` : `Запись «${saved.title}» создана`);
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),

@@ -6,7 +6,7 @@ import { useForm, useWatch, type UseFormSetError } from 'react-hook-form';
 import { eventKeys } from '@entities/event';
 import { userDirectoryQuery } from '@entities/user';
 import { isApiError } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { UserEvent } from '@shared/types';
 
@@ -45,7 +45,7 @@ export function useEventForm(event: UserEvent | null, day: Date, onSaved: () => 
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: eventToFormValues(event, day),
@@ -68,6 +68,8 @@ export function useEventForm(event: UserEvent | null, day: Date, onSaved: () => 
     },
   });
 
+  const unsaved = useUnsavedChanges(isDirty);
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -78,6 +80,7 @@ export function useEventForm(event: UserEvent | null, day: Date, onSaved: () => 
         void queryClient.invalidateQueries({ queryKey: eventKeys.all });
 
         toast.success(event ? `Событие «${saved.name}» сохранено` : `Событие «${saved.name}» создано`);
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),

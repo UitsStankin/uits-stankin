@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { helperKeys } from '@entities/helper';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { Helper } from '@shared/types';
 
@@ -48,7 +48,7 @@ export function useHelperForm(helper: Helper | null, onSaved: () => void) {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<HelperFormValues>({
     resolver: zodResolver(helperSchema),
     defaultValues: helperToFormValues(helper),
@@ -74,6 +74,9 @@ export function useHelperForm(helper: Helper | null, onSaved: () => void) {
     },
   });
 
+  /** Несохранённое — и в полях, и в фото вне react-hook-form (D-F17). */
+  const unsaved = useUnsavedChanges(isDirty || avatar.key !== (helper?.avatar ?? null));
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -90,6 +93,7 @@ export function useHelperForm(helper: Helper | null, onSaved: () => void) {
             ? `Карточка «${saved.lastName} ${saved.firstName}» сохранена`
             : `Карточка «${saved.lastName} ${saved.firstName}» создана`,
         );
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),
