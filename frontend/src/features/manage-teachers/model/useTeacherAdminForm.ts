@@ -7,7 +7,7 @@ import { subjectsListQuery } from '@entities/subject';
 import { teacherKeys } from '@entities/teacher';
 import { userDirectoryQuery } from '@entities/user';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors, takeFieldErrors } from '@shared/lib';
+import { applyFieldErrors, takeFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { Teacher } from '@shared/types';
 
@@ -93,7 +93,7 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<TeacherCardFormValues>({
     resolver: zodResolver(teacherCardSchema),
     defaultValues: teacherToFormValues(card ?? BLANK_CARD),
@@ -143,6 +143,20 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
     },
   });
 
+  /**
+   * Несохранённое (D-F17). Три поля живут вне react-hook-form, и её
+   * `isDirty` о них не знает — сравниваются с карточкой сами.
+   */
+  const initialAvatar = card?.avatar ?? null;
+  const initialUserId = card?.userId ?? null;
+  const initialSubjectIds = card?.subjects.map((subject) => subject.id) ?? [];
+  const unsaved = useUnsavedChanges(
+    isDirty ||
+      avatar.key !== initialAvatar ||
+      userId !== initialUserId ||
+      !sameIds(subjectIds, initialSubjectIds),
+  );
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
     setFieldErrors({});
@@ -162,6 +176,7 @@ export function useTeacherAdminForm(card: Teacher | null, onSaved: () => void) {
             ? `Карточка «${saved.lastName} ${saved.firstName}» сохранена`
             : `Карточка «${saved.lastName} ${saved.firstName}» создана`,
         );
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError, setFieldErrors)),
@@ -285,4 +300,9 @@ function describeSaveError(
    * закрыта, и теперь у каждого есть адрес.
    */
   return error.message;
+}
+
+/** Один и тот же набор дисциплин, порядок отметки не важен. */
+function sameIds(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id));
 }

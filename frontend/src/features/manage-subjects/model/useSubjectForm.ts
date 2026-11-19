@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { subjectKeys } from '@entities/subject';
 import { isApiError } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { Subject } from '@shared/types';
 
@@ -36,7 +36,7 @@ export function useSubjectForm(subject: Subject | null, onSaved: () => void) {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectSchema),
     defaultValues: subjectToFormValues(subject),
@@ -53,6 +53,8 @@ export function useSubjectForm(subject: Subject | null, onSaved: () => void) {
     },
   });
 
+  const unsaved = useUnsavedChanges(isDirty);
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -68,6 +70,7 @@ export function useSubjectForm(subject: Subject | null, onSaved: () => void) {
         toast.success(
           subject ? `Дисциплина «${saved.name}» сохранена` : `Дисциплина «${saved.name}» добавлена`,
         );
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),

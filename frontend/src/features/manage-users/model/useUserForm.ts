@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { userKeys } from '@entities/user';
 import { isApiError } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { AdminUser } from '@shared/types';
 
@@ -45,7 +45,7 @@ export function useUserForm(
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<UserFormValues>({
     resolver: zodResolver(userSchema(isNew)),
     defaultValues: userToFormValues(user),
@@ -61,6 +61,8 @@ export function useUserForm(
         : createUser(formValuesToCreateRequest(values)),
   });
 
+  const unsaved = useUnsavedChanges(isDirty);
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -75,6 +77,7 @@ export function useUserForm(
             ? `Учётная запись «${saved.username}» создана`
             : `Учётная запись «${saved.username}» сохранена`,
         );
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),
