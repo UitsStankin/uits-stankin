@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { editablePageKeys } from '@entities/editable-page';
 import { isApiError } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { EditablePage } from '@shared/types';
 
@@ -33,7 +33,7 @@ export function useEditablePageForm(page: EditablePage, onSaved: () => void) {
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<EditablePageFormValues>({
     resolver: zodResolver(editablePageSchema),
     defaultValues: editablePageToFormValues(page),
@@ -46,6 +46,8 @@ export function useEditablePageForm(page: EditablePage, onSaved: () => void) {
     mutationFn: (values: EditablePageFormValues) =>
       updateEditablePage(page.slug, formValuesToRequest(values)),
   });
+
+  const unsaved = useUnsavedChanges(isDirty);
 
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
@@ -62,6 +64,7 @@ export function useEditablePageForm(page: EditablePage, onSaved: () => void) {
         void queryClient.invalidateQueries({ queryKey: editablePageKeys.all });
 
         toast.success(`Раздел «${saved.title ?? saved.slug}» сохранён`);
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),

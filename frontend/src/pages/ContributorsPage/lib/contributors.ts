@@ -1,3 +1,14 @@
+import badyan from '../assets/badyan.jpg';
+import chekaninVladislav from '../assets/chekanin-vladislav.jpg';
+import lebedevAlex from '../assets/lebedev-alex.jpg';
+import malovaIana from '../assets/malova-iana.jpg';
+import medvedevVadim from '../assets/medvedev-vadim.jpg';
+import osipovaKsenia from '../assets/osipova-ksenia.jpg';
+import ryabtcev from '../assets/ryabtcev.jpg';
+import stankov from '../assets/stankov.jpg';
+import vdovenkoDanil from '../assets/vdovenko-danil.jpg';
+import veznovets from '../assets/veznovets.jpg';
+
 /**
  * Человек в списке благодарностей.
  *
@@ -26,9 +37,6 @@ export interface Contributor {
   };
 }
 
-/** Каталог снимков. Отдельной константой, чтобы путь не повторялся десять раз. */
-const PHOTOS = '/img/contributors';
-
 /**
  * Те, кто делал портал кафедры, — содержимое страницы
  * `views/uits/public/about/contributors` старого портала, перенесённое
@@ -53,6 +61,9 @@ const PHOTOS = '/img/contributors';
  * сетка из шестнадцати кружков прыгает, пока фотографии доезжают. Числа —
  * фактические, после пережатия (D-F5): 300 пикселей по меньшей стороне.
  *
+ * Снимки — импорты, а не строки адресов: так они идут через сборщик
+ * и получают хеш в имени, а с ним и вечный кэш (D-F16).
+ *
  * ### Чего здесь нет
  *
  * `alt` у снимков — намеренно. Имя стоит подписью прямо под фотографией,
@@ -64,12 +75,12 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     name: 'Чеканин Владислав Александрович',
     role: 'Руководитель',
-    photo: { src: `${PHOTOS}/chekanin-vladislav.jpg`, width: 300, height: 300 },
+    photo: { src: chekaninVladislav, width: 300, height: 300 },
   },
   {
     name: 'Малова Яна',
     role: 'Тимлид, fullstack-разработчик',
-    photo: { src: `${PHOTOS}/malova-iana.jpg`, width: 300, height: 306 },
+    photo: { src: malovaIana, width: 300, height: 306 },
   },
   {
     name: 'Ерин Сергей',
@@ -78,27 +89,27 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     name: 'Медведев Вадим',
     role: 'Разработчик, ревьюер кода',
-    photo: { src: `${PHOTOS}/medvedev-vadim.jpg`, width: 300, height: 300 },
+    photo: { src: medvedevVadim, width: 300, height: 300 },
   },
   {
     name: 'Вдовенко Данил',
     role: 'Devops, ревьюер кода',
-    photo: { src: `${PHOTOS}/vdovenko-danil.jpg`, width: 300, height: 300 },
+    photo: { src: vdovenkoDanil, width: 300, height: 300 },
   },
   {
     name: 'Осипова Ксения',
     role: 'Backend-разработчик',
-    photo: { src: `${PHOTOS}/osipova-ksenia.jpg`, width: 300, height: 300 },
+    photo: { src: osipovaKsenia, width: 300, height: 300 },
   },
   {
     name: 'Вежновец Дмитрий',
     role: 'Frontend-разработчик',
-    photo: { src: `${PHOTOS}/veznovets.jpg`, width: 300, height: 389 },
+    photo: { src: veznovets, width: 300, height: 389 },
   },
   {
     name: 'Рябцев Михаил',
     role: 'Backend-разработчик',
-    photo: { src: `${PHOTOS}/ryabtcev.jpg`, width: 300, height: 385 },
+    photo: { src: ryabtcev, width: 300, height: 385 },
   },
   {
     name: 'Шостов Дмитрий',
@@ -107,7 +118,7 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     name: 'Лебедев Александр',
     role: 'Frontend-разработчик',
-    photo: { src: `${PHOTOS}/lebedev-alex.jpg`, width: 300, height: 420 },
+    photo: { src: lebedevAlex, width: 300, height: 420 },
   },
   {
     name: 'Мокроусова Лариса',
@@ -116,12 +127,12 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     name: 'Станьков Дмитрий',
     role: 'Frontend-разработчик',
-    photo: { src: `${PHOTOS}/stankov.jpg`, width: 300, height: 346 },
+    photo: { src: stankov, width: 300, height: 346 },
   },
   {
     name: 'Бадян Ксения и Анастасия',
     role: 'Frontend-разработчик',
-    photo: { src: `${PHOTOS}/badyan.jpg`, width: 300, height: 401 },
+    photo: { src: badyan, width: 300, height: 401 },
   },
   {
     name: 'Золотухин Иван',
