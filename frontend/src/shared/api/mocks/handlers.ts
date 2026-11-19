@@ -1,3 +1,5 @@
+import { publicationHandlers } from './publications';
+
 import { achievementHandlers } from './achievements';
 import { conferenceHandlers } from './conferences';
 import { editablePageHandlers } from './editablePages';
@@ -48,6 +50,8 @@ export const handlers = [
   ...userDirectoryHandlers(),
   ...adminUserHandlers(),
   ...postgraduateHandlers(),
+  ...publicationHandlers(),
+
   ...scheduleHandlers(),
   ...examHandlers(),
   ...subjectHandlers(),

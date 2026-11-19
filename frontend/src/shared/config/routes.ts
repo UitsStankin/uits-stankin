@@ -353,3 +353,14 @@ export const ADMIN_POSTGRADUATES_ROUTE = `${ADMIN_ROUTE}/postgraduates`;
 export function adminPostgraduateRoute(id: number | 'new'): string {
   return `${ADMIN_POSTGRADUATES_ROUTE}/${id}`;
 }
+
+export const ADMIN_PUBLICATIONS_ROUTE = '/admin/publications';
+
+const PUBLICATIONS_BASE = '/scientific-activities/publications';
+export const PUBLICATIONS_ROUTE = `${PUBLICATIONS_BASE}/main-science-page`;
+export const PUBLICATION_MANAGE_ROUTE = `${PUBLICATIONS_BASE}/edit_author`;
+export const PUBLICATION_TAGS_ROUTE = `${PUBLICATIONS_BASE}/manage_tags`;
+export const PUBLICATION_SCHOLAR_ROUTE = `${PUBLICATIONS_BASE}/serp-api-search`;
+export const PUBLICATION_NEW_ROUTE = `${PUBLICATIONS_BASE}/new`;
+export const publicationRoute = (id: number | ':id') => `${PUBLICATIONS_BASE}/${id}`;
+export const publicationEditRoute = (id: number | ':id') => `${publicationRoute(id)}/edit`;

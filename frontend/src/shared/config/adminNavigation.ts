@@ -3,6 +3,7 @@ import {
   BookOpen,
   FileText,
   GraduationCap,
+  Library,
   Mic,
   Newspaper,
   UserCog,
@@ -19,6 +20,7 @@ import {
   ADMIN_NEWS_ROUTE,
   ADMIN_PAGES_ROUTE,
   ADMIN_POSTGRADUATES_ROUTE,
+  ADMIN_PUBLICATIONS_ROUTE,
   ADMIN_SUBJECTS_ROUTE,
   ADMIN_TEACHERS_ROUTE,
   ADMIN_USERS_ROUTE,
@@ -49,10 +51,8 @@ export interface AdminSection {
  *
  * Список закрывает ровно те сущности, у которых в контракте есть
  * модераторский CRUD (docs/API.md, «Эндпоинты»). Чего здесь нет
- * намеренно: научных публикаций с тегами (Фаза 4), календаря событий
- * (Фаза 3), импорта расписаний, экзаменов и ведомостей (Фаза 2) — их
- * экраны приедут вместе со своими фазами, и пункт меню, ведущий
- * в никуда полгода, полезнее не делает.
+ * намеренно: календарь событий живёт в личном кабинете, импорт расписаний и экзаменов —
+ * на страницах самих расписаний.
  *
  * Порядок — от того, что правят каждую неделю, к тому, что правят раз
  * в семестр: новости и объявления сверху, справочники и учётки внизу.
@@ -81,6 +81,13 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     title: 'Достижения кафедры',
     icon: Award,
     path: ADMIN_ACHIEVEMENTS_ROUTE,
+    access: 'moderator',
+  },
+  {
+    key: 'publications',
+    title: 'Научные публикации',
+    icon: Library,
+    path: ADMIN_PUBLICATIONS_ROUTE,
     access: 'moderator',
   },
   {

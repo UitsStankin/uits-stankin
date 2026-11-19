@@ -39,7 +39,8 @@ export function fileHandlers() {
       const { category, file } = await readUpload(request);
 
       uploads += 1;
-      const key = `${category}/uploaded-${String(uploads)}.jpg`;
+      const extension = category === 'publications' ? 'pdf' : 'jpg';
+      const key = `${category}/uploaded-${String(uploads)}.${extension}`;
 
       if (file) stored.set(key, file);
 
