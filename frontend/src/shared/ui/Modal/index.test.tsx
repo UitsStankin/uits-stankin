@@ -145,6 +145,32 @@ describe('Modal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * Окно поверх окна — вопрос «уйти без сохранения?» над панелью формы
+   * (D-F17). Escape — верхнему: закрой он и нижнее, панель ушла бы
+   * вместе с набранным, ради которого и спросили.
+   */
+  it('при окне поверх окна Escape закрывает только верхнее', () => {
+    const onCloseBelow = vi.fn();
+    const onCloseAbove = vi.fn();
+
+    render(
+      <>
+        <Modal title="Новая дисциплина" onClose={onCloseBelow}>
+          <input aria-label="Название" />
+        </Modal>
+        <Modal title="Уйти без сохранения?" onClose={onCloseAbove} placement="center">
+          <button type="button">Отмена</button>
+        </Modal>
+      </>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onCloseAbove).toHaveBeenCalledTimes(1);
+    expect(onCloseBelow).not.toHaveBeenCalled();
+  });
+
   it('закрывается кликом по подложке', () => {
     const { onClose } = renderModal();
 

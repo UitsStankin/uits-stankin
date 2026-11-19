@@ -1,7 +1,9 @@
-import type { ReactElement, ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router';
+import { RouterProvider, createMemoryRouter } from 'react-router';
 import { render } from '@testing-library/react';
+
+import { TestElement, TestOutlet } from './TestElement';
 
 /**
  * Клиент запросов для теста: свой на каждый рендер и без повторов.
@@ -45,9 +47,19 @@ export function renderWithProviders(
 ) {
 
   function Providers({ children }: { children: ReactNode }) {
+    // Роутер — data router, как у приложения (`createBrowserRouter`), а не
+    // `MemoryRouter`: без него не работает `useBlocker`, и форма со сторожем
+    // несохранённого (D-F17) в тесте падала бы там, где в браузере живёт.
+    // Один на рендер: пересоздание на `rerender` сбросило бы историю.
+    const [router] = useState(() =>
+      createMemoryRouter([{ path: '*', element: <TestOutlet /> }], { initialEntries: [route] }),
+    );
+
     return (
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+        <TestElement value={children}>
+          <RouterProvider router={router} />
+        </TestElement>
       </QueryClientProvider>
     );
   }

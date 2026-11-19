@@ -6,7 +6,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 import { achievementKeys } from '@entities/achievement';
 import { adminTeachersListQuery } from '@entities/teacher';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors, takeFieldErrors } from '@shared/lib';
+import { applyFieldErrors, takeFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { Achievement } from '@shared/types';
 
@@ -71,7 +71,7 @@ export function useAchievementForm(achievement: Achievement | null, onSaved: () 
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<AchievementFormValues>({
     resolver: zodResolver(achievementSchema),
     defaultValues: achievementToFormValues(achievement),
@@ -106,6 +106,9 @@ export function useAchievementForm(achievement: Achievement | null, onSaved: () 
     },
   });
 
+  /** Несохранённое — и в полях, и в обложке вне react-hook-form (D-F17). */
+  const unsaved = useUnsavedChanges(isDirty || cover.key !== (achievement?.previewImage ?? null));
+
   const submitValid = handleSubmit((values) => {
     // Поля в порядке, а обложки нет: сообщение уже стоит под рамкой.
     if (cover.key === null) return;
@@ -126,6 +129,7 @@ export function useAchievementForm(achievement: Achievement | null, onSaved: () 
           toast.success(
             achievement ? `Достижение «${saved.title}» сохранено` : `Достижение «${saved.title}» создано`,
           );
+          unsaved.release();
           onSaved();
         },
         onError: (error) => setFormError(describeSaveError(error, setError, setCoverRefusal)),

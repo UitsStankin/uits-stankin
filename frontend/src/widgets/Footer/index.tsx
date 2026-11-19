@@ -1,5 +1,6 @@
 import { TELEGRAM_CHAT_URL } from '@shared/config/contacts';
 import { cn } from '@shared/lib/cn';
+import telegramIcon from '@shared/assets/telegram.png';
 
 interface FooterProps {
   className?: string;
@@ -40,7 +41,7 @@ export default function Footer({ className }: FooterProps) {
         >
           {/* Логотип бренда, а не абстрактная иконка: в lucide телеграма нет,
               а подменять его самолётиком Send — терять узнаваемость. */}
-          <img src="/img/telegram.png" alt="" className="h-8.75 w-8.75" aria-hidden />
+          <img src={telegramIcon} alt="" className="h-8.75 w-8.75" aria-hidden />
         </a>
       </div>
     </footer>

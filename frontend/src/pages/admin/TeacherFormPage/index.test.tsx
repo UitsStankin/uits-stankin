@@ -15,6 +15,7 @@ import {
   userDirectoryHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
+import { hasUnsavedChanges } from '@shared/lib';
 import { useToastStore } from '@shared/store';
 import type { TeacherAdminRequest } from '@shared/types';
 import ToastViewport from '@shared/ui/Toast';
@@ -790,5 +791,54 @@ describe('TeacherFormPage, расписание из PDF', () => {
 
     expect(await screen.findByRole('button', { name: 'Создать' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Расписание из PDF' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Отметка несохранённого (D-F17). Сам вопрос «уйти без сохранения?»
+ * задаёт сторож в лейауте и проверяется у себя; здесь — что форма
+ * отмечает правку честно, в обе стороны.
+ */
+describe('TeacherFormPage, несохранённая правка', () => {
+  /**
+   * Самое хрупкое место: rich-text поля. Редактор, нормализующий HTML
+   * при открытии, объявил бы правкой нетронутую карточку, и сторож
+   * спрашивал бы на каждом уходе.
+   */
+  it('нетронутая карточка не держит несохранённого', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByDisplayValue('профессор кафедры');
+    // Ждём сами редакторы: нормализовать содержимое они могли бы только
+    // смонтировавшись, а грузятся отдельным куском.
+    await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
+
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  it('дисциплина — правка, хотя живёт вне react-hook-form; вернули — уже нет', async () => {
+    renderForm('/admin/teachers/3');
+
+    const subject = await screen.findByRole('checkbox', { name: 'Операционные системы' });
+
+    fireEvent.click(subject);
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
+
+    fireEvent.click(subject);
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(false));
+  });
+
+  it('сохранение снимает отметку до ухода к списку', async () => {
+    renderForm('/admin/teachers/3');
+
+    fireEvent.change(await screen.findByDisplayValue('профессор кафедры'), {
+      target: { value: 'заведующий кафедрой' },
+    });
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByText('Список преподавателей')).toBeInTheDocument();
+    expect(hasUnsavedChanges()).toBe(false);
   });
 });
