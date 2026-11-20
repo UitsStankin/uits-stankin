@@ -355,6 +355,9 @@ export function adminPostgraduateRoute(id: number | 'new'): string {
 }
 
 export const ADMIN_PUBLICATIONS_ROUTE = '/admin/publications';
+export const ADMIN_GRADESHEETS_ROUTE = '/admin/gradesheets';
+export const adminGradesheetRoute = (id: number) => `${ADMIN_GRADESHEETS_ROUTE}/${id}`;
+
 
 const PUBLICATIONS_BASE = '/scientific-activities/publications';
 export const PUBLICATIONS_ROUTE = `${PUBLICATIONS_BASE}/main-science-page`;
