@@ -20,6 +20,7 @@ import ru.stankin.uits.module.user.entity.User;
 import ru.stankin.uits.module.user.service.UserService;
 import ru.stankin.uits.security.SecurityUser;
 
+import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,9 +38,13 @@ public class UserEventService {
     private final UserService userService;
 
     @Transactional(readOnly = true)
-    public PageResponseDto<UserEventResponseDto> getEvents(EventStatus status, Pageable pageable) {
+    public PageResponseDto<UserEventResponseDto> getEvents(EventStatus status, OffsetDateTime from,
+                                                          OffsetDateTime to, Pageable pageable) {
         validate(pageable.getSort(), SORT_FIELDS);
-        Page<UserEvent> page = eventRepository.findVisibleTo(currentUser().getId(), status, pageable);
+        if (from != null && to != null && !from.isBefore(to)) {
+            throw new InvalidRequestException("Начало периода должно быть раньше конца периода");
+        }
+        Page<UserEvent> page = eventRepository.findVisibleTo(currentUser().getId(), status, from, to, pageable);
         warmUpDetails(page.getContent());
 
         return PageResponseDto.from(page.map(eventMapper::toDto));

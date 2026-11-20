@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import ru.stankin.uits.module.events.enums.EventStatus;
 import ru.stankin.uits.module.events.service.UserEventService;
 
 import java.net.URI;
+import java.time.OffsetDateTime;
 
 @RestController
 @RequestMapping("/api/events")
@@ -27,9 +29,13 @@ public class UserEventController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public PageResponseDto<UserEventResponseDto> getEvents(
             @RequestParam(name = "status", required = false) EventStatus status,
+            @RequestParam(name = "from", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(name = "to", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @PageableDefault(size = 50, sort = {"startedAt", "id"}) Pageable pageable
     ) {
-        return eventService.getEvents(status, pageable);
+        return eventService.getEvents(status, from, to, pageable);
     }
 
     @GetMapping("/{id}")

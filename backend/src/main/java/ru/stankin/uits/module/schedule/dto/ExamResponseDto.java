@@ -1,5 +1,6 @@
 package ru.stankin.uits.module.schedule.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +16,9 @@ import java.time.LocalTime;
 public class ExamResponseDto {
     Long id;
     LocalDate date;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     LocalTime timeStart;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     LocalTime timeEnd;
     String group;
     String name;
