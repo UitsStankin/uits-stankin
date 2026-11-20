@@ -16,6 +16,7 @@ import ru.stankin.uits.module.schedule.entity.ExamSchedule;
 import ru.stankin.uits.module.schedule.repository.ExamScheduleRepository;
 import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.repository.TeacherRepository;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -35,6 +36,9 @@ class ExamSchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ExamScheduleRepository examScheduleRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private Teacher ibatulin;
     private Teacher bychkova;
@@ -91,6 +95,18 @@ class ExamSchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getBody().getTeacherId()).isEqualTo(ibatulin.getId());
         assertThat(response.getBody().getTeacherName()).contains("Ибатулин");
         assertThat(response.getBody().getExams()).hasSize(2);
+    }
+
+    @Test
+    void writesExamAndConsultationTimesWithoutSeconds() {
+        ResponseEntity<String> response = restTemplate.getForEntity(
+                "/api/public/teachers/" + ibatulin.getId() + "/exams", String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        var exams = objectMapper.readTree(response.getBody()).path("exams");
+        assertThat(exams.path(0).path("timeStart").asString()).isEqualTo("08:30");
+        assertThat(exams.path(0).path("timeEnd").asString()).isEqualTo("14:00");
+        assertThat(exams.path(1).path("consultation").path("time").asString()).isEqualTo("14:10");
     }
 
     @Test
