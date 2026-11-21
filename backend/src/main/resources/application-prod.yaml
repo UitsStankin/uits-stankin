@@ -3,3 +3,8 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+logging:
+  structured:
+    format:
+      console: logstash
