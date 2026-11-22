@@ -70,7 +70,7 @@ public class UserEventService {
     public UserEventResponseDto updateEvent(Long id, UserEventRequestDto request) {
         validateDates(request);
 
-        UserEvent event = requireVisible(id);
+        UserEvent event = requireModifiable(id);
         Set<User> assigned = resolveAssigned(request.getAssignedUserIds());
         eventMapper.updateEntity(event, request);
         event.setAssignedUsers(assigned);
@@ -80,7 +80,7 @@ public class UserEventService {
 
     @Transactional
     public void deleteEvent(Long id) {
-        eventRepository.delete(requireVisible(id));
+        eventRepository.delete(requireModifiable(id));
     }
 
     private void validateDates(UserEventRequestDto request) {
@@ -115,8 +115,23 @@ public class UserEventService {
         return event;
     }
 
+    private UserEvent requireModifiable(Long id) {
+        UserEvent event = eventRepository.findWithDetailsById(id)
+                .orElseThrow(() -> notFound(id));
+
+        if (!canModify(event, currentUser())) {
+            throw notFound(id);
+        }
+
+        return event;
+    }
+
+    private boolean canModify(UserEvent event, User user) {
+        return user.isSuperuser() || event.getOwner().getId().equals(user.getId());
+    }
+
     private boolean isVisibleTo(UserEvent event, User user) {
-        if (event.getOwner().getId().equals(user.getId())) {
+        if (user.isSuperuser() || event.getOwner().getId().equals(user.getId())) {
             return true;
         }
 
