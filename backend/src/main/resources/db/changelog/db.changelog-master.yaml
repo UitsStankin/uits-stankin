@@ -67,3 +67,5 @@ databaseChangeLog:
       file: db/changelog/changesets/033-teacher-archived-at.yml
   - include:
       file: db/changelog/changesets/034-postgraduate-student-not-null.yml
+  - include:
+      file: db/changelog/changesets/035-bootstrap-admin.yml

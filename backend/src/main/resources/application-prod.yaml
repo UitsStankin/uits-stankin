@@ -1,3 +1,9 @@
+spring:
+  liquibase:
+    contexts: prod
+    parameters:
+      bootstrapAdminHash: ${BOOTSTRAP_ADMIN_HASH:}
+
 springdoc:
   api-docs:
     enabled: false

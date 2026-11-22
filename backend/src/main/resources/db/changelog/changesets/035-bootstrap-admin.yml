@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 035-bootstrap-admin
+      author: eeffeecct
+      contextFilter: "@prod"
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: "0"
+            sql: SELECT count(*) FROM users_user WHERE is_superuser
+      changes:
+        - customChange:
+            class: ru.stankin.uits.config.migration.BootstrapAdmin
