@@ -56,6 +56,7 @@ services:
       # Обязательно: без прод-профиля сработает профиль по умолчанию dev,
       # и DevDataSeeder зальёт тестовые учётки в боевую базу
       SPRING_PROFILES_ACTIVE: prod
+      BOOTSTRAP_ADMIN_HASH: ${BOOTSTRAP_ADMIN_HASH:-}
       TZ: ${TZ:-Europe/Moscow}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-uits_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?не задан POSTGRES_USER}
