@@ -7,9 +7,14 @@ import { ActionLink, RetryButton } from '@shared/ui/StatusAction';
 
 import { useTeacherAchievements } from './model/useTeacherAchievements';
 import { useTeacherCard } from './model/useTeacherCard';
+import { useTeacherExams } from './model/useTeacherExams';
+import { TeacherPublicationsSection } from './TeacherPublicationsSection';
+import { useTeacherSchedule } from './model/useTeacherSchedule';
 import { TeacherAchievements } from './ui/TeacherAchievements';
+import { TeacherExams } from './ui/TeacherExams';
 import { TeacherProfile } from './ui/TeacherProfile';
 import { TeacherProfileSkeleton } from './ui/TeacherProfileSkeleton';
+import { TeacherSchedule } from './ui/TeacherSchedule';
 
 /**
  * Карточка одного преподавателя. Сборка: состояние из модели, разметка
@@ -19,19 +24,16 @@ import { TeacherProfileSkeleton } from './ui/TeacherProfileSkeleton';
  * на страницу попадают и из поиска, и по присланному адресу, и
  * `history.back()` увёл бы такого посетителя с портала совсем.
  *
- * Достижения преподавателя приехали с F-25 отдельным блоком под профилем;
- * расписание (Фаза 2) встанет сюда же следующим — его ручка уже есть
- * в контракте.
- *
- * Оба запроса — карточки и достижений — уходят параллельно, но блок
- * достижений рисуется только рядом с загруженной карточкой: на
- * несуществующем преподавателе его ручка отвечает не `404`, а пустой
- * страницей, и «достижений нет» висело бы под «преподаватель не найден».
+ * Расписание пар, экзамены и достижения загружаются вместе с карточкой.
+ * Запрос публикаций начинается после её загрузки: фильтру нужно полное
+ * имя преподавателя. Адрес прежней вкладки открывает только публикации.
  */
-export default function TeacherDetailPage() {
+export default function TeacherDetailPage({ publicationsOnly = false }: { publicationsOnly?: boolean }) {
   const { teacher, id, isLoading, isOffline, isNotFound, isError, errorMessage, refetch } =
     useTeacherCard();
-  const achievements = useTeacherAchievements(id);
+  const schedule = useTeacherSchedule(publicationsOnly ? null : id);
+  const exams = useTeacherExams(publicationsOnly ? null : id);
+  const achievements = useTeacherAchievements(publicationsOnly ? null : id);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-gutter-sm">
@@ -72,12 +74,19 @@ export default function TeacherDetailPage() {
         />
       )}
 
-      {teacher && (
+      {teacher && !publicationsOnly && (
         <>
           <TeacherProfile teacher={teacher} />
+          <TeacherSchedule state={schedule} />
+          <TeacherExams
+            state={exams}
+            graduationPdf={teacher.examScheduleGraduation}
+            nonGraduationPdf={teacher.examScheduleNonGraduation}
+          />
           <TeacherAchievements state={achievements} />
         </>
       )}
+      {teacher && <TeacherPublicationsSection teacher={teacher} standalone={publicationsOnly} />}
     </div>
   );
 }

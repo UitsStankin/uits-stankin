@@ -3,17 +3,22 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { editablePageHandlers, problemResponse } from '@shared/api/mocks';
+import { clearSession } from '@shared/api';
+import { editablePageHandlers, makeProfile, problemResponse } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
 import { renderWithProviders } from '@/test/render';
+import { signInAs } from '@/test/session';
 
 import EditableSection from './index';
 
 const PAGE_URL = '*/api/public/pages/fields-of-study';
 
 /** Раздел по слагу — так его ставят и страницы F-23, и контакты. */
-function renderSection() {
-  return renderWithProviders(<EditableSection slug="fields-of-study" />);
+function renderSection(queryClient?: ReturnType<typeof signInAs>) {
+  return renderWithProviders(<EditableSection slug="fields-of-study" />, {
+    route: '/education/fields-of-study',
+    queryClient,
+  });
 }
 
 /** Раздел с заданным текстом — поверх умолчания моков, где все разделы пусты. */
@@ -25,6 +30,7 @@ afterEach(() => {
   // Сеть возвращается всем: `onlineManager` — глобальный синглтон Query,
   // и оставленный офлайн поставил бы на паузу запросы соседнего теста.
   onlineManager.setOnline(true);
+  clearSession();
 });
 
 /**
@@ -52,7 +58,9 @@ describe('EditableSection', () => {
     expect(screen.getByText('Загрузка раздела')).toBeInTheDocument();
 
     // `##` стал заголовком — значит, текст ушёл в Markdown, а не выведен строкой.
-    expect(await screen.findByRole('heading', { level: 2, name: 'Бакалавриат' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Бакалавриат' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Программа «Прикладная информатика».')).toBeInTheDocument();
     expect(screen.queryByText('Загрузка раздела')).not.toBeInTheDocument();
   });
@@ -157,5 +165,53 @@ describe('EditableSection', () => {
 
     expect(await screen.findByText('Нет связи с сервером')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Ссылка на форму раздела (F-52). На старом портале модератор правил раздел
+ * с его же страницы, и после F-45 вход оставался только из админки.
+ */
+describe('EditableSection, ссылка «Править»', () => {
+  it('гостю ссылку не показывает', async () => {
+    respondWithText('Текст раздела');
+
+    renderSection();
+
+    expect(await screen.findByText('Текст раздела')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Править раздел' })).not.toBeInTheDocument();
+  });
+
+  /** Вошедший — ещё не модератор: `canEdit`, а не `isAuthenticated`. */
+  it('вошедшему без прав модератора ссылку не показывает', async () => {
+    respondWithText('Текст раздела');
+
+    renderSection(signInAs(makeProfile({ moderator: false, superuser: false })));
+
+    expect(await screen.findByText('Текст раздела')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Править раздел' })).not.toBeInTheDocument();
+  });
+
+  it('модератору ведёт на форму этого раздела', async () => {
+    respondWithText('Текст раздела');
+
+    renderSection(signInAs(makeProfile({ moderator: true })));
+
+    expect(await screen.findByText('Текст раздела')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Править раздел' })).toHaveAttribute(
+      'href',
+      '/admin/pages/fields-of-study',
+    );
+  });
+
+  /**
+   * Ради незаполненного раздела ссылка нужнее всего: на чистой базе пусты
+   * все тринадцать, и правка с места — единственный короткий путь.
+   */
+  it('показывает ссылку и на незаполненном разделе', async () => {
+    renderSection(signInAs(makeProfile({ superuser: true })));
+
+    expect(await screen.findByText('Раздел пока не заполнен')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Править раздел' })).toBeInTheDocument();
   });
 });

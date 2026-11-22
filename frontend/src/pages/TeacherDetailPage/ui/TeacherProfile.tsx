@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { FileText, Mail, MessageCircle, Phone } from 'lucide-react';
+import { Mail, MessageCircle, Phone } from 'lucide-react';
 
 import { formatYears, teacherCredentials, teacherFullName } from '@entities/teacher';
 import { DEFAULT_AVATAR_URL } from '@shared/config/avatar';
@@ -16,16 +16,16 @@ interface TeacherProfileProps {
  * ### Разделы, а не вкладки
  *
  * В оригинале страница была разбита на пять вкладок — общая информация,
- * расписание, дисциплины, публикации, достижения. Данные есть у трёх:
- * достижения приехали с F-25, расписание преподавателя — Фаза 2,
- * публикации — Фаза 4. Вкладки, две из которых пусты, хуже разделов
- * подряд: посетитель нажимает и ничего не находит. Разделы к тому же
- * читаются подряд на телефоне и открываются поиском по странице.
- * Расписание встанет сюда же новым блоком.
+ * расписание, дисциплины, публикации, достижения. Данные есть у четырёх:
+ * достижения приехали с F-25, расписание преподавателя — с F-55,
+ * экзамены — с F-56, публикации — Фаза 4. Вкладка, которая пуста, хуже разделов подряд:
+ * посетитель нажимает и ничего не находит. Разделы к тому же читаются
+ * подряд на телефоне и открываются поиском по странице.
  *
- * Достижения при этом стоят **не здесь**, а соседним блоком в сборке
- * страницы (`ui/TeacherAchievements.tsx`): у них своя ручка, своё состояние
- * загрузки и свой сбой, а этот компонент обязан оставаться чистым —
+ * Расписание, экзамены и достижения при этом стоят **не здесь**,
+ * а соседними блоками в сборке страницы (`ui/TeacherSchedule.tsx`,
+ * `ui/TeacherExams.tsx`, `ui/TeacherAchievements.tsx`): у них свои ручки, свои состояния
+ * загрузки и свои сбои, а этот компонент обязан оставаться чистым —
  * карточка на входе, разметка на выходе.
  *
  * ### Архив
@@ -46,8 +46,6 @@ export function TeacherProfile({ teacher }: TeacherProfileProps) {
   const fullName = teacherFullName(teacher);
   const experience = formatYears(teacher.experience);
   const professionalExperience = formatYears(teacher.professionalExperience);
-  const hasExamSchedule =
-    teacher.examScheduleGraduation !== null || teacher.examScheduleNonGraduation !== null;
 
   return (
     <div className="flex flex-col gap-gutter-sm">
@@ -157,17 +155,6 @@ export function TeacherProfile({ teacher }: TeacherProfileProps) {
         </Section>
       )}
 
-      {hasExamSchedule && (
-        <Section title="Расписание экзаменов">
-          <ul className="flex flex-col gap-3">
-            <ExamScheduleLink label="Выпускные курсы" href={teacher.examScheduleGraduation} />
-            <ExamScheduleLink
-              label="Невыпускные курсы"
-              href={teacher.examScheduleNonGraduation}
-            />
-          </ul>
-        </Section>
-      )}
     </div>
   );
 }
@@ -220,30 +207,6 @@ function SubjectCard({ subject }: { subject: Subject }) {
     <li className="rounded bg-light p-4">
       <h3 className="text-base font-bold text-text-heading">{subject.name}</h3>
       {subject.description && <p className="mt-1 text-base">{subject.description}</p>}
-    </li>
-  );
-}
-
-/**
- * Ссылка на PDF с расписанием экзаменов — или ничего. Показывается словом,
- * а не адресом: адреса длинные и разъезжаются на три строки.
- */
-function ExamScheduleLink({ label, href }: { label: string; href: string | null }) {
-  if (href === null) return null;
-
-  return (
-    <li>
-      <a
-        href={href}
-        // Файл лежит на стороннем сайте (`stankin.ru`), и уводить с портала
-        // в той же вкладке незачем; `rel` — обязательная пара к `_blank`.
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-2 text-base text-primary transition-colors hover:underline"
-      >
-        <FileText size={16} aria-hidden />
-        {label}
-      </a>
     </li>
   );
 }

@@ -136,6 +136,18 @@ const DEGREES = ['CANDIDATE_TECH', 'DOCTOR_TECH', 'CANDIDATE_PHYS_MATH'] as cons
 
 const RANKS = ['READER', 'PROFESSOR'] as const;
 
+/** Ссылки на PDF экзаменов по номеру карточки в фикстуре. */
+const EXAM_PDFS: Readonly<
+  Record<number, Partial<Pick<Teacher, 'examScheduleGraduation' | 'examScheduleNonGraduation'>>>
+> = {
+  0: { examScheduleGraduation: 'https://stankin.ru/uploads/exams/abramov-graduation.pdf' },
+  1: { examScheduleNonGraduation: 'https://stankin.ru/uploads/exams/andreeva.pdf' },
+  3: {
+    examScheduleGraduation: '/media/exams/belova-graduation.pdf',
+    examScheduleNonGraduation: '/media/exams/belova.pdf',
+  },
+};
+
 /** Дисциплины, которые раздаются карточкам по кругу. */
 const SUBJECTS = [
   { id: 1, name: 'Базы данных', description: 'Реляционная модель, SQL' },
@@ -182,6 +194,10 @@ function buildTeachers(): readonly Teacher[] {
       // Каждый пятый — без дисциплин: их назначает модератор, и новая
       // карточка живёт с пустым списком, пока до неё не дошли руки.
       subjects: index % 5 === 0 ? [] : SUBJECTS.slice(index % 2, (index % 2) + 2),
+      // Ссылки на PDF экзаменов — у троих из первых четырёх: только выпускные,
+      // только невыпускные и обе (страница экзаменов, F-56). Остальные
+      // без ссылок, как большинство карточек на стенде.
+      ...EXAM_PDFS[index],
     }),
   );
 }
@@ -235,6 +251,10 @@ export function teacherListItem(teacher: Teacher): TeacherListItem {
  *   `GET /api/teachers` отбирает по `?archived=`, детальная открывает
  *   любую, `archive` и `unarchive` идемпотентны и отвечают `404` на
  *   неизвестный `id`, а `PUT` отметку архива не трогает;
+ * - блокировка учётки архивом и `400` на свою карточку (T-120) — нет:
+ *   учёток и текущего пользователя у мока карточек нет, тот же довод,
+ *   что ниже. Отказ заводится в тесте через `server.use`, а блокировку
+ *   фронт не показывает — только сбрасывает кэш учёток;
  * - `400` на неизвестную дисциплину, занятую и безролевую учётку — нет:
  *   заводятся точечно через `server.use`, потому что зависят от данных,
  *   которых у мока карточек нет. Мок, выдумавший свой словарь учёток,

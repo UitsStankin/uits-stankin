@@ -25,6 +25,7 @@ export { useMyTeacherCardForm } from './model/useMyTeacherCardForm';
 export { useTeacherAdminForm } from './model/useTeacherAdminForm';
 export { useArchiveTeacher } from './model/useArchiveTeacher';
 export { useDeleteTeacher } from './model/useDeleteTeacher';
+export { archiveDescription } from './lib/archiveText';
 export { TeacherCardForm } from './ui/TeacherCardForm';
 export { AccountField } from './ui/AccountField';
 export { SubjectsField } from './ui/SubjectsField';

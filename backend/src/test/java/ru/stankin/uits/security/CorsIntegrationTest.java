@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import ru.stankin.uits.AbstractIntegrationTest;
 import ru.stankin.uits.TestRole;
+import ru.stankin.uits.common.RequestIdFilter;
 import ru.stankin.uits.module.news.dto.NewsRequestDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,10 +43,11 @@ class CorsIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<String> response = preflight(FOREIGN_ORIGIN);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getHeaders().getFirst(RequestIdFilter.HEADER_NAME)).isNotBlank();
     }
 
     @Test
-    @DisplayName("Location и Retry-After открыты браузеру: без Expose-Headers фронт их не прочитает")
+    @DisplayName("Браузер может прочитать Location, Retry-After и X-Request-Id")
     void response_ExposesHeadersFrontendReads() {
         createUser("cors_admin", TestRole.ADMIN);
         String token = login("cors_admin");
@@ -69,7 +71,8 @@ class CorsIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS))
                 .isNotNull()
                 .contains(HttpHeaders.LOCATION)
-                .contains(HttpHeaders.RETRY_AFTER);
+                .contains(HttpHeaders.RETRY_AFTER)
+                .contains(RequestIdFilter.HEADER_NAME);
     }
 
     @Test

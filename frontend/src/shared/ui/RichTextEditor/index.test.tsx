@@ -182,6 +182,29 @@ describe('RichTextEditor, согласие с белым списком бэке
   });
 });
 
+/**
+ * Открытие — не правка. Редактор хранит документ по-своему: склеивает блоки
+ * без перевода строки, которым их разделяет jsoup, и оборачивает голый текст
+ * в абзац. Отдай он это в форму при монтировании — поле стало бы изменённым,
+ * ни разу не тронутое, и сторож несохранённого (D-F17) спрашивал бы на каждом
+ * уходе. Так и было: `setEditable` на монтировании слал `update`.
+ */
+describe('RichTextEditor, открытие', () => {
+  it.each([
+    ['блоки через перевод строки, как их отдаёт jsoup', '<p>Первый</p>\n<p>Второй</p>'],
+    ['голый текст без абзаца', 'МГТУ «СТАНКИН», 2005'],
+  ])('не отдаёт в форму ничего, пока не правили: %s', async (_case, initial) => {
+    const onChange = vi.fn();
+    renderWithProviders(
+      <RichTextEditor id="content" label="Содержание" value={initial} onChange={onChange} />,
+    );
+
+    await screen.findByRole('textbox', { name: 'Содержание' }, { timeout: 3000 });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
 describe('RichTextEditor, пустое поле', () => {
   it('отдаёт пустую строку, а не абзац из ничего', async () => {
     await renderField({ initial: '<p>Текст</p>' });

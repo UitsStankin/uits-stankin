@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Plus } from 'lucide-react';
 
+import { archiveDescription } from '@features/manage-teachers';
 import { adminTeacherRoute } from '@shared/config/routes';
 import ConfirmDialog from '@shared/ui/ConfirmDialog';
 import DataTable from '@shared/ui/DataTable';
@@ -71,7 +72,10 @@ export default function TeachersPage() {
     confirmDelete,
     archiveInsteadOfDelete,
     isDeleting,
-    archive,
+    archiving,
+    askArchive,
+    cancelArchive,
+    confirmArchive,
     unarchive,
   } = useTeachersAdmin();
 
@@ -130,7 +134,7 @@ export default function TeachersPage() {
           <DataTable
             columns={teacherColumns({
               onDelete: askDelete,
-              onArchive: archive,
+              onArchive: askArchive,
               onUnarchive: unarchive,
             })}
             data={teachers}
@@ -159,11 +163,15 @@ export default function TeachersPage() {
         преподавателя это штатный путь, а удаление — для ошибочно
         заведённой карточки (docs/API.md, «Архив»). Уже архивной карточке
         предлагать архив незачем.
+
+        Про учётную запись окно говорит оба пути: удаление её не трогает,
+        а архив с T-120 блокирует. Без второй фразы модератор, выбравший
+        «мягкий» путь, отключил бы вход, не узнав об этом.
       */}
       {deleting && (
         <ConfirmDialog
           title="Удалить карточку преподавателя?"
-          description={`Карточка «${deleting.lastName} ${deleting.firstName}» и её фотография исчезнут с сайта вместе с расписанием занятий и экзаменов — вернуть расписание можно только повторным импортом. Достижения, записи аспирантуры и ведомости останутся, но потеряют преподавателя. Учётная запись, если она была привязана, продолжит работать.${deleting.archived ? '' : ' Если преподаватель ушёл с кафедры, отправьте карточку в архив: она пропадёт из списков на сайте, а всё связанное с ней сохранится.'}`}
+          description={`Карточка «${deleting.lastName} ${deleting.firstName}» и её фотография исчезнут с сайта вместе с расписанием занятий и экзаменов — вернуть расписание можно только повторным импортом. Достижения, записи аспирантуры и ведомости останутся, но потеряют преподавателя. Учётная запись, если она была привязана, продолжит работать.${deleting.archived ? '' : ' Если преподаватель ушёл с кафедры, отправьте карточку в архив: она пропадёт из списков на сайте, расписание и всё связанное с ней сохранятся, но привязанная учётная запись будет заблокирована.'}`}
           confirmLabel="Удалить"
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
@@ -171,6 +179,16 @@ export default function TeachersPage() {
           alternative={
             deleting.archived ? undefined : { label: 'В архив', onClick: archiveInsteadOfDelete }
           }
+        />
+      )}
+
+      {archiving && (
+        <ConfirmDialog
+          title="Отправить карточку в архив?"
+          description={archiveDescription(`${archiving.lastName} ${archiving.firstName}`)}
+          confirmLabel="В архив"
+          onConfirm={confirmArchive}
+          onCancel={cancelArchive}
         />
       )}
     </div>

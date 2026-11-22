@@ -1,5 +1,16 @@
+spring:
+  liquibase:
+    contexts: prod
+    parameters:
+      bootstrapAdminHash: ${BOOTSTRAP_ADMIN_HASH:}
+
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
+
+logging:
+  structured:
+    format:
+      console: logstash

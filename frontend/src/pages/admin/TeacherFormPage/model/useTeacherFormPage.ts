@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 
@@ -49,6 +50,7 @@ export function useTeacherFormPage() {
   const isNotFound = isApiError(query.error) && query.error.status === 404;
   const { archive, unarchive, isPending: isArchiving } = useArchiveTeacher();
   const card = query.data ?? null;
+  const [isConfirmingArchive, setConfirmingArchive] = useState(false);
 
   return {
     isNew,
@@ -74,8 +76,17 @@ export function useTeacherFormPage() {
      */
     goToList: () => void navigate(ADMIN_TEACHERS_ROUTE),
 
-    archive: () => {
+    /**
+     * Архив — через окно (T-120 блокирует привязанную учётку, возврат её
+     * не разблокирует), возврат — сразу. Окно закрывается по нажатию:
+     * итог скажет тост, а `archived` придёт свежим ответом карточки.
+     */
+    isConfirmingArchive,
+    askArchive: () => setConfirmingArchive(true),
+    cancelArchive: () => setConfirmingArchive(false),
+    confirmArchive: () => {
       if (card) archive(card);
+      setConfirmingArchive(false);
     },
     unarchive: () => {
       if (card) unarchive(card);

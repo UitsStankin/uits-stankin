@@ -5,6 +5,8 @@ import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -234,6 +236,70 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
         event("В работе", "2026-09-02T10:00:00+03:00", teacher, EventStatus.IN_PROGRESS);
 
         assertThat(page("?status=").content()).hasSize(2);
+    }
+
+    @Test
+    void dateRangeIncludesOverlappingEventsAndCountsOnlyVisibleMatches() {
+        UserEvent spanning = event("Началось раньше", "2026-08-31T10:00:00Z", colleague,
+                EventStatus.NOT_STARTED, teacher);
+        spanning.setEndedAt(OffsetDateTime.parse("2026-09-03T10:00:00Z"));
+        eventRepository.save(spanning);
+        event("Конец на нижней границе", "2026-09-01T08:00:00Z", teacher, EventStatus.NOT_STARTED);
+        event("Внутри", "2026-09-01T11:00:00Z", teacher, EventStatus.NOT_STARTED, teacher, colleague);
+        event("Раньше", "2026-09-01T07:59:59Z", teacher, EventStatus.NOT_STARTED);
+        event("Начало на верхней границе", "2026-09-02T10:00:00Z", teacher, EventStatus.NOT_STARTED);
+        event("Чужое", "2026-09-01T12:00:00Z", colleague, EventStatus.NOT_STARTED);
+        event("Другой статус", "2026-09-01T12:00:00Z", teacher, EventStatus.COMPLETED);
+
+        String query = "?from=2026-09-01T10:00:00Z&to=2026-09-02T10:00:00Z&status=NOT_STARTED&size=2";
+        PageResponseDto<UserEventResponseDto> first = page(query);
+        assertThat(first.content()).extracting(UserEventResponseDto::getName)
+                .containsExactly("Началось раньше", "Конец на нижней границе");
+        assertThat(first.totalElements()).isEqualTo(3);
+        assertThat(first.totalPages()).isEqualTo(2);
+        assertThat(page(query + "&page=1").content()).extracting(UserEventResponseDto::getName)
+                .containsExactly("Внутри");
+    }
+
+    @Test
+    void individualBoundsAndDifferentOffsetsAreSupported() {
+        event("Раньше", "2026-09-01T09:00:00+03:00", teacher, EventStatus.NOT_STARTED);
+        event("Позже", "2026-09-02T09:00:00+03:00", teacher, EventStatus.NOT_STARTED);
+
+        assertThat(page("?from=2026-09-02T06:00:00Z").content())
+                .extracting(UserEventResponseDto::getName).containsExactly("Позже");
+        assertThat(page("?to=2026-09-02T06:00:00Z").content())
+                .extracting(UserEventResponseDto::getName).containsExactly("Раньше");
+        assertThat(page("?from=2026-09-02T01:00:00-05:00&to=2026-09-02T09:00:00Z").content())
+                .extracting(UserEventResponseDto::getName).containsExactly("Позже");
+        assertThat(page("?from=&to=").content()).hasSize(2);
+        assertThat(page("?from=2027-01-01T00:00:00Z").totalElements()).isZero();
+    }
+
+    @Test
+    void instantaneousEventAtLowerBoundIsIncluded() {
+        UserEvent instant = event("Мгновенное", "2026-09-01T10:00:00Z", teacher, EventStatus.NOT_STARTED);
+        instant.setEndedAt(instant.getStartedAt());
+        eventRepository.save(instant);
+
+        assertThat(page("?from=2026-09-01T10:00:00Z&to=2026-09-01T11:00:00Z").content())
+                .extracting(UserEventResponseDto::getName).containsExactly("Мгновенное");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "?from=not-a-date", "?to=2026-09-01", "?from=2026-09-01T10:00:00",
+            "?from=2026-09-02T00:00:00Z&to=2026-09-01T00:00:00Z",
+            "?from=2026-09-01T00:00:00Z&to=2026-09-01T00:00:00Z",
+            "?from=2026-09-01T01:00:00-02:00&to=2026-09-01T03:00:00Z"
+    })
+    void invalidDateRangeGives400(String query) {
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/events" + query, HttpMethod.GET, auth(teacherToken), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(400);
     }
 
     @Test

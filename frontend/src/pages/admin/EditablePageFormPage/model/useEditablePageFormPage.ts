@@ -1,9 +1,9 @@
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { editablePageQuery, parseEditablePageSlug } from '@entities/editable-page';
 import { isApiError } from '@shared/api';
-import { ADMIN_PAGES_ROUTE } from '@shared/config/routes';
+import { ADMIN_PAGES_ROUTE, readReturnTo } from '@shared/config/routes';
 
 /**
  * Форма раздела: разбор адреса, чтение раздела, дорога назад.
@@ -20,6 +20,7 @@ import { ADMIN_PAGES_ROUTE } from '@shared/config/routes';
 export function useEditablePageFormPage() {
   const { slug: rawSlug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const returnTo = readReturnTo(useLocation().state);
 
   const slug = parseEditablePageSlug(rawSlug);
 
@@ -55,7 +56,17 @@ export function useEditablePageFormPage() {
     errorMessage: query.error?.message ?? null,
     refetch: () => void query.refetch(),
 
-    /** После сохранения и по «Отмене» — к списку, а не `history.back()`. */
-    goToList: () => void navigate(ADMIN_PAGES_ROUTE),
+    /**
+     * Страница сайта, с которой открыли форму ссылкой «Править» (F-52), —
+     * или `null`, если пришли из списка, по присланному адресу или после
+     * перезагрузки. Разбор — у `ReturnToState`.
+     */
+    returnTo,
+
+    /**
+     * После сохранения и по «Отмене» — откуда пришли, а не `history.back()`:
+     * на страницу сайта, если открыли с неё, иначе к списку разделов.
+     */
+    goBack: () => void navigate(returnTo ?? ADMIN_PAGES_ROUTE),
   };
 }

@@ -15,6 +15,7 @@ import {
   userDirectoryHandlers,
 } from '@shared/api/mocks';
 import { server } from '@shared/api/mocks/server';
+import { hasUnsavedChanges } from '@shared/lib';
 import { useToastStore } from '@shared/store';
 import type { TeacherAdminRequest } from '@shared/types';
 import ToastViewport from '@shared/ui/Toast';
@@ -126,6 +127,35 @@ describe('TeacherFormPage, правка', () => {
     await screen.findByRole('option', { name: 'Андреева Ольга' });
 
     expect(screen.getByLabelText('Учётная запись')).toHaveValue('102');
+  });
+
+  /**
+   * Заблокированной учётки (с T-120 — у каждой архивной карточки) или
+   * учётки без роли в справочнике нет. Без своего пункта `<select>`
+   * показывал «Без учётной записи», хотя связь цела. Найдено на живом
+   * стенде при проверке F-54.
+   */
+  it('показывает привязанную учётку, которой нет в справочнике', async () => {
+    server.use(...teacherHandlers([{ ...card(), userId: 105 }]));
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByRole('option', { name: 'Андреева Ольга' });
+
+    expect(screen.getByLabelText('Учётная запись')).toHaveValue('105');
+    expect(
+      screen.getByRole('option', { name: 'Учётная запись № 105 — нет в справочнике' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/заблокирована или у неё снята роль/)).toBeInTheDocument();
+  });
+
+  it('не выдумывает пункт, когда учётка карточки в справочнике есть', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByRole('option', { name: 'Андреева Ольга' });
+
+    expect(screen.queryByRole('option', { name: /нет в справочнике/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/заблокирована или у неё снята роль/)).not.toBeInTheDocument();
   });
 
   it('отправляет правку и уходит к списку', async () => {
@@ -575,7 +605,9 @@ describe('TeacherFormPage, картинки в rich-text полях', () => {
     // Ждём саму форму: редактор приезжает отдельным куском.
     await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
 
-    const выбор = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    // Только внутри формы: над ней стоит импорт расписаний (F-58)
+    // со своими двумя выборами файла.
+    const выбор = document.querySelectorAll<HTMLInputElement>('form input[type="file"]');
     // Три: фото карточки и по одному у каждого rich-text поля.
     expect(выбор).toHaveLength(3);
 
@@ -599,11 +631,18 @@ describe('TeacherFormPage, картинки в rich-text полях', () => {
 });
 
 describe('TeacherFormPage, архив', () => {
+  /** Подтверждает архив в окне, которое открывает кнопка над формой. */
+  function confirmArchive() {
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'В архив' }));
+  }
+
   it('отправляет карточку в архив с формы', async () => {
     renderForm('/admin/teachers/3');
 
     expect(await screen.findByText(/Карточка действующая/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
 
     expect(await screen.findByText('Карточка «Андреева Ольга» в архиве')).toBeInTheDocument();
     expect(await screen.findByText(/Карточка в архиве: в списках на сайте её нет/)).toBeInTheDocument();
@@ -621,6 +660,7 @@ describe('TeacherFormPage, архив', () => {
     const position = await screen.findByDisplayValue('профессор кафедры');
     fireEvent.change(position, { target: { value: 'заведующий кафедрой' } });
     fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
 
     expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('заведующий кафедрой')).toBeInTheDocument();
@@ -644,10 +684,161 @@ describe('TeacherFormPage, архив', () => {
     expect(await screen.findByRole('button', { name: 'В архив' })).toBeInTheDocument();
   });
 
+  /**
+   * У формы связь с учёткой известна (`userId` в полной карточке),
+   * и окно говорит определённо, а не «если привязана».
+   */
+  it('предупреждает о блокировке привязанной учётки', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(dialog.getByText(/Привязанная учётная запись будет заблокирована/)).toBeInTheDocument();
+    expect(dialog.getByText(/Возврат из архива доступ не вернёт/)).toBeInTheDocument();
+  });
+
+  it('не пугает блокировкой, если учётка не привязана', async () => {
+    server.use(...teacherHandlers([{ ...card(), userId: null }]));
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(dialog.getByText(/Учётная запись к карточке не привязана/)).toBeInTheDocument();
+    expect(dialog.queryByText(/заблокирована/)).not.toBeInTheDocument();
+  });
+
+  it('ничего не шлёт, если архив отменили', async () => {
+    let archived = false;
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/archive')) archived = true;
+    });
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' })).getByRole(
+        'button',
+        { name: 'Отмена' },
+      ),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(/Карточка действующая/)).toBeInTheDocument();
+    expect(archived).toBe(false);
+  });
+
+  /**
+   * Архив блокирует учётку, и справочник формы её больше не предлагает.
+   * Живёт справочник пять минут — без сброса после архива форма звала бы
+   * привязать заблокированного. Сторожим повторный запрос справочника.
+   */
+  it('перечитывает справочник учёток после архива', async () => {
+    let directoryRequests = 0;
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'GET' && request.url.includes('/api/users/directory')) {
+        directoryRequests += 1;
+      }
+    });
+
+    renderForm('/admin/teachers/3');
+
+    await screen.findByText(/Карточка действующая/);
+    await waitFor(() => expect(directoryRequests).toBe(1));
+    fireEvent.click(screen.getByRole('button', { name: 'В архив' }));
+    confirmArchive();
+
+    expect(await screen.findByRole('button', { name: 'Вернуть из архива' })).toBeInTheDocument();
+    await waitFor(() => expect(directoryRequests).toBe(2));
+  });
+
   it('не показывает архив у новой карточки', async () => {
     renderForm('/admin/teachers/new');
 
     expect(await screen.findByRole('button', { name: 'Создать' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'В архив' })).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * Сам импорт проверяется в `features/import-schedule`; здесь — только
+ * что блок стоит на форме правки и что его нет у новой карточки:
+ * расписание вешается на `id`, которого у неё ещё нет.
+ */
+describe('TeacherFormPage, расписание из PDF', () => {
+  it('показывает импорт расписаний у существующей карточки', async () => {
+    renderForm('/admin/teachers/3');
+
+    expect(
+      await screen.findByRole('region', { name: 'Расписание из PDF' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Расписание пар: загрузить PDF')).toBeInTheDocument();
+    expect(screen.getByLabelText('Расписание экзаменов: загрузить PDF')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Посмотреть на сайте' })).toHaveAttribute(
+      'href',
+      '/about/employee/teachers/3',
+    );
+  });
+
+  it('не показывает импорт у новой карточки', async () => {
+    renderForm('/admin/teachers/new');
+
+    expect(await screen.findByRole('button', { name: 'Создать' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Расписание из PDF' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Отметка несохранённого (D-F17). Сам вопрос «уйти без сохранения?»
+ * задаёт сторож в лейауте и проверяется у себя; здесь — что форма
+ * отмечает правку честно, в обе стороны.
+ */
+describe('TeacherFormPage, несохранённая правка', () => {
+  /**
+   * Самое хрупкое место: rich-text поля. Редактор, нормализующий HTML
+   * при открытии, объявил бы правкой нетронутую карточку, и сторож
+   * спрашивал бы на каждом уходе.
+   */
+  it('нетронутая карточка не держит несохранённого', async () => {
+    renderForm('/admin/teachers/3');
+
+    await screen.findByDisplayValue('профессор кафедры');
+    // Ждём сами редакторы: нормализовать содержимое они могли бы только
+    // смонтировавшись, а грузятся отдельным куском.
+    await screen.findByRole('textbox', { name: 'Образование' }, { timeout: 3000 });
+
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  it('дисциплина — правка, хотя живёт вне react-hook-form; вернули — уже нет', async () => {
+    renderForm('/admin/teachers/3');
+
+    const subject = await screen.findByRole('checkbox', { name: 'Операционные системы' });
+
+    fireEvent.click(subject);
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
+
+    fireEvent.click(subject);
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(false));
+  });
+
+  it('сохранение снимает отметку до ухода к списку', async () => {
+    renderForm('/admin/teachers/3');
+
+    fireEvent.change(await screen.findByDisplayValue('профессор кафедры'), {
+      target: { value: 'заведующий кафедрой' },
+    });
+    await waitFor(() => expect(hasUnsavedChanges()).toBe(true));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByText('Список преподавателей')).toBeInTheDocument();
+    expect(hasUnsavedChanges()).toBe(false);
   });
 });

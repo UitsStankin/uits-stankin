@@ -12,8 +12,12 @@ import {
   subjectHandlers,
   teacherHandlers,
 } from '@shared/api/mocks';
+import { makePublication, publicationHandlers } from '@shared/api/mocks/publications';
+import { ADMIN_GRADESHEETS_ROUTE, adminGradesheetRoute, publicationRoute, PUBLICATION_SCHOLAR_ROUTE } from '@shared/config/routes';
 import { server } from '@shared/api/mocks/server';
 import { createTestQueryClient } from '@/test/render';
+
+import '@pages/admin/GradesheetsPage';
 
 import { routes } from './index';
 
@@ -24,8 +28,7 @@ import { routes } from './index';
  * Профиль кладётся в кэш до рендера — как в тестах личного кабинета
  * и `RoleRoute`: за защитой без профиля не рисуется ничего.
  */
-function renderAt(path: string) {
-  const profile = makeProfile({ moderator: true });
+function renderAt(path: string, profile = makeProfile({ moderator: true })) {
   const queryClient = createTestQueryClient();
 
   queryClient.setQueryData(authKeys.profile, profile);
@@ -70,6 +73,44 @@ describe('адреса админки', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новая запись аспирантуры' }),
     ).toBeInTheDocument();
+  });
+
+  it('открывает ведомости в админке модератора', async () => {
+    renderAt(ADMIN_GRADESHEETS_ROUTE);
+    expect(await screen.findByRole('link', { name: 'Базы данных · ИДБ-25-11' }))
+      .toHaveAttribute('href', adminGradesheetRoute(1));
+  });
+
+  it('открывает карточку ведомости по прямой ссылке администратора', async () => {
+    renderAt(adminGradesheetRoute(1), makeProfile({ superuser: true }));
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+  });
+
+  it('закрывает ведомость по прямой ссылке от преподавателя', async () => {
+    renderAt(adminGradesheetRoute(1), makeProfile({ teacher: true }));
+    expect(await screen.findByText('Недостаточно прав')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('открывает управление публикациями из админки', async () => {
+    renderAt('/admin/publications');
+    expect(await screen.findByRole('heading', { name: 'Управление публикациями' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Поиск в Google Scholar' })).toHaveAttribute('href', PUBLICATION_SCHOLAR_ROUTE);
+  });
+
+  it('закрывает Google Scholar от преподавателя', async () => {
+    renderAt(PUBLICATION_SCHOLAR_ROUTE, makeProfile({ teacher: true }));
+    expect(await screen.findByText('Недостаточно прав')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Найти' })).not.toBeInTheDocument();
+  });
+
+  it('сохраняет адрес прежней вкладки публикаций преподавателя', async () => {
+    const article = makePublication({ authors: ['Абрамов Никита Сергеевич'] });
+    server.use(...publicationHandlers([article]));
+    renderAt('/about/employee/teachers/1/publications');
+
+    expect(await screen.findByRole('heading', { name: 'Публикации преподавателя' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: article.name })).toHaveAttribute('href', publicationRoute(1));
   });
 
   it('у несуществующего раздела говорит, что раздела нет', async () => {

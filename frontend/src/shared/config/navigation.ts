@@ -1,3 +1,4 @@
+import { PUBLICATIONS_ROUTE } from './routes';
 import {
   Award,
   Book,
@@ -249,7 +250,7 @@ export const NAVIGATION: readonly NavItem[] = [
       {
         key: 'scientific-activities/publications',
         title: 'Научные публикации',
-        path: '/scientific-activities/publications/main-science-page',
+        path: PUBLICATIONS_ROUTE,
         icon: Library,
       },
       {

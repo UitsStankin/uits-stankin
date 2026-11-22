@@ -9,20 +9,37 @@ import Loader from '@shared/ui/Loader';
 import {
   ACHIEVEMENTS_ROUTE,
   ADMIN_PAGES_ROUTE,
+  ADMIN_GRADESHEETS_ROUTE,
   ADMIN_POSTGRADUATES_ROUTE,
   ADMIN_ROUTE,
   ADMIN_TEACHERS_ROUTE,
   ANNOUNCEMENTS_ROUTE,
   CONFERENCES_ROUTE,
+  EXAM_SCHEDULE_ROUTE,
   HELPERS_ROUTE,
   LOGIN_ROUTE,
   NEWS_ROUTE,
+  CALENDAR_ROUTE,
   PERSONAL_ROUTE,
   POSTGRADUATE_ROUTE,
+  PUBLICATIONS_ROUTE,
+  PUBLICATION_MANAGE_ROUTE,
+  PUBLICATION_NEW_ROUTE,
+  PUBLICATION_SCHOLAR_ROUTE,
+  PUBLICATION_TAGS_ROUTE,
+  publicationEditRoute,
+  publicationRoute,
+  SCHEDULE_SUMMARY_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
 import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
 import Placeholder from '@pages/Placeholder';
+import PublicationsPage, {
+  PublicationDetailPage,
+  PublicationEditorPage,
+  PublicationScholarPage,
+  PublicationTagsPage,
+} from '@pages/PublicationsPage';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
 import ContactsPage from '@pages/ContactsPage';
@@ -30,6 +47,7 @@ import ContributorsPage from '@pages/ContributorsPage';
 import PostgraduatePage from '@pages/PostgraduatePage';
 import LoginPage from '@pages/LoginPage';
 import PersonalPage from '@pages/PersonalPage';
+import CalendarPage from '@pages/CalendarPage';
 import NewsPage from '@pages/NewsPage';
 import NewsDetailPage from '@pages/NewsDetailPage';
 import AnnouncementsPage from '@pages/AnnouncementsPage';
@@ -41,8 +59,11 @@ import ConferenceDetailPage from '@pages/ConferenceDetailPage';
 import AchievementsPage from '@pages/AchievementsPage';
 import AchievementDetailPage from '@pages/AchievementDetailPage';
 import EditablePagePage from '@pages/EditablePagePage';
+import ExamSchedulePage from '@pages/ExamSchedulePage';
+import ScheduleSummaryPage from '@pages/ScheduleSummaryPage';
 import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
+import CorpLayout from '../layouts/CorpLayout';
 import AdminHomePage from '@pages/admin/AdminHomePage';
 import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
 import AdminNewsPage from '@pages/admin/NewsPage';
@@ -61,6 +82,7 @@ import PostgraduateFormPage from '@pages/admin/PostgraduateFormPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
+import { GradesheetPage, GradesheetsPage } from './GradesheetRoutes';
 
 // Ленивая загрузка страниц (аналог loadChildren из Angular)
 // const UitsRoutes = lazy(() => import('@pages/uits'));
@@ -163,6 +185,8 @@ function adminSectionScreen(section: AdminSection) {
       return <AdminConferencesPage />;
     case 'achievements':
       return <AdminAchievementsPage />;
+    case 'publications':
+      return <Navigate to={PUBLICATION_MANAGE_ROUTE} replace />;
     case 'teachers':
       // Имя импорта отличается от имени файла по той же причине, что
       // и у новостей: публичный список ППС — тоже `TeachersPage`.
@@ -174,6 +198,8 @@ function adminSectionScreen(section: AdminSection) {
       // и у новостей: публичная страница аспирантуры — `PostgraduatePage`,
       // и разница в одной букве `s` в одном модуле читалась бы как опечатка.
       return <AdminPostgraduatesPage />;
+    case 'gradesheets':
+      return <GradesheetsPage />;
     case 'subjects':
       return <SubjectsPage />;
     case 'pages':
@@ -314,6 +340,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
           { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
+          { path: ':id/publications', element: <TeacherDetailPage publicationsOnly />, errorElement: <RouteError /> },
         ],
       },
       // УВП. Публичный: ручка `GET /api/public/helpers` открыта всем.
@@ -349,6 +376,21 @@ export const routes: RouteObject[] = [
           { path: ':id', element: <AchievementDetailPage />, errorElement: <RouteError /> },
         ],
       },
+      // Расписание экзаменов. Публичное: все три ручки, которые страница
+      // зовёт, открыты без входа. Адрес — константой: страница собирает
+      // по нему ссылку «все группы» (F-56).
+      {
+        path: EXAM_SCHEDULE_ROUTE,
+        element: <ExamSchedulePage />,
+        errorElement: <RouteError />,
+      },
+      // Сводное расписание пар. Публичное: ручка `GET /api/public/schedule`
+      // открыта без входа (F-57).
+      {
+        path: SCHEDULE_SUMMARY_ROUTE,
+        element: <ScheduleSummaryPage />,
+        errorElement: <RouteError />,
+      },
       // Редактируемые разделы. Публичные: ручка `GET /api/public/pages/{slug}`
       // открыта всем. Одна страница на девять адресов — разделы отличаются
       // только слагом и заголовком, оба лежат в таблице выше.
@@ -357,13 +399,17 @@ export const routes: RouteObject[] = [
         element: <EditablePagePage slug={slug} heading={heading} />,
         errorElement: <RouteError />,
       })),
-      // Личный кабинет. Внутри общего лейаута, а не в своём: в оригинале
-      // у /corp было боковое меню на два пункта, но второй из них —
-      // календарь событий — приедет только в Фазе 3. Меню из одного
-      // пункта, дублирующего текущую страницу, показывать незачем;
-      // корпоративный лейаут заведём вместе с календарём.
+      // Личный кабинет. Внутри общего лейаута — шапка нужна и здесь, — но
+      // со своим `CorpLayout`: вкладки «Личный кабинет · Календарь событий»
+      // вместо бокового меню оригинала. Вход проверяется один раз на весь
+      // раздел; календарю сверх того нужна роль (`RoleRoute`).
       {
         path: '/corp',
+        element: (
+          <ProtectedRoute>
+            <CorpLayout />
+          </ProtectedRoute>
+        ),
         children: [
           // Голый /corp — раздел, а не страница: как и в оригинале,
           // отправляем на единственную готовую страницу раздела.
@@ -373,10 +419,15 @@ export const routes: RouteObject[] = [
           },
           {
             path: PERSONAL_ROUTE,
+            element: <PersonalPage />,
+            errorElement: <RouteError />,
+          },
+          {
+            path: CALENDAR_ROUTE,
             element: (
-              <ProtectedRoute>
-                <PersonalPage />
-              </ProtectedRoute>
+              <RoleRoute access="calendar">
+                <CalendarPage />
+              </RoleRoute>
             ),
             errorElement: <RouteError />,
           },
@@ -464,12 +515,30 @@ export const routes: RouteObject[] = [
             element: <EditablePageFormPage />,
             errorElement: <RouteError />,
           },
+          {
+            path: `${adminChildPath(ADMIN_GRADESHEETS_ROUTE)}/:id`,
+            element: <GradesheetPage />,
+            errorElement: <RouteError />,
+          },
           // Адрес внутри админки, которого нет. Без него такой адрес
           // ловил бы корневой '*' и говорил «страница ещё не перенесена» —
           // про раздел, которого не существует вовсе.
           { path: '*', element: <UnknownSectionPage /> },
         ],
       },
+      { path: PUBLICATIONS_ROUTE, element: <PublicationsPage />, errorElement: <RouteError /> },
+      { path: publicationRoute(':id'), element: <PublicationDetailPage />, errorElement: <RouteError /> },
+      ...[
+        { path: PUBLICATION_MANAGE_ROUTE, element: <PublicationsPage manage /> },
+        { path: PUBLICATION_NEW_ROUTE, element: <PublicationEditorPage /> },
+        { path: publicationEditRoute(':id'), element: <PublicationEditorPage /> },
+        { path: PUBLICATION_TAGS_ROUTE, element: <PublicationTagsPage /> },
+        { path: PUBLICATION_SCHOLAR_ROUTE, element: <PublicationScholarPage /> },
+      ].map(({ path, element }) => ({
+        path,
+        element: <RoleRoute access="moderator">{element}</RoleRoute>,
+        errorElement: <RouteError />,
+      })),
       // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на
       // ещё не перенесённые страницы, и если ловить их корневым '*', то на
       // первом же клике пропадают и шапка, и сайдбар — уйти можно только

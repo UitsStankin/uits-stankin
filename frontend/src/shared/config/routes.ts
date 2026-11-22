@@ -26,6 +26,14 @@ export const HOME_ROUTE = '/';
 export const PERSONAL_ROUTE = '/corp/personal';
 
 /**
+ * Календарь событий — второй раздел личного кабинета, адрес оригинала.
+ * Открыт администратору и преподавателю (docs/API.md, «Роли»).
+ *
+ * Знают двое: список роутов и вкладки кабинета (`CorpLayout`).
+ */
+export const CALENDAR_ROUTE = '/corp/calendar';
+
+/**
  * Лента новостей. Адрес взят из меню (`shared/config/navigation.ts`,
  * пункт `about/news`) и повторяет старый портал — как и `/corp/personal`,
  * это экономит строку в карте редиректов nginx при переезде.
@@ -130,6 +138,23 @@ export function achievementRoute(id: number): string {
 export const POSTGRADUATE_ROUTE = '/scientific-activities/postgraduate';
 
 /**
+ * Расписание экзаменов (F-56). Адрес взят из меню
+ * (`shared/config/navigation.ts`, пункт `educational-activities/schedule/exams`)
+ * и повторяет старый портал.
+ *
+ * Знают двое: список роутов и сама страница — ссылка «все группы»
+ * из пустой выдачи отбора.
+ */
+export const EXAM_SCHEDULE_ROUTE = '/educational-activities/schedule/schedule-exams';
+
+/**
+ * Сводное расписание преподавателей (F-57). Адрес взят из меню
+ * (`shared/config/navigation.ts`, пункт `educational-activities/schedule/summary`)
+ * и повторяет старый портал. Знает о нём только список роутов.
+ */
+export const SCHEDULE_SUMMARY_ROUTE = '/educational-activities/schedule/schedule-summary';
+
+/**
  * Профессорско-преподавательский состав. Адрес взят из меню
  * (`shared/config/navigation.ts`, пункт `about/employee/teachers`)
  * и повторяет старый портал — как и остальные перенесённые разделы,
@@ -228,6 +253,41 @@ export function adminEditablePageRoute(slug: EditablePageSlug): string {
 }
 
 /**
+ * Откуда модератор пришёл на форму раздела — состояние перехода роутера,
+ * а не параметр адреса (F-52).
+ *
+ * С публичной страницы раздел открывают ради опечатки в контактах:
+ * после сохранения человек хочет увидеть исправленную страницу, а не список
+ * разделов админки, которого он не открывал. Состояние, а не `?from=`,
+ * потому что адрес возврата из адреса формы — открытый редирект: чужая
+ * ссылка увела бы модератора после сохранения куда угодно. Состояние
+ * перехода кладёт только своя ссылка, и оно не переживает присланный адрес:
+ * открытая по ссылке форма вернётся к списку, как и раньше.
+ *
+ * Пишут его ссылки «Править» (`shared/ui/EditLink`), читает форма раздела.
+ */
+export interface ReturnToState {
+  returnTo: string;
+}
+
+/**
+ * Адрес возврата из состояния перехода — или `null`, если его нет или он
+ * не похож на свой путь. Проверка не от злоумышленника (состояние кладёт
+ * только приложение), а от чужого состояния в истории: `location.state`
+ * типизирован как `unknown` и честно может оказаться чем угодно.
+ */
+export function readReturnTo(state: unknown): string | null {
+  if (typeof state !== 'object' || state === null || !('returnTo' in state)) return null;
+
+  const { returnTo } = state;
+  // `//host` — путь только на вид: браузер читает его как адрес другого сайта.
+  if (typeof returnTo !== 'string' || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
+    return null;
+  }
+  return returnTo;
+}
+
+/**
  * Карточки ППС в админке (F-44). Знают трое: список разделов, сама
  * страница (собирает адреса пагинатора и сортировки) и её же форма —
  * та живёт отдельным адресом и возвращается сюда после сохранения.
@@ -293,3 +353,17 @@ export const ADMIN_POSTGRADUATES_ROUTE = `${ADMIN_ROUTE}/postgraduates`;
 export function adminPostgraduateRoute(id: number | 'new'): string {
   return `${ADMIN_POSTGRADUATES_ROUTE}/${id}`;
 }
+
+export const ADMIN_PUBLICATIONS_ROUTE = '/admin/publications';
+export const ADMIN_GRADESHEETS_ROUTE = '/admin/gradesheets';
+export const adminGradesheetRoute = (id: number) => `${ADMIN_GRADESHEETS_ROUTE}/${id}`;
+
+
+const PUBLICATIONS_BASE = '/scientific-activities/publications';
+export const PUBLICATIONS_ROUTE = `${PUBLICATIONS_BASE}/main-science-page`;
+export const PUBLICATION_MANAGE_ROUTE = `${PUBLICATIONS_BASE}/edit_author`;
+export const PUBLICATION_TAGS_ROUTE = `${PUBLICATIONS_BASE}/manage_tags`;
+export const PUBLICATION_SCHOLAR_ROUTE = `${PUBLICATIONS_BASE}/serp-api-search`;
+export const PUBLICATION_NEW_ROUTE = `${PUBLICATIONS_BASE}/new`;
+export const publicationRoute = (id: number | ':id') => `${PUBLICATIONS_BASE}/${id}`;
+export const publicationEditRoute = (id: number | ':id') => `${publicationRoute(id)}/edit`;

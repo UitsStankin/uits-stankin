@@ -62,7 +62,7 @@ class UserEventRepositoryTest extends AbstractIntegrationTest {
         event("Мне назначили", colleague, EventStatus.NOT_STARTED, teacher);
         event("Чужое", colleague, EventStatus.NOT_STARTED, stranger);
 
-        assertThat(eventRepository.findVisibleTo(teacher.getId(), null, FIRST_PAGE))
+        assertThat(eventRepository.findVisibleTo(teacher.getId(), null, null, null, FIRST_PAGE))
                 .extracting(UserEvent::getName)
                 .containsExactlyInAnyOrder("Моё", "Мне назначили");
     }
@@ -75,7 +75,7 @@ class UserEventRepositoryTest extends AbstractIntegrationTest {
         event("Третье", "2026-09-03T10:00:00+03:00", teacher, EventStatus.NOT_STARTED);
 
         Page<UserEvent> page = eventRepository.findVisibleTo(
-                teacher.getId(), null, PageRequest.of(0, 2, BY_START));
+                teacher.getId(), null, null, null, PageRequest.of(0, 2, BY_START));
 
         assertThat(page.getContent())
                 .extracting(UserEvent::getName)
@@ -90,7 +90,7 @@ class UserEventRepositoryTest extends AbstractIntegrationTest {
         event("Второе", "2026-09-02T10:00:00+03:00", teacher, EventStatus.NOT_STARTED);
         event("Третье", "2026-09-03T10:00:00+03:00", teacher, EventStatus.NOT_STARTED);
 
-        assertThat(eventRepository.findVisibleTo(teacher.getId(), null, PageRequest.of(1, 2, BY_START)))
+        assertThat(eventRepository.findVisibleTo(teacher.getId(), null, null, null, PageRequest.of(1, 2, BY_START)))
                 .extracting(UserEvent::getName)
                 .containsExactly("Третье");
     }
@@ -101,7 +101,7 @@ class UserEventRepositoryTest extends AbstractIntegrationTest {
         event("В работе", teacher, EventStatus.IN_PROGRESS);
         event("Завершено", teacher, EventStatus.COMPLETED);
 
-        assertThat(eventRepository.findVisibleTo(teacher.getId(), EventStatus.IN_PROGRESS, FIRST_PAGE))
+        assertThat(eventRepository.findVisibleTo(teacher.getId(), EventStatus.IN_PROGRESS, null, null, FIRST_PAGE))
                 .extracting(UserEvent::getName)
                 .containsExactly("В работе");
     }
@@ -111,13 +111,13 @@ class UserEventRepositoryTest extends AbstractIntegrationTest {
         event("Не начато", teacher, EventStatus.NOT_STARTED);
         event("В работе", teacher, EventStatus.IN_PROGRESS);
 
-        assertThat(eventRepository.findVisibleTo(teacher.getId(), null, FIRST_PAGE)).hasSize(2);
+        assertThat(eventRepository.findVisibleTo(teacher.getId(), null, null, null, FIRST_PAGE)).hasSize(2);
     }
 
     @Test
     void strangerSeesNothing() {
         event("Моё", teacher, EventStatus.NOT_STARTED, colleague);
 
-        assertThat(eventRepository.findVisibleTo(stranger.getId(), null, FIRST_PAGE)).isEmpty();
+        assertThat(eventRepository.findVisibleTo(stranger.getId(), null, null, null, FIRST_PAGE)).isEmpty();
     }
 }

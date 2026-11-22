@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router';
 
 import { editablePageQuery } from '@entities/editable-page';
+import { useAuth } from '@features/auth';
+import { adminEditablePageRoute } from '@shared/config/routes';
 import type { EditablePageSlug } from '@shared/types';
 
 /**
@@ -24,6 +27,8 @@ import type { EditablePageSlug } from '@shared/types';
  */
 export function useEditableSection(slug: EditablePageSlug) {
   const query = useQuery(editablePageQuery(slug));
+  const { canEdit } = useAuth();
+  const { pathname, search } = useLocation();
 
   // trim — тот же, что у блоков главной: строка из одних пробелов
   // и переводов строки — то же «не заполнено», но рисует пустую карточку.
@@ -56,5 +61,18 @@ export function useEditableSection(slug: EditablePageSlug) {
     isEmpty: query.isSuccess && text === '',
 
     refetch: () => void query.refetch(),
+
+    /**
+     * Адрес формы раздела для модератора, `null` — для всех остальных (F-52).
+     *
+     * Не зависит от состояния запроса, как и карандаш в оригинале
+     * (`editable-content`): нужнее всего ссылка как раз на незаполненном
+     * разделе, а на сбое форма покажет его собственным разбором.
+     * Скрывать её от посетителя — удобство, а не защита: права на правку
+     * проверяет бэкенд, а форму стережёт `RoleRoute`.
+     */
+    editHref: canEdit ? adminEditablePageRoute(slug) : null,
+    /** Куда форме вернуться — сюда же, вместе с номером страницы в адресе. */
+    returnTo: pathname + search,
   };
 }

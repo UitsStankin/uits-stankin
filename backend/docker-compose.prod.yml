@@ -1,8 +1,15 @@
+x-logging: &rotated-logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:17-alpine
     container_name: uits_postgres
     restart: unless-stopped
+    logging: *rotated-logs
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-uits_db}
       # Без дефолта: значение по умолчанию postgres — суперпользователь кластера,
@@ -36,6 +43,7 @@ services:
     image: ghcr.io/uitsstankin/uits-backend:${IMAGE_TAG:?не задан IMAGE_TAG}
     container_name: uits_backend
     restart: unless-stopped
+    logging: *rotated-logs
     # Ждём не запуска контейнера базы, а её готовности принимать подключения:
     # иначе Liquibase стартует раньше и приложение падает на миграциях
     depends_on:
@@ -48,6 +56,7 @@ services:
       # Обязательно: без прод-профиля сработает профиль по умолчанию dev,
       # и DevDataSeeder зальёт тестовые учётки в боевую базу
       SPRING_PROFILES_ACTIVE: prod
+      BOOTSTRAP_ADMIN_HASH: ${BOOTSTRAP_ADMIN_HASH:-}
       TZ: ${TZ:-Europe/Moscow}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-uits_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?не задан POSTGRES_USER}
@@ -103,6 +112,7 @@ services:
     image: ghcr.io/uitsstankin/uits-schedule-service:${IMAGE_TAG:?не задан IMAGE_TAG}
     container_name: uits_schedule_service
     restart: unless-stopped
+    logging: *rotated-logs
     environment:
       TZ: ${TZ:-Europe/Moscow}
     healthcheck:
@@ -122,6 +132,7 @@ services:
     image: ghcr.io/uitsstankin/uits-frontend:${IMAGE_TAG:?не задан IMAGE_TAG}
     container_name: uits_nginx
     restart: unless-stopped
+    logging: *rotated-logs
     # Без condition: страницы должны открываться и при больном бэкенде — API
     # ответит 502, но портал останется виден. Зависимость нужна лишь для того,
     # чтобы имя backend резолвилось в сети к моменту старта nginx
@@ -147,6 +158,7 @@ services:
   certbot:
     image: certbot/certbot:v5.8.0
     profiles: ["tools"]
+    logging: *rotated-logs
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_webroot:/var/www/certbot

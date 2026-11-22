@@ -5,7 +5,7 @@ import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { conferenceKeys } from '@entities/conference';
 import { isApiError, useImageUpload } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 import { toast } from '@shared/store';
 import type { Conference } from '@shared/types';
 
@@ -50,7 +50,7 @@ export function useConferenceForm(conference: Conference | null, onSaved: () => 
     handleSubmit,
     setError,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ConferenceFormValues>({
     resolver: zodResolver(conferenceSchema),
     defaultValues: conferenceToFormValues(conference),
@@ -76,6 +76,9 @@ export function useConferenceForm(conference: Conference | null, onSaved: () => 
     },
   });
 
+  /** Несохранённое — и в полях, и в обложке вне react-hook-form (D-F17). */
+  const unsaved = useUnsavedChanges(isDirty || cover.key !== (conference?.previewImage ?? null));
+
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
 
@@ -89,6 +92,7 @@ export function useConferenceForm(conference: Conference | null, onSaved: () => 
         toast.success(
           conference ? `Конференция «${saved.title}» сохранена` : `Конференция «${saved.title}» создана`,
         );
+        unsaved.release();
         onSaved();
       },
       onError: (error) => setFormError(describeSaveError(error, setError)),

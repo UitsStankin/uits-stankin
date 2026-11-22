@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { cn, formatDate } from '@shared/lib';
 import type { News } from '@shared/types';
 
+import { coverSources } from '../lib/coverSources';
 import { authorLabel, postTypeLabel } from '../lib/newsPresenters';
 
 interface NewsCardProps {
@@ -24,6 +25,7 @@ interface NewsCardProps {
 export function NewsCard({ news, href, className }: NewsCardProps) {
   const date = formatDate(news.createdAt);
   const author = authorLabel(news.authorName);
+  const cover = coverSources(news);
 
   return (
     // relative + растянутая ссылка ниже: кликается вся карточка, но ссылка
@@ -36,9 +38,13 @@ export function NewsCard({ news, href, className }: NewsCardProps) {
         className,
       )}
     >
-      {news.previewImageUrl && (
+      {cover && (
         <img
-          src={news.previewImageUrl}
+          // Миниатюра — для обычного монитора, полный файл — для плотного
+          // экрана и телефона; выбирает браузер (`coverSources`, D-F14).
+          src={cover.src}
+          srcSet={cover.srcSet}
+          sizes={cover.sizes}
           // Описание обложки заполняется не всегда. Когда его нет, картинка
           // декоративна: всё, что она могла бы сообщить, стоит рядом
           // заголовком — пустой alt честнее выдуманного.

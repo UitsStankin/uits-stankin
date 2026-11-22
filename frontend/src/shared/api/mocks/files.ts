@@ -39,7 +39,8 @@ export function fileHandlers() {
       const { category, file } = await readUpload(request);
 
       uploads += 1;
-      const key = `${category}/uploaded-${String(uploads)}.jpg`;
+      const extension = category === 'publications' ? 'pdf' : 'jpg';
+      const key = `${category}/uploaded-${String(uploads)}.${extension}`;
 
       if (file) stored.set(key, file);
 
@@ -112,7 +113,7 @@ function stringOrNull(value: FormDataEntryValue | null): string | null {
  * строки и кончается перед следующим граничником. Годится для простых
  * текстовых полей, а других запасной путь и не спрашивает.
  */
-function multipartField(body: string, name: string): string | null {
+export function multipartField(body: string, name: string): string | null {
   const at = body.indexOf(`name="${name}"`);
   if (at === -1) return null;
 

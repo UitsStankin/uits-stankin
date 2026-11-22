@@ -324,6 +324,9 @@ describe('AdminTeachersPage, удаление', () => {
 
     const dialog = within(screen.getByRole('dialog', { name: 'Удалить карточку преподавателя?' }));
     expect(dialog.getByText(/отправьте карточку в архив/)).toBeInTheDocument();
+    // Архив здесь — «мягкий» путь, и о блокировке учётки (T-120) окно
+    // обязано сказать само: второго окна после этой кнопки не будет.
+    expect(dialog.getByText(/привязанная учётная запись будет заблокирована/)).toBeInTheDocument();
     fireEvent.click(dialog.getByRole('button', { name: 'В архив' }));
 
     expect(await screen.findByText('Карточка «Абрамов Никита» в архиве')).toBeInTheDocument();
@@ -437,6 +440,12 @@ describe('AdminTeachersPage, архив', () => {
     );
   });
 
+  /** Подтверждает архив в окне, которое открывает кнопка строки. */
+  function confirmArchive() {
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'В архив' }));
+  }
+
   /** Ловит адрес запроса защищённого списка, не подменяя выдачу. */
   function captureListRequests() {
     const urls: URL[] = [];
@@ -537,6 +546,7 @@ describe('AdminTeachersPage, архив', () => {
         name: 'Отправить в архив карточку «Абрамов Никита Сергеевич»',
       }),
     );
+    confirmArchive();
 
     expect(await screen.findByText('Карточка «Абрамов Никита» в архиве')).toBeInTheDocument();
     await waitFor(() =>
@@ -583,8 +593,84 @@ describe('AdminTeachersPage, архив', () => {
         name: 'Отправить в архив карточку «Абрамов Никита Сергеевич»',
       }),
     );
+    confirmArchive();
 
     expect(await screen.findByText('Преподаватель не найден')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
+  });
+
+  /**
+   * С T-120 архив блокирует привязанную учётку, а возврат её не
+   * разблокирует, — перед ним спрашивают. Связи с учёткой у строки
+   * не знают (короткая карточка), и окно говорит «если привязана».
+   */
+  it('спрашивает перед архивом и ничего не шлёт по «Отмене»', async () => {
+    let archived = false;
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/archive')) archived = true;
+    });
+
+    renderTeachers();
+
+    await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Отправить в архив карточку «Абрамов Никита Сергеевич»',
+      }),
+    );
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Отправить карточку в архив?' }));
+    expect(
+      dialog.getByText(/Если к карточке привязана учётная запись, она будет заблокирована/),
+    ).toBeInTheDocument();
+    expect(dialog.getByText(/Возврат из архива доступ не вернёт/)).toBeInTheDocument();
+    fireEvent.click(dialog.getByRole('button', { name: 'Отмена' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
+    expect(archived).toBe(false);
+  });
+
+  /** Возврат ничего не отнимает — окна перед ним нет. */
+  it('возвращает из архива без подтверждения', async () => {
+    renderTeachers('/admin/teachers?archived=true');
+
+    await screen.findByRole('cell', { name: /^Белова Екатерина Андреевна/ });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Вернуть из архива карточку «Белова Екатерина Андреевна»',
+      }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Карточка «Белова Екатерина» возвращена из архива'),
+    ).toBeInTheDocument();
+  });
+
+  /** Своя карточка: архив заблокировал бы собственный вход — `400` словами сервера. */
+  it('говорит словами сервера, если архивируют свою карточку', async () => {
+    server.use(
+      http.post('*/api/teachers/:id/archive', () =>
+        problemResponse(400, {
+          title: 'Bad Request',
+          detail: 'Нельзя архивировать собственную карточку: архив заблокирует вашу учётную запись',
+          instance: '/api/teachers/1/archive',
+        }),
+      ),
+    );
+
+    renderTeachers();
+
+    await screen.findByRole('cell', { name: 'Абрамов Никита Сергеевич' });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Отправить в архив карточку «Абрамов Никита Сергеевич»',
+      }),
+    );
+    confirmArchive();
+
+    expect(await screen.findByText(/Нельзя архивировать собственную карточку/)).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Абрамов Никита Сергеевич' })).toBeInTheDocument();
   });
 });

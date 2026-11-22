@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fullcalendar/react": "^7.1.5",
     "@hookform/resolvers": "^5.9.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.19",
@@ -35,6 +36,7 @@
     "react-router": "^8.3.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
+    "temporal-polyfill": "^1.0.8",
     "zod": "^4.4.3",
     "zustand": "^5.0.11"
   },
