@@ -1,73 +1,79 @@
-# React + TypeScript + Vite
+# UITS Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Клиентская часть портала кафедры УИТС (МГТУ «СТАНКИН»): публичные страницы, витрины расписаний и публикаций, личный кабинет и панель администрирования.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Стек технологий
 
-## React Compiler
+| Инструмент | Назначение |
+|---|---|
+| **React 19** | Пользовательский интерфейс (с поддержкой React Compiler) |
+| **TypeScript** | Строгая типизация моделей и API-контрактов |
+| **Vite** | Сборщик и локальный сервер разработки |
+| **Tailwind CSS 4** | Стилизация интерфейса |
+| **React Router 8** | Маршрутизация (публичные маршруты, личный кабинет, админка) |
+| **TanStack Query 5** | Серверное состояние, кеширование и инвалидация запросов |
+| **Zustand** | Локальное состояние сессии и темы |
+| **Tiptap** | Редактор rich-text (новости, достижения, страницы) |
+| **FullCalendar** | Корпоративный календарь событий |
+| **react-hook-form + Zod** | Управление формами и валидация схем |
+| **Vitest + MSW** | Модульное и интеграционное тестирование |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Архитектура проекта
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Проект организован по методологии **Feature-Sliced Design (FSD)**:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── app/         # Инициализация приложения, провайдеры (QueryClient, Auth), маршруты
+├── pages/       # Компоненты страниц (публичные витрины, ЛК, админ-панель)
+├── widgets/     # Крупные композиционные блоки (Header, Navbar, Footer, NewsFeed)
+├── features/    # Пользовательские сценарии и действия (формы входа, CRUD)
+├── entities/    # Бизнес-сущности (user, teacher, news, subject, etc.)
+└── shared/      # Переиспользуемый код (api-клиент, ui-кит, хуки, типы)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Команды разработки
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Все команды выполняются из каталога `frontend/`:
+
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск локального сервера разработки (http://localhost:5173)
+npm run dev
+
+# Проверка типов и сборка production-бандла в dist/
+npm run build
+
+# Предпросмотр собранного production-бандла
+npm run preview
+
+# Запуск тестов (Vitest)
+npm run test
+
+# Проверка линтером (ESLint)
+npm run lint
 ```
+
+---
+
+## Взаимодействие с API
+
+В режиме разработки запросы к API проксируются через Vite либо отправляются на адрес, указанный в `.env.local`:
+
+```env
+VITE_API_URL=http://localhost:8080
+```
+
+Аутентификация построена на связке:
+- **Access JWT:** передаётся в заголовке `Authorization: Bearer <token>`;
+- **Refresh JWT:** передаётся браузером автоматически в `httpOnly` cookie (`Path=/api/users/auth`, флаг `Secure` в production).
+
+Все запросы через клиент `axios` выполняются с параметром `withCredentials: true`.
