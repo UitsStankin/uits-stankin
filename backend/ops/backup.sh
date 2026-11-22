@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Снятие бэкапа: дамп базы и архив тома медиа. Обоснование — docs/ARCHITECTURE.md §7.4.
 set -euo pipefail
+umask 077
 
 POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-uits_postgres}
 MEDIA_VOLUME=${MEDIA_VOLUME:-uits_media_data}
@@ -27,6 +28,7 @@ username=$(docker exec "$POSTGRES_CONTAINER" printenv POSTGRES_USER)
 directory="$BACKUP_ROOT/$(date +%Y-%m-%d_%H%M%S)"
 [ -e "$directory" ] && fail "каталог $directory уже существует"
 mkdir -p "$directory"
+chmod 700 "$directory"
 
 abort() {
     rm -rf "$directory"

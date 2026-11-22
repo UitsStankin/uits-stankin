@@ -18,6 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -36,8 +37,12 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class UploadRateLimitFilter extends OncePerRequestFilter {
 
-    private static final RequestMatcher UPLOAD_MATCHER =
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/files");
+    private static final RequestMatcher UPLOAD_MATCHER = new OrRequestMatcher(
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/files"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/gradesheets/import"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/teachers/*/schedule/import"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/teachers/*/exams/import")
+    );
 
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
