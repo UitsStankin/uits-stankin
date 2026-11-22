@@ -564,12 +564,12 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
     void updateKeepsOwnerAndSchedulerColumns() {
         Long id = created(request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken).getId();
 
-        put(id, request().name("Правка от назначенного").assignedUserIds(List.of(colleague.getId())).build(),
-                login("calendar_colleague"));
+        put(id, request().name("Правка от владельца").assignedUserIds(List.of(colleague.getId())).build(),
+                teacherToken);
 
         UserEvent stored = eventRepository.findById(id).orElseThrow();
 
-        assertThat(stored.getName()).isEqualTo("Правка от назначенного");
+        assertThat(stored.getName()).isEqualTo("Правка от владельца");
         assertThat(stored.getOwner().getId()).isEqualTo(teacher.getId());
         assertThat(stored.getNextNotificationAt()).isNull();
         assertThat(stored.isStartNotified()).isFalse();
@@ -593,11 +593,37 @@ class UserEventIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void assigneeCanDelete() {
+    void assigneeCannotDeleteGives404() {
         Long id = created(request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken).getId();
 
         assertThat(delete(id, login("calendar_colleague")).getStatusCode())
-                .isEqualTo(HttpStatus.NO_CONTENT);
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(eventRepository.existsById(id)).isTrue();
+    }
+
+    @Test
+    void assigneeCannotUpdateGives404() {
+        Long id = created(request().assignedUserIds(List.of(colleague.getId())).build(), teacherToken).getId();
+
+        assertThat(put(id, request().name("Правка от назначенного").build(), login("calendar_colleague")).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void adminCanGetUpdateAndDeleteAnyEvent() {
+        createUser("calendar_admin", TestRole.ADMIN);
+        String adminToken = login("calendar_admin");
+
+        Long id = created(request().build(), teacherToken).getId();
+
+        assertThat(get(id, adminToken).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(put(id, request().name("Правка админом").build(), adminToken).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(eventRepository.findById(id).orElseThrow().getName()).isEqualTo("Правка админом");
+
+        assertThat(delete(id, adminToken).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(eventRepository.existsById(id)).isFalse();
     }
 
     @Test
