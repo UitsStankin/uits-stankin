@@ -10,7 +10,8 @@ import { makePublication, publicationHandlers } from '@shared/api/mocks/publicat
 import { server } from '@shared/api/mocks/server';
 import { PUBLICATIONS_ROUTE, PUBLICATION_MANAGE_ROUTE, PUBLICATION_NEW_ROUTE, publicationEditRoute, publicationRoute } from '@shared/config/routes';
 
-import PublicationsPage, { PublicationDetailPage, PublicationEditorPage, PublicationScholarPage, PublicationTagsPage } from './index';
+import PublicationsPage, { PublicationDetailPage } from './index';
+import { PublicationEditorPage, PublicationScholarPage, PublicationTagsPage } from './Management';
 
 const catalog = '*/api/public/publications';
 

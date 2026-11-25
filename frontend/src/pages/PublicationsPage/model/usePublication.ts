@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 import { deletePublication, publicationQuery, publicationsKey, savePublication, tagsQuery } from '@entities/publication';
 import { uploadFile } from '@shared/api';
 import { PUBLICATION_MANAGE_ROUTE, publicationRoute } from '@shared/config/routes';
-import { parseId } from '@shared/lib';
+import { parseId, useUnsavedChanges } from '@shared/lib';
 
 export function usePublication() {
   const { id: raw } = useParams();
@@ -19,6 +19,8 @@ export function usePublicationEditor(id: number | null, currentFile: string | nu
   const cache = useQueryClient();
   const tags = useQuery(tagsQuery);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDirty, setDirty] = useState(false);
+  const unsaved = useUnsavedChanges(isDirty);
   const save = useMutation({
     mutationFn: async ({ data, pdf }: { data: FormData; pdf?: File }) => {
       const value = (key: string) => String(data.get(key) ?? '').trim();
@@ -47,6 +49,7 @@ export function usePublicationEditor(id: number | null, currentFile: string | nu
     },
     onSuccess: async (item) => {
       await cache.invalidateQueries({ queryKey: publicationsKey });
+      unsaved.release();
       navigate(publicationRoute(item.id), { replace: true });
     },
   });
@@ -54,6 +57,7 @@ export function usePublicationEditor(id: number | null, currentFile: string | nu
     mutationFn: deletePublication,
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: publicationsKey });
+      unsaved.release();
       navigate(PUBLICATION_MANAGE_ROUTE, { replace: true });
     },
   });
@@ -67,5 +71,15 @@ export function usePublicationEditor(id: number | null, currentFile: string | nu
     save.mutate({ data: new FormData(form), pdf });
   }
 
-  return { tags, save, remove, submit, confirmDelete, setConfirmDelete };
+  function change(event: ChangeEvent<HTMLFormElement>) {
+    setDirty(Array.from(event.currentTarget.elements).some((control) => {
+      if (control instanceof HTMLTextAreaElement) return control.value !== control.defaultValue;
+      if (!(control instanceof HTMLInputElement)) return false;
+      if (control.type === 'file') return Boolean(control.files?.length);
+      if (control.type === 'checkbox') return control.checked !== control.defaultChecked;
+      return control.value !== control.defaultValue;
+    }));
+  }
+
+  return { tags, save, remove, submit, change, confirmDelete, setConfirmDelete };
 }

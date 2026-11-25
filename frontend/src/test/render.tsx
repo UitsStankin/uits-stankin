@@ -45,7 +45,6 @@ export function renderWithProviders(
     queryClient = createTestQueryClient(),
   }: { route?: string; queryClient?: QueryClient } = {},
 ) {
-
   function Providers({ children }: { children: ReactNode }) {
     // Роутер — data router, как у приложения (`createBrowserRouter`), а не
     // `MemoryRouter`: без него не работает `useBlocker`, и форма со сторожем

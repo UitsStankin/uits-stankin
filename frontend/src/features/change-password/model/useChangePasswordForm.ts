@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormSetError } from 'react-hook-form';
 
 import { isApiError } from '@shared/api';
-import { applyFieldErrors } from '@shared/lib';
+import { applyFieldErrors, useUnsavedChanges } from '@shared/lib';
 
 import { changePassword } from '../api/changePasswordApi';
 import {
@@ -33,11 +33,12 @@ export function useChangePasswordForm() {
     handleSubmit,
     reset,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ChangePasswordFormValues>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: { oldPassword: '', newPassword: '', confirmPassword: '' },
   });
+  useUnsavedChanges(isDirty);
 
   /** Ошибка, которая не легла ни на одно поле: сбой сети, 500, отказ прав. */
   const [formError, setFormError] = useState<string | null>(null);

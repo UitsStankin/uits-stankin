@@ -36,6 +36,11 @@ export function hasUnsavedChanges(): boolean {
   return useDirtyForms.getState().ids.size > 0;
 }
 
+/** После подтверждённого выхода все открытые формы будут закрыты. */
+export function discardUnsavedChanges(): void {
+  useDirtyForms.setState({ ids: new Set() });
+}
+
 /** Подписка для того, кому нужен перерендер: слушателю `beforeunload`. */
 export function useHasUnsavedChanges(): boolean {
   return useDirtyForms((state) => state.ids.size > 0);

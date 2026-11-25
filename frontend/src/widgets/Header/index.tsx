@@ -1,5 +1,6 @@
 import { cn } from '@shared/lib/cn';
 import { Logo } from '@shared/ui/Logo';
+import ConfirmDialog from '@shared/ui/ConfirmDialog';
 import { useAppStore } from '@shared/store';
 import { useAuth, useLogout } from '@features/auth';
 import { BurgerButton } from './ui/BurgerButton';
@@ -58,13 +59,22 @@ export default function Header({ className }: HeaderProps) {
           isOpen={menu.isOpen}
           onToggle={menu.toggle}
           onNavigate={menu.close}
-          onLogout={logout}
+          onLogout={logout.requestLogout}
           containerRef={menu.containerRef}
         />
       ) : isLoading ? (
         <SessionSkeleton />
       ) : (
         <LoginLink />
+      )}
+      {logout.isConfirming && (
+        <ConfirmDialog
+          title="Выйти без сохранения?"
+          description="Изменения в форме не сохранены и пропадут."
+          confirmLabel="Выйти"
+          onConfirm={logout.confirmLogout}
+          onCancel={logout.cancelLogout}
+        />
       )}
     </header>
   );

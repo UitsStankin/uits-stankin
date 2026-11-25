@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, type To } from 'react-router';
 
 import { setAccessToken } from '@shared/api';
 import { HOME_ROUTE, LOGIN_ROUTE } from '@shared/config/routes';
@@ -22,18 +22,14 @@ import { login } from '../api/authApi';
  * (`useLoginForm`), потому что часть ошибок ложится на поля, а не в баннер.
  */
 export function useLogin() {
-  const navigate = useNavigate();
   const location = useLocation();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: login,
-    onSuccess: ({ accessToken }) => {
-      setAccessToken(accessToken);
-      // `replace`, чтобы кнопка «назад» не возвращала на форму входа:
-      // вошедшего она тут же отправит обратно, и получится ловушка.
-      void navigate(resolveRedirect(location.state), { replace: true });
-    },
+    onSuccess: ({ accessToken }) => setAccessToken(accessToken),
   });
+
+  return { ...mutation, redirectTo: resolveRedirect(location.state) };
 }
 
 /**
@@ -45,13 +41,17 @@ export function useLogin() {
  * вида `//evil.example` для роутера выглядит внутренним путём и уводит
  * на чужой домен. Поэтому пропускается только одинарный слэш в начале.
  */
-function resolveRedirect(state: unknown): string {
-  const from = (state as { from?: { pathname?: unknown } } | null)?.from?.pathname;
-
-  if (typeof from !== 'string') return HOME_ROUTE;
-  if (!from.startsWith('/') || from.startsWith('//')) return HOME_ROUTE;
+function resolveRedirect(state: unknown): To {
+  const from = (state as { from?: { pathname?: unknown; search?: unknown; hash?: unknown } } | null)?.from;
+  const { pathname, search, hash } = from ?? {};
+  if (typeof pathname !== 'string' || !pathname.startsWith('/') || pathname.startsWith('//')) {
+    return HOME_ROUTE;
+  }
   // Вернуть на форму входа — то же самое, что не пустить внутрь.
-  if (from.startsWith(LOGIN_ROUTE)) return HOME_ROUTE;
-
-  return from;
+  if (pathname.startsWith(LOGIN_ROUTE)) return HOME_ROUTE;
+  return {
+    pathname,
+    search: typeof search === 'string' && search.startsWith('?') ? search : '',
+    hash: typeof hash === 'string' && hash.startsWith('#') ? hash : '',
+  };
 }

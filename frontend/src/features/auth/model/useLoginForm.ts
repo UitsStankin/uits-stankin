@@ -74,6 +74,8 @@ export function useLoginForm() {
   return {
     register,
     onSubmit,
+    redirectTo: login.redirectTo,
+    isSuccess: login.isSuccess,
     fieldErrors: errors,
     // Текст паузы важнее прочих: он единственный обновляется каждую секунду,
     // и держать его в состоянии рядом с остальными означало бы дёргать

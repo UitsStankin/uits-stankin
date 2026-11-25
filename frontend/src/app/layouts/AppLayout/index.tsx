@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import Loader from '@shared/ui/Loader';
 import { Outlet, ScrollRestoration } from 'react-router';
 import { cn } from '@/shared/lib/cn';
 import Header from '@widgets/Header';
@@ -37,8 +39,9 @@ export default function AppLayout({ className }: AppLayoutProps) {
       {/* flex-1 прижимает подвал к низу на коротких страницах — иначе он
           висел бы посреди экрана. */}
       <main className="flex-1 p-gutter-sm md:p-gutter lg:p-[1.875rem]">
-        {/* Аналог <router-outlet> */}
-        <Outlet />
+        <Suspense fallback={<Loader />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <Footer />

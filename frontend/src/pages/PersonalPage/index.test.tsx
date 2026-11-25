@@ -562,3 +562,47 @@ describe('PersonalPage, правка профиля', () => {
     expect(screen.queryByText('NullPointerException в UserService')).not.toBeInTheDocument();
   });
 });
+
+describe('смена пароля', () => {
+  const path = '*/api/users/change-password';
+
+  function fillPasswords(confirmation = 'new-test-password') {
+    fireEvent.change(screen.getByLabelText('Текущий пароль'), { target: { value: 'old-test-password' } });
+    fireEvent.change(screen.getByLabelText('Новый пароль'), { target: { value: 'new-test-password' } });
+    fireEvent.change(screen.getByLabelText('Новый пароль ещё раз'), { target: { value: confirmation } });
+    fireEvent.click(screen.getByRole('button', { name: 'Сменить пароль' }));
+  }
+
+  it('проверяет подтверждение, отправляет два поля и очищает форму после успеха', async () => {
+    const requests: unknown[] = [];
+    server.use(http.post(path, async ({ request }) => {
+      requests.push(await request.json());
+      return new HttpResponse(null, { status: 200 });
+    }));
+    renderPersonalPage(makeProfile());
+
+    fillPasswords('different-password');
+    expect(await screen.findByText('Пароли не совпадают')).toBeInTheDocument();
+    expect(requests).toEqual([]);
+
+    fillPasswords();
+    expect(await screen.findByText('Пароль изменён.')).toBeInTheDocument();
+    expect(requests).toEqual([{ oldPassword: 'old-test-password', newPassword: 'new-test-password' }]);
+    for (const label of ['Текущий пароль', 'Новый пароль', 'Новый пароль ещё раз']) {
+      expect(screen.getByLabelText(label)).toHaveValue('');
+    }
+  });
+
+  it('показывает отказ сервера под полем текущего пароля', async () => {
+    server.use(http.post(path, () => problemResponse(400, {
+      title: 'Bad Request',
+      detail: 'Текущий пароль неверен',
+      instance: '/api/users/change-password',
+    })));
+    renderPersonalPage(makeProfile());
+    fillPasswords();
+
+    await screen.findByText('Текущий пароль неверен');
+    expect(screen.getByLabelText('Текущий пароль')).toHaveAccessibleDescription('Текущий пароль неверен');
+  });
+});

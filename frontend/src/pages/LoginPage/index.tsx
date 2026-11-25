@@ -1,7 +1,6 @@
 import { Navigate } from 'react-router';
 
 import { LoginForm, useAuth, useLoginForm } from '@features/auth';
-import { HOME_ROUTE } from '@shared/config/routes';
 
 /**
  * Страница входа. Сборка: логика приходит из хука фичи, разметка — из её
@@ -12,10 +11,9 @@ export default function LoginPage() {
   const { isAuthenticated } = useAuth();
   const form = useLoginForm();
 
-  // Вошедшему на форме входа делать нечего: он попал сюда по старой ссылке
-  // или кнопкой «назад». Второй вход поверх действующей сессии выдал бы
-  // новый токен и незаметно осиротил прежний.
-  if (isAuthenticated) return <Navigate to={HOME_ROUTE} replace />;
+  // У обоих сценариев один переход. Если профиль загрузится сразу после
+  // входа, его ответ не должен перенаправить со страницы, которую открыли.
+  if (isAuthenticated || form.isSuccess) return <Navigate to={form.redirectTo} replace />;
 
   return (
     <LoginForm

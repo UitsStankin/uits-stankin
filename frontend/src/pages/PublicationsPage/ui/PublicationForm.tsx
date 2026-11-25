@@ -16,11 +16,11 @@ export function PublicationForm({ item, draft, state }: {
   draft: Draft;
   state: ReturnType<typeof usePublicationEditor>;
 }) {
-  const { tags, save, remove, submit, confirmDelete, setConfirmDelete } = state;
+  const { tags, save, remove, submit, change, confirmDelete, setConfirmDelete } = state;
   const busy = save.isPending || remove.isPending;
   return (
     <>
-      <form className={panelClass} onSubmit={submit}>
+      <form className={panelClass} onChange={change} onSubmit={submit}>
         <fieldset disabled={busy} className="grid gap-4">
           <label>Название
             <input className={inputClass} name="name" maxLength={200} required defaultValue={item?.name ?? draft.name} />

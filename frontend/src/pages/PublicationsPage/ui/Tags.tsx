@@ -2,7 +2,7 @@ import type { useTags } from '../model/useTags';
 import { buttonClass, CatalogLink, inputClass, linkClass, MutationError, panelClass, QueryStatus } from './common';
 
 export function Tags({ state }: { state: ReturnType<typeof useTags> }) {
-  const { tags, editing, confirmDelete, save, remove, submit, edit, confirm } = state;
+  const { tags, editing, name, setName, confirmDelete, save, remove, submit, edit, confirm } = state;
   const busy = save.isPending || remove.isPending;
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4">
@@ -10,7 +10,8 @@ export function Tags({ state }: { state: ReturnType<typeof useTags> }) {
       <h1 className="text-3xl font-bold">Управление тегами</h1>
       <form key={editing?.id ?? 'new'} className={`${panelClass} grid gap-3`} onSubmit={submit}>
         <label>{editing ? 'Новое название тега' : 'Название нового тега'}
-          <input className={inputClass} name="name" required maxLength={100} defaultValue={editing?.name} disabled={busy} />
+          <input className={inputClass} name="name" required maxLength={100} value={name}
+            disabled={busy} onChange={(event) => setName(event.target.value)} />
         </label>
         <MutationError error={save.error} />
         <div className="flex gap-4">

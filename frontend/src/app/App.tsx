@@ -1,4 +1,4 @@
-import { RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { QueryProvider } from './providers/QueryProvider';
 import { router } from './routes';
 import ToastViewport from '@shared/ui/Toast';

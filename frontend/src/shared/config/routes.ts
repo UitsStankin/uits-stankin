@@ -14,6 +14,7 @@ export const LOGIN_ROUTE = '/auth/login';
  * без запомненного адреса. Портал публичный, поэтому это главная, а не логин.
  */
 export const HOME_ROUTE = '/';
+export const PARTNERS_ROUTE = '/about/partners';
 
 /**
  * Личный кабинет. Адрес повторяет старый портал (`/corp/personal`), а не

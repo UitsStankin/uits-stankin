@@ -49,6 +49,7 @@ export function UserMenu({
       <button
         type="button"
         onClick={onToggle}
+        aria-label={displayName}
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-controls="profile-menu"

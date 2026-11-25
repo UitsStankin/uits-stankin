@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useBlocker } from 'react-router';
 
+import { PUBLICATION_NEW_ROUTE } from '@shared/config/routes';
 import { hasUnsavedChanges, useHasUnsavedChanges } from '@shared/lib';
 
 /**
@@ -9,8 +10,8 @@ import { hasUnsavedChanges, useHasUnsavedChanges } from '@shared/lib';
  *
  * **Внутри портала** — `useBlocker` роутера. Переход задерживается,
  * если хоть одна форма держит несохранённое (`useUnsavedChanges`)
- * и меняется **путь**: смена одних параметров — страница списка, поиск —
- * форму не размонтирует, и спрашивать о ней незачем.
+ * и меняется путь. Для новой публикации смена параметров открывает
+ * другую заготовку из Scholar, поэтому её тоже нужно подтвердить.
  *
  * **Вкладка** — `beforeunload`. Браузер показывает своё окно со своим
  * текстом; свой показать нельзя, и это правильно: иначе страница могла бы
@@ -20,8 +21,12 @@ import { hasUnsavedChanges, useHasUnsavedChanges } from '@shared/lib';
  */
 export function useLeaveGuard() {
   const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges() && currentLocation.pathname !== nextLocation.pathname,
+    ({ currentLocation, nextLocation }) => {
+      const changesDraft = currentLocation.pathname === PUBLICATION_NEW_ROUTE &&
+        currentLocation.search !== nextLocation.search;
+      return hasUnsavedChanges() &&
+        (currentLocation.pathname !== nextLocation.pathname || changesDraft);
+    },
   );
 
   const isDirty = useHasUnsavedChanges();
@@ -30,6 +35,7 @@ export function useLeaveGuard() {
     if (!isDirty) return;
 
     const warn = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges()) return;
       event.preventDefault();
       // Устаревший способ, но без него окно не покажут браузеры постарше.
       event.returnValue = '';

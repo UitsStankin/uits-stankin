@@ -1,23 +1,30 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
-import { RouterProvider, createMemoryRouter } from 'react-router';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { authKeys } from '@features/auth/api/profileQuery';
-import { clearSession, setAccessToken } from '@shared/api';
+import { clearSession, hasSession, setAccessToken } from '@shared/api';
 import {
   makeProfile,
   postgraduateHandlers,
   profileHandlers,
+  problemResponse,
   subjectHandlers,
   teacherHandlers,
 } from '@shared/api/mocks';
 import { makePublication, publicationHandlers } from '@shared/api/mocks/publications';
-import { ADMIN_GRADESHEETS_ROUTE, adminGradesheetRoute, publicationRoute, PUBLICATION_SCHOLAR_ROUTE } from '@shared/config/routes';
+import { authHandlers } from '@shared/api/mocks/auth';
+import { ADMIN_GRADESHEETS_ROUTE, adminGradesheetRoute, publicationRoute, PUBLICATION_NEW_ROUTE, PUBLICATION_SCHOLAR_ROUTE } from '@shared/config/routes';
 import { server } from '@shared/api/mocks/server';
+import type { Profile } from '@shared/types';
 import { createTestQueryClient } from '@/test/render';
 
 import '@pages/admin/GradesheetsPage';
+import '@pages/PublicationsPage/Management';
+import './AdminScreens';
 
 import { routes } from './index';
 
@@ -28,13 +35,15 @@ import { routes } from './index';
  * Профиль кладётся в кэш до рендера — как в тестах личного кабинета
  * и `RoleRoute`: за защитой без профиля не рисуется ничего.
  */
-function renderAt(path: string, profile = makeProfile({ moderator: true })) {
+function renderAt(path: string, profile: Profile | null = makeProfile({ moderator: true })) {
   const queryClient = createTestQueryClient();
 
-  queryClient.setQueryData(authKeys.profile, profile);
-  setAccessToken('test-access-token');
+  if (profile) {
+    queryClient.setQueryData(authKeys.profile, profile);
+    setAccessToken('test-access-token');
+    server.use(...profileHandlers(profile));
+  }
   server.use(
-    ...profileHandlers(profile),
     ...subjectHandlers(),
     ...postgraduateHandlers(),
     ...teacherHandlers(),
@@ -42,29 +51,69 @@ function renderAt(path: string, profile = makeProfile({ moderator: true })) {
 
   const router = createMemoryRouter(routes, { initialEntries: [path] });
 
-  return render(
+  render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 afterEach(() => {
   clearSession();
 });
 
+describe('вход в портал', () => {
+  async function submitLogin() {
+    fireEvent.change(await screen.findByLabelText('Логин'), { target: { value: 'test-user' } });
+    fireEvent.change(screen.getByLabelText('Пароль'), { target: { value: 'test-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
+  }
+
+  it('возвращает к защищённой странице с её параметрами и якорем', async () => {
+    server.use(...authHandlers(), ...profileHandlers(makeProfile({ moderator: true })));
+    const router = renderAt('/admin/gradesheets?group=ИДБ-25-11#results', null);
+    await submitLogin();
+
+    await waitFor(() => expect(router.state.location).toMatchObject({
+      pathname: '/admin/gradesheets',
+      search: '?group=ИДБ-25-11',
+      hash: '#results',
+    }));
+    expect(await screen.findByRole('link', { name: 'Базы данных · ИДБ-25-11' })).toBeInTheDocument();
+  });
+
+  it('показывает отказ по паре логин и пароль', async () => {
+    server.use(http.post('*/api/users/auth/login', () => problemResponse(401, {
+      title: 'Unauthorized',
+      detail: 'Ошибка проверки',
+      instance: '/api/users/auth/login',
+    })));
+    renderAt('/auth/login', null);
+    await submitLogin();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Неверный логин или пароль.');
+    expect(screen.getByRole('button', { name: 'Войти' })).toBeEnabled();
+  });
+
+  it('блокирует повторный вход на время из Retry-After', async () => {
+    server.use(http.post('*/api/users/auth/login', () => HttpResponse.json(
+      { title: 'Too Many Requests', status: 429 },
+      { status: 429, headers: { 'Retry-After': '30' } },
+    )));
+    renderAt('/auth/login', null);
+    await submitLogin();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Повторите через 30 секунд.');
+    expect(screen.getByRole('button', { name: 'Войти' })).toBeDisabled();
+  });
+});
+
 describe('адреса админки', () => {
-  /**
-   * Заглушек в меню не осталось: с F-47 сделан последний раздел блока 4.
-   * Проверка стояла здесь на ненаписанном разделе и уехала вместе с ним;
-   * сама заглушка проверяется своим тестом (`PlannedSectionPage`).
-   * Взамен — что раздел аспирантуры и его форма разложены роутером.
-   */
   it('открывает раздел аспирантуры и форму записи её адресом', async () => {
     renderAt('/admin/postgraduates');
 
     expect(await screen.findByRole('heading', { name: 'Аспирантура' })).toBeInTheDocument();
-    expect(screen.queryByText('Раздел ещё не сделан')).not.toBeInTheDocument();
   });
 
   it('открывает форму новой записи аспирантуры', async () => {
@@ -116,11 +165,8 @@ describe('адреса админки', () => {
   it('у несуществующего раздела говорит, что раздела нет', async () => {
     renderAt('/admin/nope');
 
-    // До этой проверки такой адрес ловил корневой '*' и отвечал
-    // «Страница ещё не перенесена» — то есть обещал раздел, которого
-    // не существует вовсе.
     expect(await screen.findByText('Такого раздела нет')).toBeInTheDocument();
-    expect(screen.queryByText('Страница ещё не перенесена')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ко всем разделам' })).toHaveAttribute('href', '/admin');
   });
 
   /**
@@ -136,12 +182,79 @@ describe('адреса админки', () => {
     expect(await screen.findByRole('textbox', { name: 'Подпись раздела' })).toHaveValue('Контакты');
   });
 
-  it('снаружи админки заглушка переноса остаётся прежней', async () => {
-    // Публичных страниц старого портала перенесено меньше половины,
-    // и там этот текст честен. Проверка сторожит границу: правка адресов
-    // админки не должна была его тронуть.
+  it('показывает 404 внутри портала, сохраняя навигацию', async () => {
     renderAt('/about/nope');
 
-    expect(await screen.findByText('Страница ещё не перенесена')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Страница не найдена' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+  });
+
+  it('открывает партнёров по старой ссылке с главной', async () => {
+    const router = renderAt('/partners');
+    expect(await screen.findByRole('heading', { name: 'Наши партнёры' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/about/partners');
+    const logos = within(screen.getByRole('main')).getAllByRole('img');
+    expect(logos).toHaveLength(24);
+    expect(logos.every((logo) => logo.getAttribute('src'))).toBe(true);
+  });
+
+  it.each([
+    ['/home?from=old', '/', '?from=old', ''],
+    ['/about/announcements/1#main', '/about/news/1', '', '#main'],
+    ['/about/employee/teachers/1/schedule', '/about/employee/teachers/1', '', ''],
+  ])('перенаправляет старый адрес %s', async (legacy, pathname, search, hash) => {
+    const router = renderAt(legacy);
+    await waitFor(() => expect(router.state.location).toMatchObject({ pathname, search, hash }));
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
+
+  it('сохраняет черновик публикации при отмене перехода и при отмене выхода', async () => {
+    const profile = makeProfile({ moderator: true });
+    let logoutCalls = 0;
+    server.use(http.post('*/api/users/auth/logout', () => {
+      logoutCalls += 1;
+      return new HttpResponse(null, { status: 204 });
+    }));
+    const router = renderAt(PUBLICATION_NEW_ROUTE, profile);
+    const title = await screen.findByLabelText('Название');
+    fireEvent.change(title, { target: { value: 'Черновик публикации' } });
+
+    fireEvent.click(screen.getByRole('link', { name: 'К каталогу публикаций' }));
+    const leave = await screen.findByRole('dialog', { name: 'Уйти без сохранения?' });
+    fireEvent.click(within(leave).getByRole('button', { name: 'Отмена' }));
+    expect(title).toHaveValue('Черновик публикации');
+
+    function requestLogout() {
+      const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.username;
+      fireEvent.click(screen.getByRole('button', { name }));
+      fireEvent.click(screen.getByRole('button', { name: 'Выход' }));
+    }
+    requestLogout();
+    const logout = await screen.findByRole('dialog', { name: 'Выйти без сохранения?' });
+    fireEvent.click(within(logout).getByRole('button', { name: 'Отмена' }));
+    expect(title).toHaveValue('Черновик публикации');
+    expect(hasSession()).toBe(true);
+    expect(logoutCalls).toBe(0);
+
+    requestLogout();
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Выйти без сохранения?' }))
+      .getByRole('button', { name: 'Выйти' }));
+    await waitFor(() => expect(logoutCalls).toBe(1));
+    expect(router.state.location.pathname).toBe('/');
+    expect(hasSession()).toBe(false);
+  });
+
+  it('спрашивает перед заменой черновика другой заготовкой Scholar', async () => {
+    const router = renderAt(`${PUBLICATION_NEW_ROUTE}?title=Первая`);
+    const title = await screen.findByLabelText('Название');
+    expect(title).toHaveValue('Первая');
+    fireEvent.change(title, { target: { value: 'Мой черновик' } });
+
+    await act(() => router.navigate(`${PUBLICATION_NEW_ROUTE}?title=Вторая`));
+    const leave = await screen.findByRole('dialog', { name: 'Уйти без сохранения?' });
+    expect(title).toHaveValue('Мой черновик');
+    fireEvent.click(within(leave).getByRole('button', { name: 'Уйти' }));
+    await waitFor(() => expect(screen.getByLabelText('Название')).toHaveValue('Вторая'));
   });
 });

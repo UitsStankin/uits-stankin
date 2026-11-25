@@ -24,7 +24,7 @@ export function AdminSectionNav({ sections }: AdminSectionNavProps) {
       className="-mx-gutter-sm overflow-x-auto px-gutter-sm lg:mx-0 lg:w-64 lg:shrink-0 lg:overflow-visible lg:px-0"
     >
       <ul className="flex gap-1 lg:flex-col">
-        {sections.map(({ key, title, icon: Icon, path, plannedIn }) => (
+        {sections.map(({ key, title, icon: Icon, path }) => (
           <li key={key}>
             <NavLink
               to={path}
@@ -37,7 +37,6 @@ export function AdminSectionNav({ sections }: AdminSectionNavProps) {
                   // Раздел, которого ещё нет, приглушён: ссылка живая
                   // и ведёт к объяснению, но обещать по ней рабочий экран
                   // нельзя.
-                  plannedIn && 'text-text-muted',
                 )
               }
             >

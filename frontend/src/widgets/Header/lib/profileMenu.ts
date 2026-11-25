@@ -24,13 +24,7 @@ export interface ProfileMenuLink extends ProfileMenuItemBase {
   path: string;
 }
 
-/**
- * Выход. Отдельный вид, а не ссылка на `/auth/logout`, как было в Angular:
- * серверного выхода в контракте нет, отзывать токен нечем. Выход — это
- * действие в браузере (забыть токен, очистить кэш), и страницы под него
- * не существует. Ссылка на несуществующий роут вела бы в «страница
- * не найдена» и выглядела бы как поломка.
- */
+/* Выход выполняется кнопкой меню. */
 export interface ProfileMenuAction extends ProfileMenuItemBase {
   kind: 'logout';
 }

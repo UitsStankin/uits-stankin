@@ -28,7 +28,7 @@ export default function AdminHomePage() {
       </p>
 
       <ul className="grid gap-gutter-sm sm:grid-cols-2 xl:grid-cols-3">
-        {sections.map(({ key, title, icon: Icon, path, plannedIn }) => (
+        {sections.map(({ key, title, icon: Icon, path }) => (
           <li key={key}>
             <Link
               to={path}
@@ -42,9 +42,6 @@ export default function AdminHomePage() {
                 {/* У готового раздела подписи нет вовсе: «работает»
                     писать под каждым — шум, а вот «появится с F-43»
                     отвечает на вопрос, который иначе задают в чате. */}
-                {plannedIn && (
-                  <span className="text-sm text-text-muted">Появится с {plannedIn}</span>
-                )}
               </span>
             </Link>
           </li>

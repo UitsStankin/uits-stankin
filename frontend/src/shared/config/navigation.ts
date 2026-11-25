@@ -1,4 +1,4 @@
-import { PUBLICATIONS_ROUTE } from './routes';
+import { PARTNERS_ROUTE, PUBLICATIONS_ROUTE } from './routes';
 import {
   Award,
   Book,
@@ -147,6 +147,12 @@ export const NAVIGATION: readonly NavItem[] = [
         title: 'Контакты',
         path: '/about/contacts',
         icon: Phone,
+      },
+      {
+        key: 'about/partners',
+        title: 'Партнёры',
+        path: PARTNERS_ROUTE,
+        icon: Users,
       },
       {
         key: 'about/contributors',

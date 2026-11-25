@@ -17,8 +17,10 @@ import {
   CONFERENCES_ROUTE,
   EXAM_SCHEDULE_ROUTE,
   HELPERS_ROUTE,
+  HOME_ROUTE,
   LOGIN_ROUTE,
   NEWS_ROUTE,
+  PARTNERS_ROUTE,
   CALENDAR_ROUTE,
   PERSONAL_ROUTE,
   POSTGRADUATE_ROUTE,
@@ -32,14 +34,10 @@ import {
   SCHEDULE_SUMMARY_ROUTE,
   TEACHERS_ROUTE,
 } from '@shared/config/routes';
-import { ADMIN_SECTIONS, type AdminSection } from '@shared/config/adminNavigation';
-import Placeholder from '@pages/Placeholder';
-import PublicationsPage, {
-  PublicationDetailPage,
-  PublicationEditorPage,
-  PublicationScholarPage,
-  PublicationTagsPage,
-} from '@pages/PublicationsPage';
+import { ADMIN_SECTIONS } from '@shared/config/adminNavigation';
+import NotFoundPage from '@pages/NotFoundPage';
+import PartnersPage from '@pages/PartnersPage';
+import PublicationsPage, { PublicationDetailPage } from '@pages/PublicationsPage';
 import HomePage from '@pages/HomePage';
 import HistoryPage from '@pages/HistoryPage';
 import ContactsPage from '@pages/ContactsPage';
@@ -64,29 +62,23 @@ import ScheduleSummaryPage from '@pages/ScheduleSummaryPage';
 import type { EditablePageSlug } from '@shared/types';
 import AdminLayout from '../layouts/AdminLayout';
 import CorpLayout from '../layouts/CorpLayout';
-import AdminHomePage from '@pages/admin/AdminHomePage';
-import PlannedSectionPage from '@pages/admin/PlannedSectionPage';
-import AdminNewsPage from '@pages/admin/NewsPage';
 import UnknownSectionPage from '@pages/admin/UnknownSectionPage';
-import SubjectsPage from '@pages/admin/SubjectsPage';
-import AdminTeachersPage from '@pages/admin/TeachersPage';
-import TeacherFormPage from '@pages/admin/TeacherFormPage';
-import AdminHelpersPage from '@pages/admin/HelpersPage';
-import AdminConferencesPage from '@pages/admin/ConferencesPage';
-import AdminAchievementsPage from '@pages/admin/AchievementsPage';
-import AdminEditablePagesPage from '@pages/admin/EditablePagesPage';
-import EditablePageFormPage from '@pages/admin/EditablePageFormPage';
-import UsersPage from '@pages/admin/UsersPage';
-import AdminPostgraduatesPage from '@pages/admin/PostgraduatesPage';
-import PostgraduateFormPage from '@pages/admin/PostgraduateFormPage';
 import ProtectedRoute from './protectedRoute';
 import RoleRoute from './RoleRoute';
 import RouteError from './RouteError';
-import { GradesheetPage, GradesheetsPage } from './GradesheetRoutes';
+import { GradesheetPage } from './GradesheetRoutes';
+import LegacyRedirect from './LegacyRedirect';
 
-// Ленивая загрузка страниц (аналог loadChildren из Angular)
-// const UitsRoutes = lazy(() => import('@pages/uits'));
-// const ErrorsRoutes = lazy(() => import('@pages/errors'));
+import {
+  AdminHomePage,
+  AdminSectionScreen,
+  EditablePageFormPage,
+  PostgraduateFormPage,
+  PublicationEditorPage,
+  PublicationScholarPage,
+  PublicationTagsPage,
+  TeacherFormPage,
+} from './LazyScreens';
 
 /**
  * Редактируемые разделы: адрес → слаг раздела и заголовок страницы.
@@ -163,59 +155,6 @@ const EDITABLE_PAGES: ReadonlyArray<{
 ];
 
 /**
- * Экран раздела админки: настоящий, если он написан, иначе заглушка
- * с номером тикета.
- *
- * Признак — `plannedIn` в конфиге разделов, а не второй список «что уже
- * готово»: из такого списка однажды забудут вычеркнуть раздел ровно
- * в тот день, когда его сделают.
- */
-function adminSectionScreen(section: AdminSection) {
-  if (section.plannedIn) return <PlannedSectionPage section={section} />;
-
-  switch (section.key) {
-    case 'news':
-      // Имя импорта отличается от имени файла: публичная лента новостей
-      // — тоже `NewsPage`, и два одинаковых имени в одном модуле роутера
-      // не ужились бы.
-      return <AdminNewsPage />;
-    case 'conferences':
-      // Имя импорта отличается от имени файла по той же причине, что
-      // и у новостей: публичный список конференций — тоже `ConferencesPage`.
-      return <AdminConferencesPage />;
-    case 'achievements':
-      return <AdminAchievementsPage />;
-    case 'publications':
-      return <Navigate to={PUBLICATION_MANAGE_ROUTE} replace />;
-    case 'teachers':
-      // Имя импорта отличается от имени файла по той же причине, что
-      // и у новостей: публичный список ППС — тоже `TeachersPage`.
-      return <AdminTeachersPage />;
-    case 'helpers':
-      return <AdminHelpersPage />;
-    case 'postgraduates':
-      // Имя импорта отличается от имени файла по той же причине, что
-      // и у новостей: публичная страница аспирантуры — `PostgraduatePage`,
-      // и разница в одной букве `s` в одном модуле читалась бы как опечатка.
-      return <AdminPostgraduatesPage />;
-    case 'gradesheets':
-      return <GradesheetsPage />;
-    case 'subjects':
-      return <SubjectsPage />;
-    case 'pages':
-      // Имя импорта отличается от имени файла по той же причине, что
-      // и у новостей: публичная страница раздела — `EditablePagePage`.
-      return <AdminEditablePagesPage />;
-    case 'users':
-      return <UsersPage />;
-    default:
-      // Раздел объявлен готовым, а экрана для него нет — это ошибка
-      // конфига, и заглушка честнее пустой страницы.
-      return <PlannedSectionPage section={section} />;
-  }
-}
-
-/**
  * Адрес внутри админки, отсчитанный от `/admin`: роутер ждёт от дочернего
  * роута относительный путь, а константы адресов — абсолютные, потому что
  * их же ставят в `<Link>`.
@@ -231,11 +170,8 @@ function adminChildPath(path: string): string {
 export const routes: RouteObject[] = [
   {
     path: '/',
-    element: (
-      <Suspense fallback={<Loader />}>
-        <AppLayout />
-      </Suspense>
-    ),
+    element: <AppLayout />,
+    errorElement: <RouteError />,
     children: [
       // === APP_LAYOUT_ROUTES (UitsModule) ===
       // Главная. Собирается из трёх кусков: редактируемый блок `home-before`,
@@ -245,6 +181,9 @@ export const routes: RouteObject[] = [
         element: <HomePage />,
         errorElement: <RouteError />,
       },
+      { path: '/home', element: <LegacyRedirect to={HOME_ROUTE} />, errorElement: <RouteError /> },
+      { path: '/partners', element: <LegacyRedirect to={PARTNERS_ROUTE} />, errorElement: <RouteError /> },
+      { path: PARTNERS_ROUTE, element: <PartnersPage />, errorElement: <RouteError /> },
       // История кафедры. Статическая: ручки нет и не будет, содержимое лежит
       // в коде страницы. Адрес взят из меню (`shared/config/navigation.ts`,
       // пункт `about/history`) и повторяет старый портал — как и остальные
@@ -331,6 +270,11 @@ export const routes: RouteObject[] = [
         element: <AnnouncementsPage />,
         errorElement: <RouteError />,
       },
+      {
+        path: `${ANNOUNCEMENTS_ROUTE}/:id`,
+        element: <LegacyRedirect to={`${NEWS_ROUTE}/:id`} />,
+        errorElement: <RouteError />,
+      },
       // Преподаватели. Публичные: ручки `GET /api/public/teachers` открыты
       // всем. Карточка — вложенным роутом по тем же причинам, что у новостей:
       // адрес раздела объявлен один раз, и переименование не оставит
@@ -341,6 +285,11 @@ export const routes: RouteObject[] = [
           { index: true, element: <TeachersPage />, errorElement: <RouteError /> },
           { path: ':id', element: <TeacherDetailPage />, errorElement: <RouteError /> },
           { path: ':id/publications', element: <TeacherDetailPage publicationsOnly />, errorElement: <RouteError /> },
+          ...['general', 'schedule', 'disciplines', 'achievements'].map((tab) => ({
+            path: `:id/${tab}`,
+            element: <LegacyRedirect to={`${TEACHERS_ROUTE}/:id`} />,
+            errorElement: <RouteError />,
+          })),
         ],
       },
       // УВП. Публичный: ручка `GET /api/public/helpers` открыта всем.
@@ -410,12 +359,14 @@ export const routes: RouteObject[] = [
             <CorpLayout />
           </ProtectedRoute>
         ),
+        errorElement: <RouteError />,
         children: [
           // Голый /corp — раздел, а не страница: как и в оригинале,
           // отправляем на единственную готовую страницу раздела.
           {
             index: true,
             element: <Navigate to={PERSONAL_ROUTE} replace />,
+            errorElement: <RouteError />,
           },
           {
             path: PERSONAL_ROUTE,
@@ -439,11 +390,7 @@ export const routes: RouteObject[] = [
       // Внутри общего лейаута, как и личный кабинет: шапка с меню профиля
       // нужна и здесь, а второй лейаут означал бы вторую шапку.
       //
-      // Экраны разделов раскладываются из `ADMIN_SECTIONS` — того же
-      // списка, по которому рисуется меню слева: раздел, дописанный
-      // в конфиг, получает адрес сам, и меню с роутером не расходятся.
-      // Готовые разделы перечислены в `adminSectionScreen`, остальные
-      // показывают заглушку со своим номером тикета.
+      // Экраны разделов и пункты меню используют общий список ADMIN_SECTIONS.
       {
         path: ADMIN_ROUTE,
         element: (
@@ -453,7 +400,7 @@ export const routes: RouteObject[] = [
         ),
         errorElement: <RouteError />,
         children: [
-          { index: true, element: <AdminHomePage /> },
+          { index: true, element: <AdminHomePage />, errorElement: <RouteError /> },
           ...ADMIN_SECTIONS.map((section) => ({
             path: adminChildPath(section.path),
             // Второй `RoleRoute` внутри первого — только там, где раздел
@@ -462,9 +409,11 @@ export const routes: RouteObject[] = [
             // от бэкенда, посреди пустой таблицы.
             element:
               section.access === 'admin' ? (
-                <RoleRoute access="admin">{adminSectionScreen(section)}</RoleRoute>
+                <RoleRoute access="admin">
+                  <AdminSectionScreen sectionKey={section.key} />
+                </RoleRoute>
               ) : (
-                adminSectionScreen(section)
+                <AdminSectionScreen sectionKey={section.key} />
               ),
             errorElement: <RouteError />,
           })),
@@ -520,10 +469,7 @@ export const routes: RouteObject[] = [
             element: <GradesheetPage />,
             errorElement: <RouteError />,
           },
-          // Адрес внутри админки, которого нет. Без него такой адрес
-          // ловил бы корневой '*' и говорил «страница ещё не перенесена» —
-          // про раздел, которого не существует вовсе.
-          { path: '*', element: <UnknownSectionPage /> },
+          { path: '*', element: <UnknownSectionPage />, errorElement: <RouteError /> },
         ],
       },
       { path: PUBLICATIONS_ROUTE, element: <PublicationsPage />, errorElement: <RouteError /> },
@@ -539,14 +485,7 @@ export const routes: RouteObject[] = [
         element: <RoleRoute access="moderator">{element}</RoleRoute>,
         errorElement: <RouteError />,
       })),
-      // 404 намеренно ВНУТРИ лейаута, а не рядом с ним. Пункты меню ведут на
-      // ещё не перенесённые страницы, и если ловить их корневым '*', то на
-      // первом же клике пропадают и шапка, и сайдбар — уйти можно только
-      // кнопкой «назад». Здесь у пользователя остаётся навигация.
-      {
-        path: '*',
-        element: <Placeholder title="Страница ещё не перенесена" />,
-      },
+      { path: '*', element: <NotFoundPage />, errorElement: <RouteError /> },
     ],
   },
   {
@@ -556,6 +495,7 @@ export const routes: RouteObject[] = [
         <AuthLayout />
       </Suspense>
     ),
+    errorElement: <RouteError />,
     children: [
       // === AUTH_LAYOUT_ROUTES (AuthModule) ===
       // Голый /auth — не страница, а раздел: показывать по нему пустую
@@ -567,10 +507,8 @@ export const routes: RouteObject[] = [
       {
         path: LOGIN_ROUTE,
         element: <LoginPage />,
+        errorElement: <RouteError />,
       },
-      // Роута /auth/logout нет: выход в контракте не серверный, а локальный —
-      // забыть токен и очистить кэш. Это действие кнопки в меню профиля
-      // (features/auth/model/useLogout.ts), для него не нужна страница.
     ],
   },
 ];

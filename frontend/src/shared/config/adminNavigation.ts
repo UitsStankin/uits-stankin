@@ -28,26 +28,6 @@ import {
   ADMIN_USERS_ROUTE,
 } from './routes';
 
-export interface AdminSection {
-  /** Последний сегмент адреса: `/admin/subjects` — это `subjects`. */
-  key: string;
-  title: string;
-  icon: LucideIcon;
-  path: string;
-  /** Кому раздел показывать и кого пускать внутрь. */
-  access: AdminAccess;
-  /**
-   * Тикет, с которым раздел появится. У готовых разделов поля нет —
-   * по нему же роутер отличает настоящую страницу от заглушки.
-   *
-   * Заглушка, а не отсутствие пункта: набор разделов админки — это карта
-   * работ блока 4, и видеть её целиком полезнее, чем меню, растущее
-   * по одному пункту. Ссылка при этом честная: заглушка говорит, какой
-   * тикет и что принесёт, вместо «страница не найдена».
-   */
-  plannedIn?: string;
-}
-
 /**
  * Разделы админки — то же, чем для портала является `navigation.ts`.
  *
@@ -63,7 +43,7 @@ export interface AdminSection {
  * закрыт от модератора, и это первое место портала, где две
  * управляющие роли расходятся (docs/API.md, «Роли»).
  */
-export const ADMIN_SECTIONS: readonly AdminSection[] = [
+export const ADMIN_SECTIONS = [
   {
     key: 'news',
     title: 'Новости и объявления',
@@ -141,7 +121,15 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     path: ADMIN_USERS_ROUTE,
     access: 'admin',
   },
-];
+] as const satisfies readonly {
+  key: string;
+  title: string;
+  icon: LucideIcon;
+  path: string;
+  access: AdminAccess;
+}[];
+
+export type AdminSection = (typeof ADMIN_SECTIONS)[number];
 
 /**
  * Разделы, которые вошедшему показывать можно.

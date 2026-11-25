@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 
 import { clearSession } from '@shared/api';
 import { HOME_ROUTE } from '@shared/config/routes';
+import { discardUnsavedChanges, hasUnsavedChanges } from '@shared/lib';
 
 import { logout } from '../api/authApi';
 
@@ -23,18 +25,32 @@ import { logout } from '../api/authApi';
  * Кэш чистится целиком: в нём лежат ответы, полученные под прежним токеном,
  * и следующий вошедший увидел бы чужие данные до первого перезапроса.
  */
-export function useLogout(): () => void {
+export function useLogout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [isConfirming, setConfirming] = useState(false);
 
-  return () => {
+  function confirmLogout() {
+    setConfirming(false);
+    discardUnsavedChanges();
     void logout().catch(() => undefined);
 
+    // Сначала закрываем защищённый экран, чтобы при очистке сессии
+    // его проверка доступа не перенаправила пользователя на вход.
+    void navigate(HOME_ROUTE, { replace: true, flushSync: true });
     clearSession();
     queryClient.clear();
-    // На главную, а не на форму входа: портал публичный, и вышедшему
-    // есть что читать дальше. Уйти со страницы всё равно нужно — она
-    // могла быть закрытой.
-    void navigate(HOME_ROUTE);
+  }
+
+  function requestLogout() {
+    if (hasUnsavedChanges()) setConfirming(true);
+    else confirmLogout();
+  }
+
+  return {
+    isConfirming,
+    requestLogout,
+    confirmLogout,
+    cancelLogout: () => setConfirming(false),
   };
 }
