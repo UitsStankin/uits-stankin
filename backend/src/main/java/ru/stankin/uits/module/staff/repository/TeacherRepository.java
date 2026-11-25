@@ -26,6 +26,8 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
 
     Page<Teacher> findByArchivedAtIsNull(Pageable pageable);
 
+    List<Teacher> findByArchivedAtIsNullOrderByIdAsc();
+
     Page<Teacher> findByArchivedAtIsNotNull(Pageable pageable);
 
     @Query("""

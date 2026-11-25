@@ -83,6 +83,7 @@ public abstract class AbstractIntegrationTest {
                 + "scientific_publications_scientificpublication_tags, "
                 + "scientific_publications_scientificpublication, scientific_publications_tag, "
                 + "scholar_search_cache, "
+                + "dept_task_assignee, dept_task, "
                 + "events_userevent_assigned_users, events_userevent, "
                 + "employee_teacher, subject_subject, "
                 + "employee_helpersemployee, users_user RESTART IDENTITY CASCADE");

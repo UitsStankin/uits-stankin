@@ -91,6 +91,23 @@ class UploadRateLimitIntegrationTest extends AbstractIntegrationTest {
         assertThat(blocked.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    @Test
+    @DisplayName("Лимит загрузок распространяется на ручку массового импорта ППС")
+    void importTeachers_WhenUploadLimitExceeded_Returns429() throws IOException {
+        createUser("greedy_staff_importer", TestRole.ADMIN);
+        String token = login("greedy_staff_importer");
+
+        for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
+            assertThat(upload(token).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        }
+
+        ResponseEntity<ProblemDetail> blocked = restTemplate.postForEntity(
+                "/api/teachers/import", multipart(image(), token), ProblemDetail.class);
+
+        assertThat(blocked.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(blocked.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isNotNull();
+    }
+
     private ResponseEntity<FileUploadResponseDto> upload(String token) throws IOException {
         return restTemplate.postForEntity("/api/files", multipart(image(), token),
                 FileUploadResponseDto.class);

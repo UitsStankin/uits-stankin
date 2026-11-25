@@ -18,6 +18,12 @@ public class EditablePageController {
     private final EditablePageService editablePageService;
 
     @GetMapping("/public/pages/{slug}")
+    public EditablePageResponseDto getPublicBySlug(@PathVariable String slug) {
+        return editablePageService.getPublicBySlug(slug);
+    }
+
+    @GetMapping("/pages/{slug}")
+    @PreAuthorize("isAuthenticated()")
     public EditablePageResponseDto getBySlug(@PathVariable String slug) {
         return editablePageService.getBySlug(slug);
     }

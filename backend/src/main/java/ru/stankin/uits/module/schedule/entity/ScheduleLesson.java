@@ -29,6 +29,12 @@ public class ScheduleLesson {
     @Column(name = "class_time", nullable = false)
     private Integer classTime;
 
+    @Column(name = "time_start", length = 5)
+    private String timeStart;
+
+    @Column(name = "time_end", length = 5)
+    private String timeEnd;
+
     @Column(name = "\"group\"", length = 128, nullable = false)
     private String group;
 

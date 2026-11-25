@@ -39,6 +39,16 @@ import ru.stankin.uits.module.publications.dto.TagRequestDto;
 import ru.stankin.uits.module.students.dto.PostgraduateRequestDto;
 import ru.stankin.uits.module.students.dto.StudentRequestDto;
 import ru.stankin.uits.module.students.enums.EducationLevel;
+import ru.stankin.uits.module.tasks.dto.TaskMyStatusUpdateDto;
+import ru.stankin.uits.module.tasks.dto.TaskRequestDto;
+import ru.stankin.uits.module.tasks.dto.TaskStatusUpdateDto;
+import ru.stankin.uits.module.tasks.entity.Task;
+import ru.stankin.uits.module.tasks.entity.TaskAssignee;
+import ru.stankin.uits.module.tasks.enums.TaskAssigneeStatus;
+import ru.stankin.uits.module.tasks.enums.TaskPriority;
+import ru.stankin.uits.module.tasks.enums.TaskStatus;
+import ru.stankin.uits.module.tasks.enums.TaskTargetScope;
+import ru.stankin.uits.module.tasks.repository.TaskRepository;
 import ru.stankin.uits.module.user.dto.ChangePasswordRequest;
 import ru.stankin.uits.module.user.dto.PasswordResetRequestDto;
 import ru.stankin.uits.module.user.dto.UserAdminUpdateRequestDto;
@@ -55,6 +65,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -86,6 +97,9 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
 
     @Autowired
     private NewsRepository newsRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
 
     /**
      * Именно бин {@code requestMappingHandlerMapping}, а не любой подходящий по типу:
@@ -192,7 +206,7 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.PUT, "/api/users/{id}", ADMINS),
             controller(HttpMethod.POST, "/api/users/{id}/reset-password", ADMINS),
             controller(HttpMethod.POST, "/api/users/{id}/logout", ADMINS),
-            controller(HttpMethod.GET, "/api/users/directory", EDITORS_AND_TEACHERS),
+            controller(HttpMethod.GET, "/api/users/directory", AUTHENTICATED),
 
             controller(HttpMethod.GET, "/api/teachers/me", TEACHERS),
             controller(HttpMethod.PUT, "/api/teachers/me", TEACHERS),
@@ -229,10 +243,20 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             controller(HttpMethod.PUT, "/api/publications/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/publications/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/publications/scholar", EDITORS),
+            controller(HttpMethod.GET, "/api/pages/{slug}", AUTHENTICATED),
             controller(HttpMethod.GET, "/api/pages", EDITORS),
             controller(HttpMethod.PUT, "/api/pages/{slug}", EDITORS),
+            controller(HttpMethod.GET, "/api/tasks", AUTHENTICATED),
+            controller(HttpMethod.GET, "/api/tasks/{id}", AUTHENTICATED),
+            controller(HttpMethod.POST, "/api/tasks", EDITORS_AND_TEACHERS),
+            controller(HttpMethod.PUT, "/api/tasks/{id}", EDITORS_AND_TEACHERS),
+            controller(HttpMethod.PATCH, "/api/tasks/{id}/status", AUTHENTICATED),
+            controller(HttpMethod.POST, "/api/tasks/{id}/claim", AUTHENTICATED),
+            controller(HttpMethod.PATCH, "/api/tasks/{id}/my-status", AUTHENTICATED),
+            controller(HttpMethod.DELETE, "/api/tasks/{id}", EDITORS_AND_TEACHERS),
             controller(HttpMethod.POST, "/api/files", EDITORS),
             controller(HttpMethod.POST, "/api/teachers", EDITORS),
+            controller(HttpMethod.POST, "/api/teachers/import", EDITORS),
             controller(HttpMethod.PUT, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.DELETE, "/api/teachers/{id}", EDITORS),
             controller(HttpMethod.GET, "/api/teachers", EDITORS),
@@ -351,7 +375,7 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
      * иначе публичная ручка логина ответила бы анониму 401 по своей собственной
      * логике, и клетка проверяла бы не права, а несуществующего пользователя.
      */
-    private record Fixture(User user, Long newsId) {}
+    private record Fixture(User user, Long newsId, Long taskId) {}
 
     private Fixture prepare(Actor actor) {
         User user = createUser(actor.username, actor.roles);
@@ -365,9 +389,31 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
                 .author(user)
                 .build());
 
+        User taskAuthor = (actor == Actor.USER || actor == Actor.ANONYMOUS)
+                ? createUser(actor.username + "_task_author", TestRole.TEACHER)
+                : user;
+
+        Task task = Task.builder()
+                .title("Матричная задача")
+                .description("Фикстура теста доступа")
+                .status(TaskStatus.OPEN)
+                .priority(TaskPriority.NORMAL)
+                .targetScope(TaskTargetScope.CUSTOM)
+                .startDate(LocalDate.of(2026, 11, 12))
+                .dueDate(LocalDate.of(2026, 11, 27))
+                .author(taskAuthor)
+                .build();
+        task.getAssignees().add(TaskAssignee.builder()
+                .task(task)
+                .user(user)
+                .status(TaskAssigneeStatus.OPEN)
+                .assignedAt(OffsetDateTime.now())
+                .build());
+        task = taskRepository.save(task);
+
         writeMediaProbe();
 
-        return new Fixture(user, news.getId());
+        return new Fixture(user, news.getId(), task.getId());
     }
 
     private void writeMediaProbe() {
@@ -382,8 +428,11 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
     }
 
     private ResponseEntity<String> call(Endpoint endpoint, Fixture fixture, String token) {
+        String idReplacement = endpoint.path().startsWith("/api/tasks")
+                ? String.valueOf(fixture.taskId())
+                : String.valueOf(fixture.newsId());
         String path = endpoint.path()
-                .replace("{id}", String.valueOf(fixture.newsId()))
+                .replace("{id}", idReplacement)
                 .replace("{teacherId}", TEACHER_ID)
                 .replace("{slug}", PAGE_SLUG)
                 + query(endpoint);
@@ -437,6 +486,9 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/publications", "PUT /api/publications/{id}" ->
                     json(headers, publicationRequest());
             case "PUT /api/pages/{slug}" -> json(headers, pageRequest());
+            case "POST /api/tasks", "PUT /api/tasks/{id}" -> json(headers, taskRequest());
+            case "PATCH /api/tasks/{id}/status" -> json(headers, taskStatusRequest());
+            case "PATCH /api/tasks/{id}/my-status" -> json(headers, taskMyStatusRequest());
             case "POST /api/teachers", "PUT /api/teachers/{id}", "PUT /api/teachers/me" ->
                     json(headers, teacherRequest());
             case "POST /api/subjects", "PUT /api/subjects/{id}" -> json(headers, subjectRequest());
@@ -444,6 +496,7 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             case "POST /api/files" -> multipart(headers);
             case "POST /api/teachers/{id}/schedule/import",
                  "POST /api/teachers/{id}/exams/import" -> schedulePdf(headers);
+            case "POST /api/teachers/import" -> staffImportFile(headers);
             case "POST /api/gradesheets/import" -> gradeSheetWorkbook(headers);
             default -> new HttpEntity<>(headers);
         };
@@ -471,6 +524,20 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
             @Override
             public String getFilename() {
                 return "matrix.xlsx";
+            }
+        });
+
+        return new HttpEntity<>(body, headers);
+    }
+
+    private HttpEntity<?> staffImportFile(HttpHeaders headers) {
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource("ФИО;Должность\nТест Тестов;доцент\n".getBytes(StandardCharsets.UTF_8)) {
+            @Override
+            public String getFilename() {
+                return "matrix.csv";
             }
         });
 
@@ -608,6 +675,30 @@ class EndpointAccessMatrixTest extends AbstractIntegrationTest {
         return EditablePageRequestDto.builder()
                 .title(PAGE_TITLE)
                 .text("")
+                .build();
+    }
+
+    private TaskRequestDto taskRequest() {
+        return TaskRequestDto.builder()
+                .title("Задача из матрицы")
+                .description("Описание")
+                .priority(TaskPriority.NORMAL)
+                .targetScope(TaskTargetScope.CUSTOM)
+                .startDate(LocalDate.of(2026, 11, 12))
+                .dueDate(LocalDate.of(2026, 11, 27))
+                .assigneeIds(List.of())
+                .build();
+    }
+
+    private TaskStatusUpdateDto taskStatusRequest() {
+        return TaskStatusUpdateDto.builder()
+                .status(TaskStatus.IN_PROGRESS)
+                .build();
+    }
+
+    private TaskMyStatusUpdateDto taskMyStatusRequest() {
+        return TaskMyStatusUpdateDto.builder()
+                .status(TaskAssigneeStatus.IN_PROGRESS)
                 .build();
     }
 

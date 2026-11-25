@@ -7,11 +7,15 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.module.staff.dto.DuplicateStrategy;
 import ru.stankin.uits.module.staff.dto.TeacherDetailsResponseDto;
+import ru.stankin.uits.module.staff.dto.TeacherImportResponseDto;
 import ru.stankin.uits.module.staff.dto.TeacherRequestDto;
 import ru.stankin.uits.module.staff.dto.TeacherResponseDto;
+import ru.stankin.uits.module.staff.service.TeacherImportService;
 import ru.stankin.uits.module.staff.service.TeacherService;
 
 import java.net.URI;
@@ -22,6 +26,7 @@ import java.net.URI;
 public class TeacherController {
 
     private final TeacherService teacherService;
+    private final TeacherImportService teacherImportService;
 
     @GetMapping("/public/teachers")
     public PageResponseDto<TeacherResponseDto> getActiveTeachers(
@@ -53,6 +58,16 @@ public class TeacherController {
                 .toUri();
 
         return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/teachers/import")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public TeacherImportResponseDto importTeachers(
+            @RequestParam(defaultValue = "false") boolean dryRun,
+            @RequestParam(defaultValue = "SKIP") DuplicateStrategy onDuplicate,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return teacherImportService.importFromFile(file, dryRun, onDuplicate);
     }
 
     @PutMapping("/teachers/{id}")

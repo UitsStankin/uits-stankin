@@ -6,6 +6,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stankin.uits.common.PageResponseDto;
+import ru.stankin.uits.common.SortFields;
 import ru.stankin.uits.common.exception.InvalidFileException;
 import ru.stankin.uits.common.exception.InvalidOldPasswordException;
 import ru.stankin.uits.common.exception.NotFoundException;
@@ -15,6 +16,7 @@ import ru.stankin.uits.module.user.dto.UserDirectoryDto;
 import ru.stankin.uits.module.user.dto.UserResponseDto;
 import ru.stankin.uits.module.user.dto.UserUpdateRequestDto;
 import ru.stankin.uits.module.user.entity.User;
+import ru.stankin.uits.module.user.enums.UserDirectoryScope;
 import ru.stankin.uits.module.user.mapper.UserMapper;
 import ru.stankin.uits.module.user.repository.UserRepository;
 
@@ -23,12 +25,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private static final String AVATAR_CATEGORY = "avatars";
+    private static final Set<String> DIRECTORY_SORT_FIELDS = Set.of("id", "firstName", "lastName");
 
     private final UserMapper userMapper;
     private final UserRepository userRepository;
@@ -75,9 +79,23 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDto<UserDirectoryDto> getTeacherDirectory(Pageable pageable) {
-        return PageResponseDto.from(userRepository.findByTeacherTrueAndActiveTrue(pageable)
-                .map(userMapper::toDirectoryDto));
+    public PageResponseDto<UserDirectoryDto> getDirectory(UserDirectoryScope scope, Pageable pageable) {
+        SortFields.validate(pageable.getSort(), DIRECTORY_SORT_FIELDS);
+        var page = scope == UserDirectoryScope.ALL
+                ? userRepository.findByActiveTrue(pageable)
+                : userRepository.findByTeacherTrueAndActiveTrue(pageable);
+
+        return PageResponseDto.from(page.map(userMapper::toDirectoryDto));
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> findAllActiveUsers() {
+        return userRepository.findByActiveTrueOrderByLastNameAscFirstNameAscIdAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> findAllActiveTeachers() {
+        return userRepository.findByTeacherTrueAndActiveTrueOrderByLastNameAscFirstNameAscIdAsc();
     }
 
     @Transactional(readOnly = true)

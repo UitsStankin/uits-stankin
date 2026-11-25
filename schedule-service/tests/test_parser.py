@@ -3,8 +3,9 @@ import io
 import pytest
 
 from app.errors import ScheduleParseError
-from app.models import DatePeriod
+from app.models import DatePeriod, Lesson
 from app.parser import (
+    GROUP_RE,
     _parse_cell,
     _parse_dates,
     _parse_day,
@@ -43,6 +44,8 @@ class TestChekanin:
         found = lessons_at(chekanin, 1, 1)
         assert len(found) == 2
         first = found[0]
+        assert first.time_start == "08:30"
+        assert first.time_end == "10:10"
         assert first.group == "ИДБ-25-11"
         assert first.name == "Технические средства информационных систем"
         assert first.type == "Лабораторная"
@@ -56,9 +59,15 @@ class TestChekanin:
     def test_merged_cell_spans_next_slot(self, chekanin):
         slot_one = lessons_at(chekanin, 1, 1)
         slot_two = lessons_at(chekanin, 1, 2)
-        assert [lesson.model_dump(exclude={"class_time"}) for lesson in slot_two] == [
-            lesson.model_dump(exclude={"class_time"}) for lesson in slot_one
+        assert [
+            lesson.model_dump(exclude={"class_time", "time_start", "time_end"})
+            for lesson in slot_two
+        ] == [
+            lesson.model_dump(exclude={"class_time", "time_start", "time_end"})
+            for lesson in slot_one
         ]
+        assert {(lesson.time_start, lesson.time_end) for lesson in slot_one} == {("08:30", "10:10")}
+        assert {(lesson.time_start, lesson.time_end) for lesson in slot_two} == {("10:20", "12:00")}
 
     def test_cabinet_with_uppercase_letters_in_parens(self, chekanin):
         found = lessons_at(chekanin, 2, 5)
@@ -192,9 +201,124 @@ class TestTableParsing:
         with pytest.raises(ScheduleParseError, match="раньше первой строки дня"):
             _parse_table(table)
 
-    def test_unknown_header_time(self):
-        with pytest.raises(ScheduleParseError, match="неизвестное время пары"):
-            _parse_header(["", "9:00 - 10:30"])
+    def test_parses_2026_bell_schedule_with_dashes_and_zero_padding(self):
+        header = [
+            "",
+            "8:30 - 10:05",
+            "10:15–11:50",
+            "12:20 — 13:55",
+            "14:05-15:40",
+            "15:50 - 17:25",
+            "18:00 - 19:30",
+            "19:40 - 21:10",
+            "21:20 - 22:50",
+        ]
+        assert _parse_header(header) == [
+            (1, "08:30", "10:05"),
+            (2, "10:15", "11:50"),
+            (3, "12:20", "13:55"),
+            (4, "14:05", "15:40"),
+            (5, "15:50", "17:25"),
+            (6, "18:00", "19:30"),
+            (7, "19:40", "21:10"),
+            (8, "21:20", "22:50"),
+        ]
+
+    def test_parses_legacy_bell_schedule(self):
+        header = [
+            "",
+            "8:30 - 10:10",
+            "10:20 - 12:00",
+            "12:20 - 14:00",
+            "14:10 - 15:50",
+            "16:00 - 17:40",
+            "18:00 - 19:30",
+            "19:40 - 21:10",
+            "21:20 - 22:50",
+        ]
+        assert _parse_header(header) == [
+            (1, "08:30", "10:10"),
+            (2, "10:20", "12:00"),
+            (3, "12:20", "14:00"),
+            (4, "14:10", "15:50"),
+            (5, "16:00", "17:40"),
+            (6, "18:00", "19:30"),
+            (7, "19:40", "21:10"),
+            (8, "21:20", "22:50"),
+        ]
+
+    def test_parses_arbitrary_ten_slots_and_populates_table_lessons(self):
+        header = [
+            "",
+            "7:00 - 8:20",
+            "8:30 - 10:00",
+            "10:10 - 11:40",
+            "11:50 - 13:20",
+            "13:30 - 15:00",
+            "15:10 - 16:40",
+            "16:50 - 18:20",
+            "18:30 - 20:00",
+            "20:10 - 21:40",
+            "21:50 - 23:20",
+        ]
+        table = [
+            header,
+            [
+                "к\nи\nн\nь\nл\nе\nд\nе\nн\nо\nп",
+                "ЭЛ-КС-25-01. Киберфизические системы. Семинар. [09.10]",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                "ЭЛ-КС-25-01. Киберфизические системы. Лекция. 0411. [16.10]",
+            ],
+        ]
+        lessons = _parse_table(table)
+        assert len(lessons) == 10
+        assert lessons[0].class_time == 1
+        assert lessons[0].time_start == "07:00"
+        assert lessons[0].time_end == "08:20"
+        assert lessons[0].group == "ЭЛ-КС-25-01"
+        assert lessons[8].class_time == 9
+        assert lessons[8].time_start == "20:10"
+        assert lessons[8].time_end == "21:40"
+        assert lessons[9].class_time == 10
+        assert lessons[9].time_start == "21:50"
+        assert lessons[9].time_end == "23:20"
+        assert lessons[9].cabinet == "0411"
+
+    def test_empty_header_rejected(self):
+        with pytest.raises(ScheduleParseError, match="нет ни одного интервала"):
+            _parse_header([""])
+
+    def test_more_than_ten_slots_rejected(self):
+        header = [""] + [f"{8 + i}:00 - {8 + i}:45" for i in range(11)]
+        with pytest.raises(ScheduleParseError, match="при пределе 10"):
+            _parse_header(header)
+
+    def test_invalid_header_interval_format_rejected(self):
+        with pytest.raises(ScheduleParseError, match="некорректный интервал"):
+            _parse_header(["", "первая пара"])
+
+    def test_out_of_range_header_time_rejected(self):
+        with pytest.raises(ScheduleParseError, match="время вне суток"):
+            _parse_header(["", "25:00 - 26:00"])
+
+    def test_reversed_or_zero_length_interval_rejected(self):
+        with pytest.raises(ScheduleParseError, match="не меньше времени окончания"):
+            _parse_header(["", "10:05 - 08:30"])
+        with pytest.raises(ScheduleParseError, match="не меньше времени окончания"):
+            _parse_header(["", "10:05 - 10:05"])
+
+    def test_non_increasing_header_starts_rejected(self):
+        with pytest.raises(ScheduleParseError, match="строго возрастать"):
+            _parse_header(["", "10:15 - 11:50", "10:15 - 12:00"])
+        with pytest.raises(ScheduleParseError, match="строго возрастать"):
+            _parse_header(["", "10:15 - 11:50", "08:30 - 10:05"])
 
     def test_unknown_day(self):
         with pytest.raises(ScheduleParseError, match="неизвестный день недели"):
@@ -294,3 +418,33 @@ class TestCellParsing:
     def test_space_before_hyphen_break_keeps_space(self):
         entries = _parse_cell("ИДБ-25-11. Химия -\nчасть 2. Лекция. 0411. [12.02]")
         assert entries[0]["name"] == "Химия - часть 2"
+
+    def test_composite_group_codes_accepted(self):
+        assert GROUP_RE.match("ЭЛ-КС-25-01")
+        assert GROUP_RE.match("А-Б-В-24-02(ИГ)")
+        entries = _parse_cell("ЭЛ-КС-25-01, ИДБ-25-11. Физика. Лекция. 0411. [12.02]")
+        assert entries[0]["group"] == "ЭЛ-КС-25-01, ИДБ-25-11"
+
+    def test_lesson_model_accepts_slot_10_and_rejects_11(self):
+        valid = Lesson(
+            week_day=1,
+            class_time=10,
+            time_start="21:50",
+            time_end="23:20",
+            group="ЭЛ-КС-25-01",
+            name="Физика",
+            type="Лекция",
+            dates=[DatePeriod(start="12.02", end="12.02", every_other_week=False)],
+        )
+        assert valid.class_time == 10
+        with pytest.raises(ValueError):
+            Lesson(
+                week_day=1,
+                class_time=11,
+                time_start="21:50",
+                time_end="23:20",
+                group="ЭЛ-КС-25-01",
+                name="Физика",
+                type="Лекция",
+                dates=[DatePeriod(start="12.02", end="12.02", every_other_week=False)],
+            )

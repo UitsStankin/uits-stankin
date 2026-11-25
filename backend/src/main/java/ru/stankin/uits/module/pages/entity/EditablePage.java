@@ -27,6 +27,10 @@ public class EditablePage {
     @Column(name = "page", length = 100, nullable = false, updatable = false)
     private String slug;
 
+    @Builder.Default
+    @Column(name = "restricted", nullable = false)
+    private boolean restricted = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 

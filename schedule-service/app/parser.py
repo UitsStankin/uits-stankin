@@ -1,6 +1,6 @@
 import io
 import re
-from datetime import date
+from datetime import date, time
 from typing import BinaryIO
 
 import pdfplumber
@@ -12,17 +12,7 @@ from app.models import DatePeriod, Lesson, ParsedSchedule
 LEAP_YEAR = 2024
 
 MAX_PAGES = 50
-
-TIMINGS = {
-    "8:30 - 10:10": 1,
-    "10:20 - 12:00": 2,
-    "12:20 - 14:00": 3,
-    "14:10 - 15:50": 4,
-    "16:00 - 17:40": 5,
-    "18:00 - 19:30": 6,
-    "19:40 - 21:10": 7,
-    "21:20 - 22:50": 8,
-}
+MAX_SLOTS = 10
 
 DAYS = {
     "понедельник": 1,
@@ -35,8 +25,9 @@ DAYS = {
 
 LESSON_TYPES = {"Лекция", "Семинар", "Лабораторная"}
 
+HEADER_INTERVAL_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$")
 ENTRY_RE = re.compile(r"([^\[\]]+?)\[([^\[\]]+)\]")
-GROUP_RE = re.compile(r"^[А-ЯЁ]+-\d{2}-\d{2}\S*$")
+GROUP_RE = re.compile(r"^[А-ЯЁ]+(?:-[А-ЯЁ]+)*-\d{2}-\d{2}\S*$")
 SUBGROUP_RE = re.compile(r"^\(([А-ЯЁA-Z])\)$")
 SUBGROUP_LIKE_RE = re.compile(r"^\(\S{1,2}\)$")
 SINGLE_DATE_RE = re.compile(r"^\d{2}\.\d{2}$")
@@ -85,11 +76,15 @@ def _parse_table(table: list[list[str | None]]) -> list[Lesson]:
 
 
 def _parse_row(
-    row: list[str | None], slot_times: list[int], day: int | None, *, is_day_row: bool
+    row: list[str | None],
+    slot_times: list[tuple[int, str, str]],
+    day: int | None,
+    *,
+    is_day_row: bool,
 ) -> list[Lesson]:
     lessons: list[Lesson] = []
     carry: str | None = None
-    for class_time, cell in zip(slot_times, row[1:]):
+    for (class_time, time_start, time_end), cell in zip(slot_times, row[1:]):
         if is_day_row and cell is None:
             text = carry
         else:
@@ -102,17 +97,53 @@ def _parse_row(
                 "строка с занятиями встретилась раньше первой строки дня недели"
             )
         for entry in _parse_cell(text):
-            lessons.append(Lesson(week_day=day, class_time=class_time, **entry))
+            lessons.append(
+                Lesson(
+                    week_day=day,
+                    class_time=class_time,
+                    time_start=time_start,
+                    time_end=time_end,
+                    **entry,
+                )
+            )
     return lessons
 
 
-def _parse_header(header: list[str | None]) -> list[int]:
-    slot_times = []
-    for cell in header[1:]:
+def _parse_header(header: list[str | None]) -> list[tuple[int, str, str]]:
+    raw_slots = header[1:]
+    if not raw_slots:
+        raise ScheduleParseError("в заголовке таблицы расписания нет ни одного интервала времени")
+    if len(raw_slots) > MAX_SLOTS:
+        raise ScheduleParseError(
+            f"в заголовке таблицы {len(raw_slots)} пар при пределе {MAX_SLOTS}"
+        )
+    slot_times: list[tuple[int, str, str]] = []
+    prev_start: time | None = None
+    for index, cell in enumerate(raw_slots, start=1):
         label = _normalize(cell or "")
-        if label not in TIMINGS:
-            raise ScheduleParseError(f"неизвестное время пары в заголовке таблицы: '{cell}'")
-        slot_times.append(TIMINGS[label])
+        match = HEADER_INTERVAL_RE.match(label)
+        if not match:
+            raise ScheduleParseError(
+                f"некорректный интервал времени в заголовке таблицы: '{cell}'"
+            )
+        start_hour, start_minute, end_hour, end_minute = (int(group) for group in match.groups())
+        try:
+            start_time = time(start_hour, start_minute)
+            end_time = time(end_hour, end_minute)
+        except ValueError:
+            raise ScheduleParseError(
+                f"время вне суток в заголовке таблицы: '{cell}'"
+            ) from None
+        if start_time >= end_time:
+            raise ScheduleParseError(
+                f"время начала пары не меньше времени окончания в заголовке: '{cell}'"
+            )
+        if prev_start is not None and start_time <= prev_start:
+            raise ScheduleParseError(
+                f"время начала пар в заголовке должно строго возрастать: '{cell}'"
+            )
+        prev_start = start_time
+        slot_times.append((index, start_time.strftime("%H:%M"), end_time.strftime("%H:%M")))
     return slot_times
 
 

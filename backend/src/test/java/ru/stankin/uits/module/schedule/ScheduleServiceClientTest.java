@@ -32,7 +32,8 @@ class ScheduleServiceClientTest {
 
     private static final String BODY = """
             {"lessons": [
-              {"week_day": 1, "class_time": 1, "group": "ИДБ-25-11",
+              {"week_day": 1, "class_time": 1, "time_start": "08:30", "time_end": "10:10",
+               "group": "ИДБ-25-11",
                "name": "Технические средства информационных систем",
                "type": "Лабораторная", "subgroup": "Б", "cabinet": "216",
                "dates": [{"start": "16.03", "end": "27.04", "every_other_week": true}]}
@@ -76,10 +77,33 @@ class ScheduleServiceClientTest {
         ParsedLessonDto lesson = parsed.getLessons().getFirst();
         assertThat(lesson.getWeekDay()).isEqualTo(1);
         assertThat(lesson.getClassTime()).isEqualTo(1);
+        assertThat(lesson.getTimeStart()).isEqualTo("08:30");
+        assertThat(lesson.getTimeEnd()).isEqualTo("10:10");
         assertThat(lesson.getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(lesson.getSubgroup()).isEqualTo("Б");
         assertThat(lesson.getDates()).hasSize(1);
         assertThat(lesson.getDates().getFirst().getEveryOtherWeek()).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void mapsTenSlotLessonWithNullSubgroupAndCabinet() {
+        expectParse(withSuccess("""
+                {"lessons": [
+                  {"week_day": 5, "class_time": 10, "time_start": "21:50", "time_end": "23:20",
+                   "group": "ЭЛ-КС-25-01", "name": "Киберфизические системы",
+                   "type": "Семинар", "subgroup": null, "cabinet": null,
+                   "dates": [{"start": "09.10", "end": "30.10", "every_other_week": false}]}
+                ]}
+                """, MediaType.APPLICATION_JSON));
+
+        ParsedScheduleDto parsed = client.parse(PDF, "gamidov.pdf");
+
+        ParsedLessonDto lesson = parsed.getLessons().getFirst();
+        assertThat(lesson.getClassTime()).isEqualTo(10);
+        assertThat(lesson.getTimeStart()).isEqualTo("21:50");
+        assertThat(lesson.getTimeEnd()).isEqualTo("23:20");
+        assertThat(lesson.getGroup()).isEqualTo("ЭЛ-КС-25-01");
         server.verify();
     }
 

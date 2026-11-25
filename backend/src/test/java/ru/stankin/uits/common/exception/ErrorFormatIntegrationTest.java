@@ -52,6 +52,7 @@ class ErrorFormatIntegrationTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "/api/files",
+            "/api/teachers/import",
             "/api/teachers/1/schedule/import",
             "/api/teachers/1/exams/import",
             "/api/gradesheets/import"
@@ -69,6 +70,7 @@ class ErrorFormatIntegrationTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "/api/files",
+            "/api/teachers/import",
             "/api/teachers/1/schedule/import",
             "/api/teachers/1/exams/import",
             "/api/gradesheets/import"

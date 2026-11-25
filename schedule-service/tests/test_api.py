@@ -50,6 +50,8 @@ class TestParse:
         assert lesson == {
             "week_day": 1,
             "class_time": 1,
+            "time_start": "08:30",
+            "time_end": "10:10",
             "group": "ИДБ-25-11",
             "name": "Технические средства информационных систем",
             "type": "Лабораторная",

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import ru.stankin.uits.module.user.entity.User;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -17,6 +18,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     Page<User> findByTeacherTrueAndActiveTrue(Pageable pageable);
+
+    Page<User> findByActiveTrue(Pageable pageable);
+
+    List<User> findByActiveTrueOrderByLastNameAscFirstNameAscIdAsc();
+
+    List<User> findByTeacherTrueAndActiveTrueOrderByLastNameAscFirstNameAscIdAsc();
 
     @Modifying
     @Query("update User u set u.lastLogin = :now where u.id = :id")

@@ -1,0 +1,196 @@
+databaseChangeLog:
+  - changeSet:
+      id: 038-create-dept-task-table
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: dept_task
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: OPEN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: priority
+                  type: VARCHAR(16)
+                  defaultValue: NORMAL
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_scope
+                  type: VARCHAR(20)
+                  defaultValue: CUSTOM
+                  constraints:
+                    nullable: false
+              - column:
+                  name: audience_label
+                  type: VARCHAR(150)
+              - column:
+                  name: start_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: due_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_at
+                  type: TIMESTAMP WITH TIME ZONE
+        - addForeignKeyConstraint:
+            baseTableName: dept_task
+            baseColumnNames: author_id
+            constraintName: fk_dept_task_author
+            referencedTableName: users_user
+            referencedColumnNames: id
+        - sql:
+            sql: ALTER TABLE dept_task ADD CONSTRAINT chk_dept_task_dates CHECK (due_date >= start_date)
+        - createIndex:
+            tableName: dept_task
+            indexName: idx_dept_task_status_due
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: due_date
+        - createIndex:
+            tableName: dept_task
+            indexName: idx_dept_task_dates
+            columns:
+              - column:
+                  name: start_date
+              - column:
+                  name: due_date
+        - createIndex:
+            tableName: dept_task
+            indexName: idx_dept_task_author
+            columns:
+              - column:
+                  name: author_id
+      rollback:
+        - dropIndex:
+            tableName: dept_task
+            indexName: idx_dept_task_author
+        - dropIndex:
+            tableName: dept_task
+            indexName: idx_dept_task_dates
+        - dropIndex:
+            tableName: dept_task
+            indexName: idx_dept_task_status_due
+        - sql:
+            sql: ALTER TABLE dept_task DROP CONSTRAINT chk_dept_task_dates
+        - dropForeignKeyConstraint:
+            baseTableName: dept_task
+            constraintName: fk_dept_task_author
+        - dropTable:
+            tableName: dept_task
+
+  - changeSet:
+      id: 038-create-dept-task-assignee-table
+      author: eeffeecct
+      changes:
+        - createTable:
+            tableName: dept_task_assignee
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: task_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: OPEN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assigned_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: TIMESTAMP WITH TIME ZONE
+        - addForeignKeyConstraint:
+            baseTableName: dept_task_assignee
+            baseColumnNames: task_id
+            constraintName: fk_dept_task_assignee_task
+            referencedTableName: dept_task
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: dept_task_assignee
+            baseColumnNames: user_id
+            constraintName: fk_dept_task_assignee_user
+            referencedTableName: users_user
+            referencedColumnNames: id
+        - addUniqueConstraint:
+            tableName: dept_task_assignee
+            columnNames: task_id, user_id
+            constraintName: uq_dept_task_assignee_task_user
+        - createIndex:
+            tableName: dept_task_assignee
+            indexName: idx_dept_task_assignee_user_status
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: status
+      rollback:
+        - dropIndex:
+            tableName: dept_task_assignee
+            indexName: idx_dept_task_assignee_user_status
+        - dropUniqueConstraint:
+            tableName: dept_task_assignee
+            constraintName: uq_dept_task_assignee_task_user
+        - dropForeignKeyConstraint:
+            baseTableName: dept_task_assignee
+            constraintName: fk_dept_task_assignee_user
+        - dropForeignKeyConstraint:
+            baseTableName: dept_task_assignee
+            constraintName: fk_dept_task_assignee_task
+        - dropTable:
+            tableName: dept_task_assignee
