@@ -77,9 +77,21 @@ class ScheduleImportIntegrationTest extends AbstractIntegrationTest {
     }
 
     private static ParsedLessonDto lesson(int weekDay, int classTime, String group, ParsedLessonDateDto... dates) {
+        return lesson(weekDay, classTime, "08:30", "10:05", group, dates);
+    }
+
+    private static ParsedLessonDto lesson(
+            int weekDay,
+            int classTime,
+            String timeStart,
+            String timeEnd,
+            String group,
+            ParsedLessonDateDto... dates) {
         return ParsedLessonDto.builder()
                 .weekDay(weekDay)
                 .classTime(classTime)
+                .timeStart(timeStart)
+                .timeEnd(timeEnd)
                 .group(group)
                 .name("Технические средства информационных систем")
                 .type("Лабораторная")
@@ -143,6 +155,8 @@ class ScheduleImportIntegrationTest extends AbstractIntegrationTest {
                 .isEqualTo("chekanin.pdf");
         assertThat(body.getLessons()).hasSize(2);
         assertThat(body.getLessons().getFirst().getWeekNumber()).isEqualTo(1);
+        assertThat(body.getLessons().getFirst().getTimeStart()).isEqualTo("08:30");
+        assertThat(body.getLessons().getFirst().getTimeEnd()).isEqualTo("10:05");
         assertThat(body.getLessons().getFirst().getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(body.getLessons().getFirst().getSubgroup()).isEqualTo("Б");
         assertThat(body.getLessons().getFirst().getDates()).hasSize(1);
@@ -351,5 +365,63 @@ class ScheduleImportIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("detail", "Файл расписания больше 5 МБ.");
         then(scheduleServiceClient).should(never()).parse(any(), any());
+    }
+
+    @Test
+    void importsTenSlotScheduleWithCompositeGroupAndCustomTimes() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(5, 10, "21:50", "23:20", "ЭЛ-КС-25-01", period("09.10", "30.10", false))));
+
+        ResponseEntity<ScheduleResponseDto> response = importPdf(teacher.getId(), ScheduleResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var imported = response.getBody().getLessons().getFirst();
+        assertThat(imported.getClassTime()).isEqualTo(10);
+        assertThat(imported.getTimeStart()).isEqualTo("21:50");
+        assertThat(imported.getTimeEnd()).isEqualTo("23:20");
+        assertThat(imported.getGroup()).isEqualTo("ЭЛ-КС-25-01");
+    }
+
+    @Test
+    void allowsLegacyPayloadWithoutTimeIntervals() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 1, null, null, "ИДБ-25-11", period("16.03", "27.04", true))));
+
+        ResponseEntity<ScheduleResponseDto> response = importPdf(teacher.getId(), ScheduleResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var imported = response.getBody().getLessons().getFirst();
+        assertThat(imported.getTimeStart()).isNull();
+        assertThat(imported.getTimeEnd()).isNull();
+    }
+
+    @Test
+    void rejectsMalformedTimeIntervalFromScheduleService() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 1, "8:30", "10:05", "ИДБ-25-11", period("16.03", "27.04", true))));
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void rejectsReversedTimeIntervalFromScheduleService() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 1, "10:05", "08:30", "ИДБ-25-11", period("16.03", "27.04", true))));
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void rejectsClassTimeAboveTenFromScheduleService() {
+        given(scheduleServiceClient.parse(any(), any())).willReturn(parsedWith(
+                lesson(1, 11, "21:50", "23:20", "ИДБ-25-11", period("16.03", "27.04", true))));
+
+        ResponseEntity<Map> response = importPdf(teacher.getId(), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }
 }

@@ -49,6 +49,8 @@ class ScheduleEntityMappingTest extends AbstractIntegrationTest {
         ScheduleLesson lesson = ScheduleLesson.builder()
                 .weekNumber(1)
                 .classTime(1)
+                .timeStart("08:30")
+                .timeEnd("10:05")
                 .group("ИДБ-25-11")
                 .name("Технические средства информационных систем")
                 .type("Лабораторная")
@@ -87,6 +89,8 @@ class ScheduleEntityMappingTest extends AbstractIntegrationTest {
         assertThat(lesson.getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(lesson.getWeekNumber()).isEqualTo(1);
         assertThat(lesson.getClassTime()).isEqualTo(1);
+        assertThat(lesson.getTimeStart()).isEqualTo("08:30");
+        assertThat(lesson.getTimeEnd()).isEqualTo("10:05");
         assertThat(lesson.getSubgroup()).isEqualTo("Б");
         assertThat(lesson.getDates()).hasSize(2);
     }

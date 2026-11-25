@@ -10,8 +10,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.errors import ScheduleParseError
 from app.exams import parse_exams
 from app.gradesheets import parse_gradesheets
-from app.models import ParsedExams, ParsedGradeSheets, ParsedSchedule
+from app.models import ParsedExams, ParsedGradeSheets, ParsedSchedule, ParsedStaffFile
 from app.parser import parse_schedule
+from app.staff_import import parse_staff
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 MULTIPART_OVERHEAD_BYTES = 64 * 1024
@@ -154,3 +155,8 @@ async def exams(file: Annotated[UploadFile, File()]) -> ParsedExams:
 @app.post("/parse-gradesheet")
 async def gradesheet(file: Annotated[UploadFile, File()]) -> ParsedGradeSheets:
     return await run_in_threadpool(parse_gradesheets, await _read_upload(file))
+
+
+@app.post("/parse-staff")
+async def staff(file: Annotated[UploadFile, File()]) -> ParsedStaffFile:
+    return await run_in_threadpool(parse_staff, await _read_upload(file), file.filename)

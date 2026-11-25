@@ -38,8 +38,12 @@ class UserDirectoryIntegrationTest extends AbstractIntegrationTest {
     }
 
     private ResponseEntity<PageResponseDto<UserDirectoryDto>> directory(String token) {
+        return directory(token, "");
+    }
+
+    private ResponseEntity<PageResponseDto<UserDirectoryDto>> directory(String token, String query) {
         return restTemplate.exchange(
-                "/api/users/directory",
+                "/api/users/directory" + query,
                 HttpMethod.GET,
                 new HttpEntity<>(auth(token)),
                 new ParameterizedTypeReference<>() {
@@ -48,7 +52,11 @@ class UserDirectoryIntegrationTest extends AbstractIntegrationTest {
     }
 
     private List<UserDirectoryDto> entries(String token) {
-        ResponseEntity<PageResponseDto<UserDirectoryDto>> response = directory(token);
+        return entries(token, "");
+    }
+
+    private List<UserDirectoryDto> entries(String token, String query) {
+        ResponseEntity<PageResponseDto<UserDirectoryDto>> response = directory(token, query);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
@@ -98,17 +106,45 @@ class UserDirectoryIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void directoryIsClosedToPlainUser() {
+    void directoryIsOpenToPlainUser() {
+        account("teach", "Яковлев", "Иван", true, TestRole.TEACHER);
         account("plain", "Простов", "Роман", true, TestRole.USER);
 
-        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
-                "/api/users/directory",
-                HttpMethod.GET,
-                new HttpEntity<>(auth(login("plain"))),
-                ProblemDetail.class
-        );
+        assertThat(entries(login("plain")))
+                .extracting(UserDirectoryDto::getLastName)
+                .containsExactly("Яковлев");
+    }
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    @Test
+    void directoryScopeAllIncludesNonTeacherActiveStaffAndExcludesInactive() {
+        account("yakovlev", "Яковлев", "Иван", true, TestRole.TEACHER);
+        account("moder", "Модератов", "Илья", true, TestRole.MODERATOR);
+        account("plain", "Простов", "Роман", true, TestRole.USER);
+        account("blocked", "Блокирован", "Олег", false, TestRole.USER);
+
+        assertThat(entries(login("plain"), "?scope=TEACHERS"))
+                .extracting(UserDirectoryDto::getLastName)
+                .containsExactly("Яковлев");
+
+        assertThat(entries(login("plain"), "?scope=ALL"))
+                .extracting(UserDirectoryDto::getLastName)
+                .containsExactly("Модератов", "Простов", "Яковлев");
+    }
+
+    @Test
+    void directoryRejectsSensitiveSortFieldsWith400() {
+        account("plain", "Простов", "Роман", true, TestRole.USER);
+        String token = login("plain");
+
+        for (String field : List.of("email", "username", "password")) {
+            ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                    "/api/users/directory?sort=" + field,
+                    HttpMethod.GET,
+                    new HttpEntity<>(auth(token)),
+                    ProblemDetail.class
+            );
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @Test

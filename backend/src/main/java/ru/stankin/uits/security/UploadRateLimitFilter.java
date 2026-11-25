@@ -40,6 +40,7 @@ public class UploadRateLimitFilter extends OncePerRequestFilter {
     private static final RequestMatcher UPLOAD_MATCHER = new OrRequestMatcher(
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/files"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/gradesheets/import"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/teachers/import"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/teachers/*/schedule/import"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/teachers/*/exams/import")
     );

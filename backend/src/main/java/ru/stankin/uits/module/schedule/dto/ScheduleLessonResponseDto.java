@@ -15,6 +15,8 @@ public class ScheduleLessonResponseDto {
     Long id;
     Integer weekNumber;
     Integer classTime;
+    String timeStart;
+    String timeEnd;
     String group;
     String name;
     String type;

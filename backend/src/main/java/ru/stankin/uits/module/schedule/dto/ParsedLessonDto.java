@@ -20,6 +20,12 @@ public class ParsedLessonDto {
     @JsonProperty("class_time")
     Integer classTime;
 
+    @JsonProperty("time_start")
+    String timeStart;
+
+    @JsonProperty("time_end")
+    String timeEnd;
+
     String group;
     String name;
     String type;

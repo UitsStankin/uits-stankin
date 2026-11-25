@@ -15,6 +15,7 @@ public class EditablePageResponseDto {
     private String slug;
     private String title;
     private String text;
+    private boolean restricted;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

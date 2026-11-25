@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-add-editable-page-restricted
+      author: eeffeecct
+      changes:
+        - addColumn:
+            tableName: editable_pages_editablepage
+            columns:
+              - column:
+                  name: restricted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: editable_pages_editablepage
+            columnName: restricted
+
+  - changeSet:
+      id: 037-seed-staff-links-page
+      author: eeffeecct
+      changes:
+        - insert:
+            tableName: editable_pages_editablepage
+            columns:
+              - column:
+                  name: page
+                  value: staff-links
+              - column:
+                  name: title
+                  value: Полезные ссылки для сотрудников
+              - column:
+                  name: text
+                  value: |-
+                    ## Темы и руководители ВКР
+
+                    - [Темы и руководители бакалавров](https://docs.google.com/spreadsheets/d/1ZFiKAI5r7wKAp6wCYwhkS1fa6Q_Envy8qo8gxVHQU58/edit?usp=sharing)
+                    - [Тематики и руководители магистрантов 1 года обучения (ИДМ-26-06)](https://docs.google.com/spreadsheets/d/1Xu0_hpjvw1QdZJKJ6DWIsHk71d2Q6UBdbbbF_c6tbWc/edit?usp=sharing)
+                    - [Темы и руководители магистрантов 2 года обучения (ИДМ-25-06)](https://docs.google.com/spreadsheets/d/143tsi2BsDU7KRjRioTJce8vLyw7HLVonDbFEJxMDIvI/edit?usp=sharing)
+
+                    ## Дистанционные занятия
+
+                    - [Ссылка для заполнения отчёта](https://cloud.stankin.ru/apps/onlyoffice/s/GY7AoKZfYGJSbEc?fileId=1119020)
+
+                    ## Индивидуальные планы
+
+                    - [Информация о готовности индивидуальных планов](https://docs.google.com/spreadsheets/d/1ZvZ3M8vJdasXqPwFNzfjaytybG73q8cd9aFzI6EoPg4/edit?usp=sharing)
+
+                    ## Модули
+
+                    - [Модульные журналы](https://modul.stankin.ru/)
+                      - [Инструкция по работе с модульными журналами](https://cloud.stankin.ru/s/HsbXjCxc9GiotKx?dir=/&editing=false&openfile=true)
+                    - [Продление сроков сдачи модуля 1](https://docs.google.com/document/d/1kfl9DjQ3DF3E1lRzEF6xi-ioQMHk5KCP/edit?usp=sharing)
+
+                    ## Приём задолженностей
+
+                    - [Расписание приёма задолженностей за весенний семестр 2025/2026 уч.г.](https://docs.google.com/spreadsheets/d/1aGDSmwh1XPkdwCMi1H14zFc-kIDIaVygfvrn3wT2III/edit?usp=sharing)
+
+                    ## Мероприятия
+
+                    - [Запись на Дни открытых дверей 2026-2027](https://docs.google.com/document/d/1dLiC-UdzbGVFgr1J_39oABOrDeerBSbUHj_PC1JtCAU/edit?usp=sharing)
+                    - [Запись на Мастер-классы для школьников](https://docs.google.com/spreadsheets/d/1pExmeMdVf8ZWm948QxT7EK30uQOnwywQJlKW543pfCI/edit?gid=1773878831#gid=1773878831)
+
+                    ## Ведомости
+
+                    - Ссылка на папку с ведомостями будет добавлена администратором.
+              - column:
+                  name: restricted
+                  valueBoolean: true
+              - column:
+                  name: created_at
+                  valueComputed: NOW()
+              - column:
+                  name: modified_at
+                  valueComputed: NOW()
+      rollback:
+        - delete:
+            tableName: editable_pages_editablepage
+            where: page = 'staff-links'

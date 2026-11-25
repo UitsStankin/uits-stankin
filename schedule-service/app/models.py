@@ -13,7 +13,9 @@ class DatePeriod(BaseModel):
 
 class Lesson(BaseModel):
     week_day: int = Field(ge=1, le=6)
-    class_time: int = Field(ge=1, le=8)
+    class_time: int = Field(ge=1, le=10)
+    time_start: str = Field(pattern=TIME_PATTERN)
+    time_end: str = Field(pattern=TIME_PATTERN)
     group: str = Field(min_length=1)
     name: str = Field(min_length=1)
     type: str = Field(min_length=1)
@@ -79,3 +81,28 @@ class GradeSheet(BaseModel):
 
 class ParsedGradeSheets(BaseModel):
     sheets: list[GradeSheet]
+
+
+class ParsedStaffRow(BaseModel):
+    row_number: int = Field(ge=1)
+    category: str | None = None
+    last_name: str | None = None
+    first_name: str | None = None
+    patronymic: str | None = None
+    position: str | None = None
+    degree: str | None = None
+    rank: str | None = None
+    email: str | None = None
+    phone_number: str | None = None
+    messenger: str | None = None
+    experience: int | None = None
+    professional_experience: int | None = None
+    education: str | None = None
+    qualification: str | None = None
+    bio: str | None = None
+    parse_errors: list[str] = Field(default_factory=list)
+
+
+class ParsedStaffFile(BaseModel):
+    rows: list[ParsedStaffRow]
+    warnings: list[str] = Field(default_factory=list)

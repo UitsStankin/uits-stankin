@@ -44,7 +44,8 @@ class EditablePageIntegrationTest extends AbstractIntegrationTest {
             "master-practices",
             "scientific-activity-postgraduate",
             "home-before",
-            "home-after");
+            "home-after",
+            "staff-links");
 
     private static final String WRITABLE_SLUG = "home-after";
     private static final String WRITABLE_TITLE = "Главная: блок под новостями";
@@ -80,8 +81,61 @@ class EditablePageIntegrationTest extends AbstractIntegrationTest {
         assertThat(body.getSlug()).isEqualTo("contacts");
         assertThat(body.getTitle()).isEqualTo("Контакты");
         assertThat(body.getText()).isEmpty();
+        assertThat(body.isRestricted()).isFalse();
         assertThat(body.getCreatedAt()).isNotNull();
         assertThat(body.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void getPublicBySlug_WhenRestricted_ReturnsNotFound() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/public/pages/staff-links", ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getRestrictedBySlug_WhenAnonymous_ReturnsUnauthorized() {
+        ResponseEntity<ProblemDetail> response = restTemplate.getForEntity(
+                "/api/pages/staff-links", ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void getRestrictedBySlug_WhenAuthenticatedPlainUser_ReturnsSection() {
+        createUser("plain_staff", TestRole.USER);
+        String token = login("plain_staff");
+
+        ResponseEntity<EditablePageResponseDto> response = restTemplate.exchange(
+                "/api/pages/staff-links", HttpMethod.GET, withToken(token), EditablePageResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        EditablePageResponseDto body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getSlug()).isEqualTo("staff-links");
+        assertThat(body.getTitle()).isEqualTo("Полезные ссылки для сотрудников");
+        assertThat(body.isRestricted()).isTrue();
+        assertThat(body.getText())
+                .contains("Темы и руководители ВКР")
+                .contains("Дистанционные занятия")
+                .contains("Индивидуальные планы")
+                .contains("Модули")
+                .contains("Приём задолженностей")
+                .contains("Мероприятия")
+                .contains("Ведомости")
+                .contains("https://modul.stankin.ru/");
+    }
+
+    @Test
+    void getBySlugAuthenticated_WhenUnknownSlug_ReturnsNotFound() {
+        createUser("plain_staff", TestRole.USER);
+        String token = login("plain_staff");
+
+        ResponseEntity<ProblemDetail> response = restTemplate.exchange(
+                "/api/pages/no-such-section", HttpMethod.GET, withToken(token), ProblemDetail.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test

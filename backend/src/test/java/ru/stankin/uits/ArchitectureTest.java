@@ -98,11 +98,14 @@ class ArchitectureTest {
                             "..module.staff.entity..",
                             // событие календаря принадлежит владельцу и назначено участникам
                             "..module.events.entity..",
+                            // задачи кафедры принадлежат автору и назначены сотрудникам
+                            "..module.tasks.entity..",
                             // мапперы собирают authorName и ФИО преподавателя из полей User
                             // (зависимость появляется в сгенерированных MapStruct-реализациях)
                             "..module.news.mapper..",
                             "..module.staff.mapper..",
                             "..module.events.mapper..",
+                            "..module.tasks.mapper..",
                             // NewsService достаёт текущего пользователя из SecurityContext,
                             // чтобы проставить автора создаваемой новости
                             "..module.news.service..",
@@ -112,6 +115,8 @@ class ArchitectureTest {
                             "..module.staff.service..",
                             // владелец и назначенные приезжают в сервис календаря учётными записями
                             "..module.events.service..",
+                            // автор и исполнители приезжают в сервис задач кафедры учётными записями
+                            "..module.tasks.service..",
                             // логин достаёт id пользователя для обновления last_login
                             "..module.auth.controller..",
                             // сессия принадлежит пользователю: FK refresh_token.user_id
@@ -203,6 +208,16 @@ class ArchitectureTest {
                             + "наружу отдаются только DTO");
 
     /**
+     * Правило 4е. Сущности tasks не покидают свой модуль.
+     */
+    @ArchTest
+    static final ArchRule taskEntitiesStayInTheirModule =
+            classes().that().resideInAPackage("..module.tasks.entity..")
+                    .should().onlyHaveDependentClassesThat().resideInAPackage("..module.tasks..")
+                    .because("Task и TaskAssignee — внутренняя модель модуля задач, "
+                            + "наружу отдаются только DTO");
+
+    /**
      * Правило 6. Файловая система — только внутри common.storage.
      *
      * <p>Смысл интерфейса {@code FileStorage} в том, что смена хранилища (диск → S3)
@@ -264,6 +279,9 @@ class ArchitectureTest {
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
                             resideInAPackage("..module.events.service.."),
+                            resideInAPackage("..module.user.service.."))
+                    .ignoreDependency(
+                            resideInAPackage("..module.tasks.service.."),
                             resideInAPackage("..module.user.service.."))
                     .ignoreDependency(
                             resideInAPackage("..module.staff.service.."),

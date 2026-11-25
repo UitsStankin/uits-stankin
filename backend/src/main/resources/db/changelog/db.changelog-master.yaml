@@ -69,3 +69,9 @@ databaseChangeLog:
       file: db/changelog/changesets/034-postgraduate-student-not-null.yml
   - include:
       file: db/changelog/changesets/035-bootstrap-admin.yml
+  - include:
+      file: db/changelog/changesets/036-schedule-lesson-times.yml
+  - include:
+      file: db/changelog/changesets/037-add-staff-links-page.yml
+  - include:
+      file: db/changelog/changesets/038-create-department-tasks.yml

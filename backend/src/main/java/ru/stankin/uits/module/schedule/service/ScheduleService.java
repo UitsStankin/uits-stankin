@@ -22,13 +22,20 @@ import ru.stankin.uits.module.staff.entity.Teacher;
 import ru.stankin.uits.module.staff.enums.ExamScheduleType;
 import ru.stankin.uits.module.staff.service.TeacherService;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class ScheduleService {
+
+    private static final int MIN_CLASS_TIME = 1;
+    private static final int MAX_CLASS_TIME = 10;
+    private static final Pattern TIME_PATTERN = Pattern.compile("^\\d{2}:\\d{2}$");
 
     private static final int FILE_NAME_LIMIT = 256;
     private static final int GROUP_LIMIT = 128;
@@ -118,6 +125,8 @@ public class ScheduleService {
         ScheduleLesson lesson = ScheduleLesson.builder()
                 .weekNumber(parsed.getWeekDay())
                 .classTime(parsed.getClassTime())
+                .timeStart(parsed.getTimeStart())
+                .timeEnd(parsed.getTimeEnd())
                 .group(parsed.getGroup())
                 .name(parsed.getName())
                 .type(parsed.getType())
@@ -150,6 +159,8 @@ public class ScheduleService {
         }
         boolean complete = parsed.getWeekDay() != null
                 && parsed.getClassTime() != null
+                && parsed.getClassTime() >= MIN_CLASS_TIME
+                && parsed.getClassTime() <= MAX_CLASS_TIME
                 && parsed.getGroup() != null
                 && parsed.getName() != null
                 && parsed.getType() != null
@@ -158,6 +169,36 @@ public class ScheduleService {
         if (!complete) {
             throw new ScheduleServiceUnavailableException(
                     "Сервис разбора расписания вернул занятие без обязательных полей.");
+        }
+        LocalTime startTime = parseTime(parsed.getTimeStart(), parsed);
+        LocalTime endTime = parseTime(parsed.getTimeEnd(), parsed);
+        if ((startTime == null) != (endTime == null)) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул неполный интервал времени «%s - %s»: %s."
+                            .formatted(parsed.getTimeStart(), parsed.getTimeEnd(), position(parsed)));
+        }
+        if (startTime != null && !startTime.isBefore(endTime)) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул некорректный интервал времени «%s - %s»: %s."
+                            .formatted(parsed.getTimeStart(), parsed.getTimeEnd(), position(parsed)));
+        }
+    }
+
+    private LocalTime parseTime(String value, ParsedLessonDto lesson) {
+        if (value == null) {
+            return null;
+        }
+        if (!TIME_PATTERN.matcher(value).matches()) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул неразбираемое время «%s»: %s."
+                            .formatted(value, position(lesson)));
+        }
+        try {
+            return LocalTime.parse(value);
+        } catch (DateTimeParseException e) {
+            throw new ScheduleServiceUnavailableException(
+                    "Сервис разбора расписания вернул неразбираемое время «%s»: %s."
+                            .formatted(value, position(lesson)));
         }
     }
 

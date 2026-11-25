@@ -98,6 +98,8 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         ScheduleLessonResponseDto first = body.getLessons().getFirst();
         assertThat(first.getWeekNumber()).isEqualTo(1);
         assertThat(first.getClassTime()).isEqualTo(1);
+        assertThat(first.getTimeStart()).isNull();
+        assertThat(first.getTimeEnd()).isNull();
         assertThat(first.getGroup()).isEqualTo("ИДБ-25-11");
         assertThat(first.getSubgroup()).isEqualTo("Б");
         assertThat(first.getCabinet()).isEqualTo("216");
@@ -153,6 +155,22 @@ class SchedulePublicReadIntegrationTest extends AbstractIntegrationTest {
         getSchedule(teacher.getId(), ScheduleResponseDto.class);
 
         assertThat(jdbc.queryForObject("select count(*) from schedule_schedule", Integer.class)).isZero();
+    }
+
+    @Test
+    void anonymousReadsLessonTimeIntervalsWhenPresent() {
+        ScheduleLesson timedLesson = lesson(5, 10, "ЭЛ-КС-25-01");
+        timedLesson.setTimeStart("21:50");
+        timedLesson.setTimeEnd("23:20");
+        saveSchedule(timedLesson);
+
+        ResponseEntity<ScheduleResponseDto> response = getSchedule(teacher.getId(), ScheduleResponseDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ScheduleLessonResponseDto dto = response.getBody().getLessons().getFirst();
+        assertThat(dto.getClassTime()).isEqualTo(10);
+        assertThat(dto.getTimeStart()).isEqualTo("21:50");
+        assertThat(dto.getTimeEnd()).isEqualTo("23:20");
     }
 
     @Test

@@ -19,6 +19,14 @@ public class EditablePageService {
     private final EditablePageMapper editablePageMapper;
 
     @Transactional(readOnly = true)
+    public EditablePageResponseDto getPublicBySlug(String slug) {
+        return editablePageRepository.findBySlug(slug)
+                .filter(page -> !page.isRestricted())
+                .map(editablePageMapper::toDto)
+                .orElseThrow(() -> new NotFoundException("Раздел " + slug + " не найден"));
+    }
+
+    @Transactional(readOnly = true)
     public EditablePageResponseDto getBySlug(String slug) {
         return editablePageRepository.findBySlug(slug)
                 .map(editablePageMapper::toDto)

@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 036-schedule-lesson-times
+      author: eeffeecct
+      changes:
+        - addColumn:
+            tableName: schedule_schedulelesson
+            columns:
+              - column:
+                  name: time_start
+                  type: VARCHAR(5)
+              - column:
+                  name: time_end
+                  type: VARCHAR(5)
+      rollback:
+        - dropColumn:
+            tableName: schedule_schedulelesson
+            columnName: time_end
+        - dropColumn:
+            tableName: schedule_schedulelesson
+            columnName: time_start
