@@ -1,6 +1,120 @@
 @import "tailwindcss";
 
-/* Tailwind 4 не подхватывает tailwind.config.ts сам — только по этой директиве.
-   Без неё тема (цвета, h-header, p-gutter, z-sticky) и плагины
-   forms/typography не применяются. */
-@config "../tailwind.config.ts";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-gray-100: #f3f7f9;
+  --color-gray-200: #ebf3f8;
+  --color-gray-300: #dce6ed;
+  --color-gray-400: #ccdfea;
+  --color-gray-500: #a7c1d2;
+  --color-gray-600: #7d9eb5;
+  --color-gray-700: #486f88;
+  --color-gray-800: #343a40;
+  --color-gray-900: #00174c;
+
+  --color-blue: #11a1fd;
+  --color-indigo: #5a75f9;
+  --color-purple: #6f42c1;
+  --color-pink: #e83e8c;
+  --color-red: #f46363;
+  --color-orange: #ff9842;
+  --color-yellow: #ffc833;
+  --color-green: #00c569;
+  --color-teal: #2ed477;
+  --color-cyan: #5dcebc;
+
+  --color-primary: var(--color-blue);
+  --color-secondary: #e4eef5;
+  --color-success: var(--color-green);
+  --color-info: var(--color-indigo);
+  --color-warning: var(--color-orange);
+  --color-danger: var(--color-red);
+  --color-light: var(--color-gray-100);
+  --color-dark: var(--color-gray-800);
+  --color-default: #edf4f9;
+  --color-background-default: var(--color-gray-100);
+  --color-text-default: var(--color-gray-700);
+  --color-text-heading: var(--color-gray-900);
+  --color-text-muted: var(--color-gray-600);
+
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-weight-bold: 600;
+  --font-weight-bolder: 700;
+
+  --text-sm: 0.765rem;
+  --text-sm--line-height: 1.25;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.094rem;
+  --text-lg--line-height: 2;
+  --text-h1: 2.188rem;
+  --text-h2: 1.75rem;
+  --text-h3: 1.531rem;
+  --text-h4: 1.313rem;
+  --text-h5: 1.05rem;
+  --text-h6: 0.875rem;
+  --text-h1--line-height: 1.2;
+  --text-h2--line-height: 1.2;
+  --text-h3--line-height: 1.2;
+  --text-h4--line-height: 1.2;
+  --text-h5--line-height: 1.2;
+  --text-h6--line-height: 1.2;
+  --text-h1--font-weight: 600;
+  --text-h2--font-weight: 600;
+  --text-h3--font-weight: 600;
+  --text-h4--font-weight: 600;
+  --text-h5--font-weight: 600;
+  --text-h6--font-weight: 600;
+
+  --breakpoint-xs: 0px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1440px;
+  --breakpoint-2xl: 1536px;
+
+  --spacing-header: 4.375rem;
+  --spacing-gutter: 1.5625rem;
+  --spacing-gutter-sm: 0.9375rem;
+  --spacing-footer: 4.0625rem;
+
+  --radius: 0.375rem;
+  --radius-sm: 0.2rem;
+  --radius-lg: 0.5rem;
+  --radius-pill: 50rem;
+  --shadow: 0 0.5rem 1rem rgb(0 0 0 / 15%);
+  --shadow-sm: 0 0.125rem 0.25rem rgb(0 0 0 / 7.5%);
+  --shadow-lg: 0 1rem 3rem rgb(0 0 0 / 17.5%);
+  --shadow-inner: inset 0 1px 2px rgb(0 0 0 / 7.5%);
+
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+  --z-index-toast: 1090;
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-fade-in-up: fade-in-up 0.3s ease-out;
+  --animate-slide-in-right: slide-in-right 0.3s ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+}

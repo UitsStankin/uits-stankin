@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 /**
  * Брейкпоинт из оригинала: ниже 992px вместо навбара показывается бургер.
- * Совпадает с `lg` в tailwind.config.ts — оба перенесены из Bootstrap.
+ * Совпадает с `lg` в index.css — оба перенесены из Bootstrap.
  */
 const DESKTOP_QUERY = '(min-width: 992px)';
 
