@@ -51,7 +51,7 @@ dependencies {
 	implementation("org.mapstruct:mapstruct:1.6.3")
 	annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.1")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.jsoup:jsoup:1.24.1")
 	implementation("net.coobird:thumbnailator:0.4.21")
